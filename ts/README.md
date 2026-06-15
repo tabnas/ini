@@ -61,11 +61,13 @@ Complete API documentation for each language.
 Parse an INI file with sections, keys, and arrays:
 
 **TypeScript**
-```typescript
+```js
+import { Jsonic } from '@tabnas/jsonic'
+import { Ini } from '@tabnas/ini'
+
 const j = Jsonic.make().use(Ini)
 
-j("[database]\nhost = localhost\nport = 5432\ntags[] = primary\ntags[] = read")
-// { database: { host: 'localhost', port: '5432', tags: ['primary', 'read'] } }
+j("[database]\nhost = localhost\nport = 5432\ntags[] = primary\ntags[] = read") // => { database: { host: 'localhost', port: '5432', tags: ['primary', 'read'] } }
 ```
 
 **Go**
