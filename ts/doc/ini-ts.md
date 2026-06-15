@@ -5,10 +5,10 @@ objects, with support for sections, nested keys, arrays, multiline
 values, and inline comments.
 
 ```bash
-npm install @jsonic/ini
+npm install @tabnas/ini
 ```
 
-Requires `jsonic` >= 2 and `@jsonic/hoover` >= 0 as peer dependencies.
+Requires `@tabnas/jsonic` >= 2 and `@tabnas/hoover` >= 0 as peer dependencies.
 
 
 ## Tutorials
@@ -18,8 +18,8 @@ Requires `jsonic` >= 2 and `@jsonic/hoover` >= 0 as peer dependencies.
 Parse key-value pairs and sections into a nested object:
 
 ```typescript
-import { Jsonic } from 'jsonic'
-import { Ini } from '@jsonic/ini'
+import { Jsonic } from '@tabnas/jsonic'
+import { Ini } from '@tabnas/ini'
 
 const j = Jsonic.make().use(Ini)
 
@@ -35,8 +35,8 @@ j("[database]\nhost = localhost\nport = 5432")
 Use dot notation for nested sections and `[]` suffix for arrays:
 
 ```typescript
-import { Jsonic } from 'jsonic'
-import { Ini } from '@jsonic/ini'
+import { Jsonic } from '@tabnas/jsonic'
+import { Ini } from '@tabnas/ini'
 
 const j = Jsonic.make().use(Ini)
 
@@ -52,8 +52,8 @@ j("tags[] = web\ntags[] = api\ntags[] = v2")
 Enable backslash continuation and indent-based continuation:
 
 ```typescript
-import { Jsonic } from 'jsonic'
-import { Ini } from '@jsonic/ini'
+import { Jsonic } from '@tabnas/jsonic'
+import { Ini } from '@tabnas/ini'
 
 const j = Jsonic.make().use(Ini, {
   multiline: { continuation: '\\', indent: true }

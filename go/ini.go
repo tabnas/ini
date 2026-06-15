@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	hoover "github.com/jsonicjs/hoover/go"
-	jsonic "github.com/jsonicjs/jsonic/go"
+	hoover "github.com/tabnas/hoover/go"
+	jsonic "github.com/tabnas/jsonic/go"
 )
 
 const Version = "0.1.6"
@@ -697,8 +697,8 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 
 		// Filter out json,list group alts (matching TS custom filter)
 		// and hoover-prepended #HK/#DK alts that don't belong in val.
-		filtered := make([]*jsonic.AltSpec, 0, len(rs.Open))
-		for _, alt := range rs.Open {
+		filtered := make([]*jsonic.AltSpec, 0, len(rs.OpenAlts()))
+		for _, alt := range rs.OpenAlts() {
 			if alt.G == "json,list" {
 				continue
 			}
@@ -722,7 +722,8 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 					r.Node = ""
 				}},
 		}
-		rs.Open = append(iniAlts, filtered...)
+		rs.ClearOpen()
+		rs.AddOpen(append(iniAlts, filtered...)...)
 
 		rs.AddAC(func(r *jsonic.Rule, ctx *jsonic.Context) {
 			// Resolve value.

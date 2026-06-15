@@ -6,13 +6,13 @@ and inline comments.
 
 ```go
 import (
-  jsonic "github.com/jsonicjs/jsonic/go"
-  ini "github.com/jsonicjs/ini/go"
+  jsonic "github.com/tabnas/jsonic/go"
+  ini "github.com/tabnas/ini/go"
 )
 ```
 
 ```bash
-go get github.com/jsonicjs/ini/go@latest
+go get github.com/tabnas/ini/go@latest
 ```
 
 

@@ -174,13 +174,15 @@ func runIniTSV(t *testing.T, file string, opts ...IniOptions) {
 
 		if strings.HasPrefix(expectedStr, "ERROR:") {
 			func() {
+				// The tabnas engine recovers state-action panics and returns
+				// them as a parse error; accept either a panic or a non-nil err.
 				defer func() {
-					r := recover()
-					if r == nil {
-						t.Errorf("line %d: expected panic for input %q", row.lineNo, row.cols[0])
-					}
+					_ = recover()
 				}()
-				Parse(input, opts...)
+				if _, perr := Parse(input, opts...); perr == nil {
+					// Returned cleanly and did not panic: rejection missing.
+					t.Errorf("line %d: expected panic or error for input %q", row.lineNo, row.cols[0])
+				}
 			}()
 			continue
 		}

@@ -5,7 +5,7 @@ import { deepEqual, throws } from 'node:assert'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
-import { Jsonic } from 'jsonic'
+import { Jsonic } from '@tabnas/jsonic'
 import { Ini, IniOptions } from '../dist/ini'
 
 

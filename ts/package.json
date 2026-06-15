@@ -1,11 +1,11 @@
 {
-  "name": "@jsonic/ini",
+  "name": "@tabnas/ini",
   "version": "0.9.1",
-  "description": "This plugin allows the [Jsonic](https://jsonic.senecajs.org) JSON parser to support INI syntax.",
+  "description": "This plugin allows the [Tabnas](https://jsonic.senecajs.org) JSON parser to support INI syntax.",
   "main": "dist/ini.js",
   "type": "commonjs",
   "types": "dist/ini.d.ts",
-  "homepage": "https://github.com/jsonicjs/ini",
+  "homepage": "https://github.com/tabnas/ini",
   "keywords": [
     "json",
     "jsonic",
@@ -15,14 +15,14 @@
   "author": "Richard Rodger (http://richardrodger.com)",
   "repository": {
     "type": "git",
-    "url": "git://github.com/jsonicjs/ini.git"
+    "url": "git://github.com/tabnas/ini.git"
   },
   "scripts": {
     "test": "node --enable-source-maps --test \"dist-test/*.test.js\"",
     "test-some": "node --enable-source-maps --test-name-pattern=\"$npm_config_pattern\" --test \"dist-test/*.test.js\"",
     "embed": "node embed-grammar.js",
     "watch": "tsc --build src test -w",
-    "build": "node embed-grammar.js && tsc -p node_modules/@jsonic/hoover/src/tsconfig.json && tsc --build src test",
+    "build": "node embed-grammar.js && tsc -p node_modules/@tabnas/hoover/src/tsconfig.json && tsc --build src test",
     "clean": "rm -rf dist dist-test node_modules yarn.lock package-lock.json",
     "reset": "npm run clean && npm i && npm run build && npm test",
     "repo-tag": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo TAG: v$REPO_VERSION && git commit -a -m v$REPO_VERSION && git push && git tag v$REPO_VERSION && git push --tags;",
@@ -35,12 +35,14 @@
     "dist",
     "LICENSE"
   ],
+  "peerDependencies": {
+    "@tabnas/hoover": ">=0",
+    "@tabnas/jsonic": ">=2"
+  },
   "devDependencies": {
     "@types/node": "25.6.0",
-    "typescript": "6.0.3"
-  },
-  "peerDependencies": {
-    "@jsonic/hoover": ">=0",
-    "jsonic": ">=2"
+    "typescript": "6.0.3",
+    "@tabnas/hoover": "file:../../hoover/ts",
+    "@tabnas/jsonic": "file:../../jsonic/ts"
   }
 }

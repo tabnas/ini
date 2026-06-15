@@ -1,18 +1,18 @@
-# @jsonic/ini
+# @tabnas/ini
 
-A [Jsonic](https://github.com/jsonicjs/jsonic) syntax plugin that
+A [Jsonic](https://github.com/tabnas/jsonic) syntax plugin that
 parses [INI](https://github.com/microsoft/node-ini-parser) format
 files into objects with support for sections, nested keys, arrays,
 multiline values, and inline comments.
 
 Available for [TypeScript](doc/ini-ts.md) and [Go](../go/doc/ini-go.md).
 
-[![npm version](https://img.shields.io/npm/v/@jsonic/ini.svg)](https://npmjs.com/package/@jsonic/ini)
-[![build](https://github.com/jsonicjs/ini/actions/workflows/build.yml/badge.svg)](https://github.com/jsonicjs/ini/actions/workflows/build.yml)
-[![Coverage Status](https://coveralls.io/repos/github/jsonicjs/ini/badge.svg?branch=main)](https://coveralls.io/github/jsonicjs/ini?branch=main)
-[![Known Vulnerabilities](https://snyk.io/test/github/jsonicjs/ini/badge.svg)](https://snyk.io/test/github/jsonicjs/ini)
+[![npm version](https://img.shields.io/npm/v/@tabnas/ini.svg)](https://npmjs.com/package/@tabnas/ini)
+[![build](https://github.com/tabnas/ini/actions/workflows/build.yml/badge.svg)](https://github.com/tabnas/ini/actions/workflows/build.yml)
+[![Coverage Status](https://coveralls.io/repos/github/tabnas/ini/badge.svg?branch=main)](https://coveralls.io/github/tabnas/ini?branch=main)
+[![Known Vulnerabilities](https://snyk.io/test/github/tabnas/ini/badge.svg)](https://snyk.io/test/github/tabnas/ini)
 [![DeepScan grade](https://deepscan.io/api/teams/5016/projects/25267/branches/788638/badge/grade.svg)](https://deepscan.io/dashboard#view=project&tid=5016&pid=25267&bid=788638)
-[![Maintainability](https://api.codeclimate.com/v1/badges/6da148ebd83e336cdcbe/maintainability)](https://codeclimate.com/github/jsonicjs/ini/maintainability)
+[![Maintainability](https://api.codeclimate.com/v1/badges/6da148ebd83e336cdcbe/maintainability)](https://codeclimate.com/github/tabnas/ini/maintainability)
 
 | ![Voxgig](https://www.voxgig.com/res/img/vgt01r.png) | This open source module is sponsored and supported by [Voxgig](https://www.voxgig.com). |
 | ---------------------------------------------------- | --------------------------------------------------------------------------------------- |

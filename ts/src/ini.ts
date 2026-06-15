@@ -1,8 +1,8 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
-// Import Jsonic types used by plugin.
-import { Jsonic, RuleSpec, NormAltSpec, Lex, makePoint, Token } from 'jsonic'
-import { Hoover } from '@jsonic/hoover'
+// Import Jsonic types used by plugin (from the @tabnas/jsonic relaxed-grammar shim).
+import { Jsonic, RuleSpec, AltSpec, Lex, makePoint, Token, Tin } from '@tabnas/jsonic'
+import { Hoover } from '@tabnas/hoover'
 
 type InlineCommentOptions = {
   // Whether inline comments are active. Default: false.
@@ -154,7 +154,7 @@ function Ini(jsonic: Jsonic, _options: IniOptions) {
     }
   }
 
-  jsonic.use(Hoover, {
+  jsonic.use(Hoover as any, {
     lex: {
       order: 8.5e6,
     },
@@ -352,7 +352,7 @@ function Ini(jsonic: Jsonic, _options: IniOptions) {
       ? (multiline.continuation !== undefined ? multiline.continuation : '\\')
       : false
     const indent = multiline ? (multiline.indent || false) : false
-    const HV_TIN = jsonic.token('#HV') as number
+    const HV_TIN = jsonic.token('#HV') as Tin
 
     // Build a Set for fast comment char lookup in the matcher.
     const commentCharSet = new Set(inlineComment.chars)
@@ -509,8 +509,11 @@ function Ini(jsonic: Jsonic, _options: IniOptions) {
           { s: '#ZZ', a: '@val-empty' },
         ],
         {
-          custom: (alts: NormAltSpec[]) =>
-            alts.filter((alt: NormAltSpec) => alt.g.join() !== 'json,list'),
+          custom: (alts: AltSpec[]) =>
+            alts.filter(
+              (alt: AltSpec) =>
+                (Array.isArray(alt.g) ? alt.g.join() : alt.g) !== 'json,list',
+            ),
         },
       )
   })

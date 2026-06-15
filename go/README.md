@@ -2,15 +2,15 @@
 
 Version: 0.6.0
 
-A Go port of [@jsonic/ini](https://github.com/jsonicjs/ini), a
-[Jsonic](https://github.com/jsonicjs/jsonic) syntax plugin that
+A Go port of [@tabnas/ini](https://github.com/tabnas/ini), a
+[Jsonic](https://github.com/tabnas/jsonic) syntax plugin that
 parses INI format files into Go maps, with support for sections,
 nested keys, arrays, multiline values, and inline comments.
 
 ## Install
 
 ```bash
-go get github.com/jsonicjs/ini/go@latest
+go get github.com/tabnas/ini/go@latest
 ```
 
 ## Quick Example
@@ -20,7 +20,7 @@ package main
 
 import (
     "fmt"
-    ini "github.com/jsonicjs/ini/go"
+    ini "github.com/tabnas/ini/go"
 )
 
 func main() {

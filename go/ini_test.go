@@ -215,15 +215,28 @@ func TestSectionDuplicateOverride(t *testing.T) {
 }
 
 func TestSectionDuplicateError(t *testing.T) {
+	// The tabnas engine recovers state-action panics and surfaces them as a
+	// returned parse error, so a duplicate section is reported via err (or a
+	// raw panic on older engines). Accept either.
+	expectDuplicateSectionError(t, func() (any, error) {
+		return Parse("[a]\nx=1\n[a]\ny=2", IniOptions{
+			Section: &SectionOptions{Duplicate: "error"},
+		})
+	}, "duplicate section")
+}
+
+// expectDuplicateSectionError asserts that parse rejects a duplicate section,
+// whether by panicking or by returning a non-nil error.
+func expectDuplicateSectionError(t *testing.T, parse func() (any, error), what string) {
+	t.Helper()
 	defer func() {
-		r := recover()
-		if r == nil {
-			t.Fatal("expected panic for duplicate section")
+		if r := recover(); r != nil {
+			return // panic is an acceptable rejection
 		}
 	}()
-	Parse("[a]\nx=1\n[a]\ny=2", IniOptions{
-		Section: &SectionOptions{Duplicate: "error"},
-	})
+	if _, err := parse(); err == nil {
+		t.Fatalf("expected panic or error for %s", what)
+	}
 }
 
 func TestKeyByItself(t *testing.T) {
@@ -747,27 +760,15 @@ func TestSectionDuplicateErrorFull(t *testing.T) {
 		"a": map[string]any{"x": "1"}, "b": map[string]any{"y": "2"},
 	})
 
-	// Duplicate section: panics
-	func() {
-		defer func() {
-			r := recover()
-			if r == nil {
-				t.Fatal("expected panic for duplicate section")
-			}
-		}()
-		Parse("[a]\nx=1\n[a]\ny=2", opts)
-	}()
+	// Duplicate section: rejected (panic or error).
+	expectDuplicateSectionError(t, func() (any, error) {
+		return Parse("[a]\nx=1\n[a]\ny=2", opts)
+	}, "duplicate section")
 
-	// Duplicate nested section: panics
-	func() {
-		defer func() {
-			r := recover()
-			if r == nil {
-				t.Fatal("expected panic for duplicate nested section")
-			}
-		}()
-		Parse("[a.b]\nx=1\n[a.b]\ny=2", opts)
-	}()
+	// Duplicate nested section: rejected (panic or error).
+	expectDuplicateSectionError(t, func() (any, error) {
+		return Parse("[a.b]\nx=1\n[a.b]\ny=2", opts)
+	}, "duplicate nested section")
 
 	// Intermediate path is NOT a declared section
 	result, err = Parse("[a.b]\nx=1\n[a]\ny=2", opts)
