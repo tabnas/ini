@@ -17,41 +17,35 @@ Requires `@tabnas/jsonic` >= 2 and `@tabnas/hoover` >= 0 as peer dependencies.
 
 Parse key-value pairs and sections into a nested object:
 
-```typescript
+```js
 import { Jsonic } from '@tabnas/jsonic'
 import { Ini } from '@tabnas/ini'
 
 const j = Jsonic.make().use(Ini)
 
-j("a = 1\nb = hello world")
-// { a: '1', b: 'hello world' }
-
-j("[database]\nhost = localhost\nport = 5432")
-// { database: { host: 'localhost', port: '5432' } }
+j("a = 1\nb = hello world")              // => { a: '1', b: 'hello world' }
+j("[database]\nhost = localhost\nport = 5432") // => { database: { host: 'localhost', port: '5432' } }
 ```
 
 ### Parse nested sections and arrays
 
 Use dot notation for nested sections and `[]` suffix for arrays:
 
-```typescript
+```js
 import { Jsonic } from '@tabnas/jsonic'
 import { Ini } from '@tabnas/ini'
 
 const j = Jsonic.make().use(Ini)
 
-j("[server.production]\nhost = example.com")
-// { server: { production: { host: 'example.com' } } }
-
-j("tags[] = web\ntags[] = api\ntags[] = v2")
-// { tags: ['web', 'api', 'v2'] }
+j("[server.production]\nhost = example.com") // => { server: { production: { host: 'example.com' } } }
+j("tags[] = web\ntags[] = api\ntags[] = v2") // => { tags: ['web', 'api', 'v2'] }
 ```
 
 ### Parse with multiline values
 
 Enable backslash continuation and indent-based continuation:
 
-```typescript
+```js
 import { Jsonic } from '@tabnas/jsonic'
 import { Ini } from '@tabnas/ini'
 
@@ -59,8 +53,8 @@ const j = Jsonic.make().use(Ini, {
   multiline: { continuation: '\\', indent: true }
 })
 
-j("desc = first \\\n  second")    // { desc: 'first second' }
-j("desc = first\n  second")       // { desc: 'first second' }
+j("desc = first \\\n  second")    // => { desc: 'first second' }
+j("desc = first\n  second")       // => { desc: 'first second' }
 ```
 
 
@@ -71,15 +65,18 @@ j("desc = first\n  second")       // { desc: 'first second' }
 By default, `#` and `;` in values are treated as literal characters.
 Activate inline comments to treat them as comment starters:
 
-```typescript
+```js
+import { Jsonic } from '@tabnas/jsonic'
+import { Ini } from '@tabnas/ini'
+
 const j = Jsonic.make().use(Ini, {
   comment: {
     inline: { active: true }
   }
 })
 
-j("a = hello # this is a comment")  // { a: 'hello' }
-j("b = value ; also a comment")     // { b: 'value' }
+j("a = hello # this is a comment")  // => { a: 'hello' }
+j("b = value ; also a comment")     // => { b: 'value' }
 ```
 
 ### Escape inline comment characters
@@ -87,65 +84,80 @@ j("b = value ; also a comment")     // { b: 'value' }
 Use backslash escaping to include literal `#` or `;` in values
 when inline comments are active:
 
-```typescript
+```js
+import { Jsonic } from '@tabnas/jsonic'
+import { Ini } from '@tabnas/ini'
+
 const j = Jsonic.make().use(Ini, {
   comment: {
     inline: { active: true, escape: { backslash: true } }
   }
 })
 
-j("color = red\\#FF0000")  // { color: 'red#FF0000' }
+j("color = red\\#FF0000")  // => { color: 'red#FF0000' }
 ```
 
 Alternatively, use whitespace-prefix mode where only `#` or `;`
 preceded by whitespace starts a comment:
 
-```typescript
+```js
+import { Jsonic } from '@tabnas/jsonic'
+import { Ini } from '@tabnas/ini'
+
 const j = Jsonic.make().use(Ini, {
   comment: {
     inline: { active: true, escape: { whitespace: true } }
   }
 })
 
-j("color = red#FF0000")          // { color: 'red#FF0000' }
-j("color = red #FF0000 comment") // { color: 'red' }
+j("color = red#FF0000")          // => { color: 'red#FF0000' }
+j("color = red #FF0000 comment") // => { color: 'red' }
 ```
 
 ### Control duplicate section handling
 
 Choose how repeated section headers are treated:
 
-```typescript
+```js
+import { Jsonic } from '@tabnas/jsonic'
+import { Ini } from '@tabnas/ini'
+
 // Merge (default): combine keys, last value wins for duplicates
 const jMerge = Jsonic.make().use(Ini, {
   section: { duplicate: 'merge' }
 })
-jMerge("[db]\nhost = a\n[db]\nport = 5")
-// { db: { host: 'a', port: '5' } }
+jMerge("[db]\nhost = a\n[db]\nport = 5") // => { db: { host: 'a', port: '5' } }
 
 // Override: last section replaces earlier ones
 const jOver = Jsonic.make().use(Ini, {
   section: { duplicate: 'override' }
 })
-jOver("[db]\nhost = a\n[db]\nport = 5")
-// { db: { port: '5' } }
+jOver("[db]\nhost = a\n[db]\nport = 5") // => { db: { port: '5' } }
+```
 
-// Error: throw on duplicate sections
+With `duplicate: 'error'`, a repeated section header throws instead:
+
+```js ignore
+import { Jsonic } from '@tabnas/jsonic'
+import { Ini } from '@tabnas/ini'
+
 const jErr = Jsonic.make().use(Ini, {
   section: { duplicate: 'error' }
 })
-// jErr("[db]\nhost = a\n[db]\nport = 5") // throws Error
+jErr("[db]\nhost = a\n[db]\nport = 5") // throws: Duplicate section: [db]
 ```
 
 ### Use boolean keys
 
 Keys without a value assignment are set to `true`:
 
-```typescript
+```js
+import { Jsonic } from '@tabnas/jsonic'
+import { Ini } from '@tabnas/ini'
+
 const j = Jsonic.make().use(Ini)
 
-j("[features]\ndebug\nverbose")
-// { features: { debug: true, verbose: true } }
+j("[features]\nname = app\ndebug\nverbose") // => { features: { name: 'app', debug: true, verbose: true } }
 ```
 
 
