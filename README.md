@@ -16,6 +16,15 @@ This repository contains:
 Start with [`ts/README.md`](ts/README.md) for the JS API or
 [`go/README.md`](go/README.md) for Go.
 
+## Grammar diagram
+
+The grammar as a railroad/syntax diagram, generated from the live grammar
+with [`@tabnas/railroad`](https://github.com/tabnas/railroad):
+
+![ini grammar railroad diagram](ts/doc/grammar.svg)
+
+ASCII version: [`ts/doc/grammar.txt`](ts/doc/grammar.txt).
+
 ## License
 
 MIT. Copyright (c) Richard Rodger.
