@@ -111,3 +111,8 @@ Tokens:
   ST  = quoted string (e.g. "text")
   VAL = value: bare text, number, string, or keyword
   VL  = value keyword (true, false, null, ...)
+
+Ignored tokens:
+  CM = comment
+  LN = newline (line break)
+  SP = whitespace (spaces or tabs)
