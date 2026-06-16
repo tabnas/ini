@@ -5,7 +5,8 @@ import { deepEqual, throws } from 'node:assert'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
-import { Jsonic } from '@tabnas/jsonic'
+import { Tabnas } from '@tabnas/parser'
+import { jsonic } from '@tabnas/jsonic'
 import { Ini, IniOptions } from '../dist/ini'
 
 
@@ -31,19 +32,19 @@ function loadTSV(name: string): { cols: string[]; row: number }[] {
 
 
 function makeIni(opts?: IniOptions) {
-  return Jsonic.make().use(Ini, opts || {})
+  return new Tabnas().use(jsonic).use(Ini, opts || {})
 }
 
 
-function runTSV(name: string, j: ReturnType<typeof Jsonic.make>) {
+function runTSV(name: string, j: ReturnType<typeof makeIni>) {
   const entries = loadTSV(name)
   for (const { cols: [input, expected], row } of entries) {
     if (expected.startsWith('ERROR:')) {
-      throws(() => j(input), /Duplicate section/,
+      throws(() => j.parse(input), /Duplicate section/,
         `${name}.tsv row ${row}: expected error for input=${JSON.stringify(input)}`)
     } else {
       try {
-        deepEqual(j(input), JSON.parse(expected))
+        deepEqual(j.parse(input), JSON.parse(expected))
       } catch (err: any) {
         err.message = `${name}.tsv row ${row}: input=${JSON.stringify(input)} expected=${expected}\n${err.message}`
         throw err

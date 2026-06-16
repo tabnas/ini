@@ -5,10 +5,10 @@ objects, with support for sections, nested keys, arrays, multiline
 values, and inline comments.
 
 ```bash
-npm install @tabnas/ini
+npm install @tabnas/ini @tabnas/parser @tabnas/jsonic
 ```
 
-Requires `@tabnas/jsonic` >= 2 and `@tabnas/hoover` >= 0 as peer dependencies.
+Requires `@tabnas/parser` >= 2, `@tabnas/jsonic` >= 2 and `@tabnas/hoover` >= 0 as peer dependencies.
 
 
 ## Tutorials
@@ -18,13 +18,14 @@ Requires `@tabnas/jsonic` >= 2 and `@tabnas/hoover` >= 0 as peer dependencies.
 Parse key-value pairs and sections into a nested object:
 
 ```js
-import { Jsonic } from '@tabnas/jsonic'
+import { Tabnas } from '@tabnas/parser'
+import { jsonic } from '@tabnas/jsonic'
 import { Ini } from '@tabnas/ini'
 
-const j = Jsonic.make().use(Ini)
+const j = new Tabnas().use(jsonic).use(Ini)
 
-j("a = 1\nb = hello world")              // => { a: '1', b: 'hello world' }
-j("[database]\nhost = localhost\nport = 5432") // => { database: { host: 'localhost', port: '5432' } }
+j.parse("a = 1\nb = hello world")              // => { a: '1', b: 'hello world' }
+j.parse("[database]\nhost = localhost\nport = 5432") // => { database: { host: 'localhost', port: '5432' } }
 ```
 
 ### Parse nested sections and arrays
@@ -32,13 +33,14 @@ j("[database]\nhost = localhost\nport = 5432") // => { database: { host: 'localh
 Use dot notation for nested sections and `[]` suffix for arrays:
 
 ```js
-import { Jsonic } from '@tabnas/jsonic'
+import { Tabnas } from '@tabnas/parser'
+import { jsonic } from '@tabnas/jsonic'
 import { Ini } from '@tabnas/ini'
 
-const j = Jsonic.make().use(Ini)
+const j = new Tabnas().use(jsonic).use(Ini)
 
-j("[server.production]\nhost = example.com") // => { server: { production: { host: 'example.com' } } }
-j("tags[] = web\ntags[] = api\ntags[] = v2") // => { tags: ['web', 'api', 'v2'] }
+j.parse("[server.production]\nhost = example.com") // => { server: { production: { host: 'example.com' } } }
+j.parse("tags[] = web\ntags[] = api\ntags[] = v2") // => { tags: ['web', 'api', 'v2'] }
 ```
 
 ### Parse with multiline values
@@ -46,15 +48,16 @@ j("tags[] = web\ntags[] = api\ntags[] = v2") // => { tags: ['web', 'api', 'v2'] 
 Enable backslash continuation and indent-based continuation:
 
 ```js
-import { Jsonic } from '@tabnas/jsonic'
+import { Tabnas } from '@tabnas/parser'
+import { jsonic } from '@tabnas/jsonic'
 import { Ini } from '@tabnas/ini'
 
-const j = Jsonic.make().use(Ini, {
+const j = new Tabnas().use(jsonic).use(Ini, {
   multiline: { continuation: '\\', indent: true }
 })
 
-j("desc = first \\\n  second")    // => { desc: 'first second' }
-j("desc = first\n  second")       // => { desc: 'first second' }
+j.parse("desc = first \\\n  second")    // => { desc: 'first second' }
+j.parse("desc = first\n  second")       // => { desc: 'first second' }
 ```
 
 
@@ -66,17 +69,18 @@ By default, `#` and `;` in values are treated as literal characters.
 Activate inline comments to treat them as comment starters:
 
 ```js
-import { Jsonic } from '@tabnas/jsonic'
+import { Tabnas } from '@tabnas/parser'
+import { jsonic } from '@tabnas/jsonic'
 import { Ini } from '@tabnas/ini'
 
-const j = Jsonic.make().use(Ini, {
+const j = new Tabnas().use(jsonic).use(Ini, {
   comment: {
     inline: { active: true }
   }
 })
 
-j("a = hello # this is a comment")  // => { a: 'hello' }
-j("b = value ; also a comment")     // => { b: 'value' }
+j.parse("a = hello # this is a comment")  // => { a: 'hello' }
+j.parse("b = value ; also a comment")     // => { b: 'value' }
 ```
 
 ### Escape inline comment characters
@@ -85,33 +89,35 @@ Use backslash escaping to include literal `#` or `;` in values
 when inline comments are active:
 
 ```js
-import { Jsonic } from '@tabnas/jsonic'
+import { Tabnas } from '@tabnas/parser'
+import { jsonic } from '@tabnas/jsonic'
 import { Ini } from '@tabnas/ini'
 
-const j = Jsonic.make().use(Ini, {
+const j = new Tabnas().use(jsonic).use(Ini, {
   comment: {
     inline: { active: true, escape: { backslash: true } }
   }
 })
 
-j("color = red\\#FF0000")  // => { color: 'red#FF0000' }
+j.parse("color = red\\#FF0000")  // => { color: 'red#FF0000' }
 ```
 
 Alternatively, use whitespace-prefix mode where only `#` or `;`
 preceded by whitespace starts a comment:
 
 ```js
-import { Jsonic } from '@tabnas/jsonic'
+import { Tabnas } from '@tabnas/parser'
+import { jsonic } from '@tabnas/jsonic'
 import { Ini } from '@tabnas/ini'
 
-const j = Jsonic.make().use(Ini, {
+const j = new Tabnas().use(jsonic).use(Ini, {
   comment: {
     inline: { active: true, escape: { whitespace: true } }
   }
 })
 
-j("color = red#FF0000")          // => { color: 'red#FF0000' }
-j("color = red #FF0000 comment") // => { color: 'red' }
+j.parse("color = red#FF0000")          // => { color: 'red#FF0000' }
+j.parse("color = red #FF0000 comment") // => { color: 'red' }
 ```
 
 ### Control duplicate section handling
@@ -119,32 +125,34 @@ j("color = red #FF0000 comment") // => { color: 'red' }
 Choose how repeated section headers are treated:
 
 ```js
-import { Jsonic } from '@tabnas/jsonic'
+import { Tabnas } from '@tabnas/parser'
+import { jsonic } from '@tabnas/jsonic'
 import { Ini } from '@tabnas/ini'
 
 // Merge (default): combine keys, last value wins for duplicates
-const jMerge = Jsonic.make().use(Ini, {
+const jMerge = new Tabnas().use(jsonic).use(Ini, {
   section: { duplicate: 'merge' }
 })
-jMerge("[db]\nhost = a\n[db]\nport = 5") // => { db: { host: 'a', port: '5' } }
+jMerge.parse("[db]\nhost = a\n[db]\nport = 5") // => { db: { host: 'a', port: '5' } }
 
 // Override: last section replaces earlier ones
-const jOver = Jsonic.make().use(Ini, {
+const jOver = new Tabnas().use(jsonic).use(Ini, {
   section: { duplicate: 'override' }
 })
-jOver("[db]\nhost = a\n[db]\nport = 5") // => { db: { port: '5' } }
+jOver.parse("[db]\nhost = a\n[db]\nport = 5") // => { db: { port: '5' } }
 ```
 
 With `duplicate: 'error'`, a repeated section header throws instead:
 
 ```js ignore
-import { Jsonic } from '@tabnas/jsonic'
+import { Tabnas } from '@tabnas/parser'
+import { jsonic } from '@tabnas/jsonic'
 import { Ini } from '@tabnas/ini'
 
-const jErr = Jsonic.make().use(Ini, {
+const jErr = new Tabnas().use(jsonic).use(Ini, {
   section: { duplicate: 'error' }
 })
-jErr("[db]\nhost = a\n[db]\nport = 5") // throws: Duplicate section: [db]
+jErr.parse("[db]\nhost = a\n[db]\nport = 5") // throws: Duplicate section: [db]
 ```
 
 ### Use boolean keys
@@ -152,12 +160,13 @@ jErr("[db]\nhost = a\n[db]\nport = 5") // throws: Duplicate section: [db]
 Keys without a value assignment are set to `true`:
 
 ```js
-import { Jsonic } from '@tabnas/jsonic'
+import { Tabnas } from '@tabnas/parser'
+import { jsonic } from '@tabnas/jsonic'
 import { Ini } from '@tabnas/ini'
 
-const j = Jsonic.make().use(Ini)
+const j = new Tabnas().use(jsonic).use(Ini)
 
-j("[features]\nname = app\ndebug\nverbose") // => { features: { name: 'app', debug: true, verbose: true } }
+j.parse("[features]\nname = app\ndebug\nverbose") // => { features: { name: 'app', debug: true, verbose: true } }
 ```
 
 
@@ -199,7 +208,7 @@ When a value is encountered, the parser applies these rules:
 
 ### `Ini` (Plugin)
 
-The plugin function. Register with `Jsonic.make().use(Ini, options)`.
+The plugin function. Register with `new Tabnas().use(jsonic).use(Ini, options)`.
 
 ### `IniOptions`
 

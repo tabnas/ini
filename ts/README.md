@@ -62,12 +62,13 @@ Parse an INI file with sections, keys, and arrays:
 
 **TypeScript**
 ```js
-import { Jsonic } from '@tabnas/jsonic'
+import { Tabnas } from '@tabnas/parser'
+import { jsonic } from '@tabnas/jsonic'
 import { Ini } from '@tabnas/ini'
 
-const j = Jsonic.make().use(Ini)
+const j = new Tabnas().use(jsonic).use(Ini)
 
-j("[database]\nhost = localhost\nport = 5432\ntags[] = primary\ntags[] = read") // => { database: { host: 'localhost', port: '5432', tags: ['primary', 'read'] } }
+j.parse("[database]\nhost = localhost\nport = 5432\ntags[] = primary\ntags[] = read") // => { database: { host: 'localhost', port: '5432', tags: ['primary', 'read'] } }
 ```
 
 **Go**

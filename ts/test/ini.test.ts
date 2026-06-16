@@ -3,28 +3,29 @@
 import { test, describe } from 'node:test'
 import assert from 'node:assert'
 
-import { Jsonic } from '@tabnas/jsonic'
+import { Tabnas } from '@tabnas/parser'
+import { jsonic } from '@tabnas/jsonic'
 import { Ini } from '../dist/ini'
 
 
-const j = Jsonic.make().use(Ini)
+const j = new Tabnas().use(jsonic).use(Ini)
 
 
 describe('ini', () => {
 
   test('happy', () => {
-    assert.deepEqual(j('a=1'), { a: "1" })
-    assert.deepEqual(j('[A]'), { A: {} })
-    assert.deepEqual(j(`[A.B]\nc='2'`), { A: { B: { c: 2 } } })
-    assert.deepEqual(j('a[]=1\na[]=2'), { a: ['1', '2'] })
-    assert.deepEqual(j('a=\nb='), { a: '', b: '' })
+    assert.deepEqual(j.parse('a=1'), { a: "1" })
+    assert.deepEqual(j.parse('[A]'), { A: {} })
+    assert.deepEqual(j.parse(`[A.B]\nc='2'`), { A: { B: { c: 2 } } })
+    assert.deepEqual(j.parse('a[]=1\na[]=2'), { a: ['1', '2'] })
+    assert.deepEqual(j.parse('a=\nb='), { a: '', b: '' })
     // Inline comments are off by default; ; and # mid-value are literal.
-    assert.deepEqual(j(';X\n#Y\na=1;2\nb=2'), { a: '1;2', b: '2' })
+    assert.deepEqual(j.parse(';X\n#Y\na=1;2\nb=2'), { a: '1;2', b: '2' })
   })
 
 
   test('basic', () => {
-    assert.deepEqual(j(`
+    assert.deepEqual(j.parse(`
 ; comment
 a = 1
 b = x
@@ -90,7 +91,7 @@ aa = 7
 
   // NOTE: Copyright (c) Isaac Z. Schlueter and Contributors, ISC License
   test('ini-module-test', () => {
-    assert.deepEqual(j(`
+    assert.deepEqual(j.parse(`
 o = p
 
 a with spaces   =     b  c
@@ -244,100 +245,100 @@ noHashComment = this\\# this is not a comment`),
 describe('multiline', () => {
 
   test('backslash-continuation', () => {
-    const jm = Jsonic.make().use(Ini, { multiline: true })
+    const jm = new Tabnas().use(jsonic).use(Ini, { multiline: true })
 
     // Basic continuation with \<LF>
-    assert.deepEqual(jm('a = hello \\\nworld'), { a: 'hello world' })
+    assert.deepEqual(jm.parse('a = hello \\\nworld'), { a: 'hello world' })
 
     // Continuation with leading whitespace on next line (consumed)
-    assert.deepEqual(jm('a = hello \\\n    world'), { a: 'hello world' })
+    assert.deepEqual(jm.parse('a = hello \\\n    world'), { a: 'hello world' })
 
     // Multiple continuations
-    assert.deepEqual(jm('a = one \\\ntwo \\\nthree'), { a: 'one two three' })
+    assert.deepEqual(jm.parse('a = one \\\ntwo \\\nthree'), { a: 'one two three' })
 
     // No continuation: normal newline ends value
-    assert.deepEqual(jm('a = hello\nb = world'), { a: 'hello', b: 'world' })
+    assert.deepEqual(jm.parse('a = hello\nb = world'), { a: 'hello', b: 'world' })
 
     // Continuation with \<CR><LF>
-    assert.deepEqual(jm('a = hello \\\r\nworld'), { a: 'hello world' })
+    assert.deepEqual(jm.parse('a = hello \\\r\nworld'), { a: 'hello world' })
 
     // Escaped backslash before newline is NOT continuation
-    assert.deepEqual(jm('a = path\\\\\nb = next'), { a: 'path\\', b: 'next' })
+    assert.deepEqual(jm.parse('a = path\\\\\nb = next'), { a: 'path\\', b: 'next' })
 
     // Continuation in a section
-    assert.deepEqual(jm('[s]\na = hello \\\n    world'), { s: { a: 'hello world' } })
+    assert.deepEqual(jm.parse('[s]\na = hello \\\n    world'), { s: { a: 'hello world' } })
 
     // Empty value with continuation
-    assert.deepEqual(jm('a = \\\nworld'), { a: 'world' })
+    assert.deepEqual(jm.parse('a = \\\nworld'), { a: 'world' })
 
     // Inline comments off by default: ; is literal in value
-    assert.deepEqual(jm('a = hello \\\nworld ;not-a-comment\nb = 2'),
+    assert.deepEqual(jm.parse('a = hello \\\nworld ;not-a-comment\nb = 2'),
       { a: 'hello world ;not-a-comment', b: '2' })
   })
 
   test('indent-continuation', () => {
-    const ji = Jsonic.make().use(Ini, { multiline: { indent: true, continuation: false } })
+    const ji = new Tabnas().use(jsonic).use(Ini, { multiline: { indent: true, continuation: false } })
 
     // Indented line continues previous value
-    assert.deepEqual(ji('a = hello\n    world'), { a: 'hello world' })
+    assert.deepEqual(ji.parse('a = hello\n    world'), { a: 'hello world' })
 
     // Multiple indent continuations
-    assert.deepEqual(ji('a = line1\n  line2\n  line3'), { a: 'line1 line2 line3' })
+    assert.deepEqual(ji.parse('a = line1\n  line2\n  line3'), { a: 'line1 line2 line3' })
 
     // Non-indented line is a new key
-    assert.deepEqual(ji('a = hello\nb = world'), { a: 'hello', b: 'world' })
+    assert.deepEqual(ji.parse('a = hello\nb = world'), { a: 'hello', b: 'world' })
 
     // Tab indent
-    assert.deepEqual(ji('a = hello\n\tworld'), { a: 'hello world' })
+    assert.deepEqual(ji.parse('a = hello\n\tworld'), { a: 'hello world' })
 
     // Indent continuation in section
-    assert.deepEqual(ji('[s]\na = hello\n    world'),
+    assert.deepEqual(ji.parse('[s]\na = hello\n    world'),
       { s: { a: 'hello world' } })
   })
 
   test('multiline-with-boolean-option', () => {
     // multiline: true enables defaults (backslash continuation, no indent)
-    const jm = Jsonic.make().use(Ini, { multiline: true })
-    assert.deepEqual(jm('a = hello \\\nworld'), { a: 'hello world' })
+    const jm = new Tabnas().use(jsonic).use(Ini, { multiline: true })
+    assert.deepEqual(jm.parse('a = hello \\\nworld'), { a: 'hello world' })
   })
 
   test('multiline-both-modes', () => {
     // Both continuation char and indent enabled
-    const jb = Jsonic.make().use(Ini, {
+    const jb = new Tabnas().use(jsonic).use(Ini, {
       multiline: { continuation: '\\', indent: true }
     })
 
     // Backslash continuation works
-    assert.deepEqual(jb('a = hello \\\nworld'), { a: 'hello world' })
+    assert.deepEqual(jb.parse('a = hello \\\nworld'), { a: 'hello world' })
 
     // Indent continuation also works
-    assert.deepEqual(jb('a = hello\n    world'), { a: 'hello world' })
+    assert.deepEqual(jb.parse('a = hello\n    world'), { a: 'hello world' })
   })
 
   test('multiline-escapes', () => {
     // Multiline with inline comments active and backslash escaping
-    const jm = Jsonic.make().use(Ini, {
+    const jm = new Tabnas().use(jsonic).use(Ini, {
       multiline: true,
       comment: { inline: { active: true, escape: { backslash: true } } },
     })
 
     // Escaped comment chars still work with continuation
-    assert.deepEqual(jm('a = one\\; two \\\nthree'),
+    assert.deepEqual(jm.parse('a = one\\; two \\\nthree'),
       { a: 'one; two three' })
 
     // Escaped hash
-    assert.deepEqual(jm('a = one\\# two \\\nthree'),
+    assert.deepEqual(jm.parse('a = one\\# two \\\nthree'),
       { a: 'one# two three' })
   })
 
   test('multiline-no-inline-comments', () => {
     // Multiline without inline comments: ; and # are literal
-    const jm = Jsonic.make().use(Ini, { multiline: true })
+    const jm = new Tabnas().use(jsonic).use(Ini, { multiline: true })
 
-    assert.deepEqual(jm('a = one; two \\\nthree'),
+    assert.deepEqual(jm.parse('a = one; two \\\nthree'),
       { a: 'one; two three' })
 
-    assert.deepEqual(jm('a = one# two \\\nthree'),
+    assert.deepEqual(jm.parse('a = one# two \\\nthree'),
       { a: 'one# two three' })
   })
 })
@@ -346,77 +347,77 @@ describe('multiline', () => {
 describe('section-duplicate', () => {
 
   test('merge-default', () => {
-    const j = Jsonic.make().use(Ini)
+    const j = new Tabnas().use(jsonic).use(Ini)
 
     // Default: merge keys from duplicate sections
-    assert.deepEqual(j('[a]\nx=1\ny=2\n[a]\nz=3'),
+    assert.deepEqual(j.parse('[a]\nx=1\ny=2\n[a]\nz=3'),
       { a: { x: '1', y: '2', z: '3' } })
 
     // Duplicate key: last value wins
-    assert.deepEqual(j('[a]\nx=1\n[a]\nx=2'),
+    assert.deepEqual(j.parse('[a]\nx=1\n[a]\nx=2'),
       { a: { x: '2' } })
 
     // Nested duplicate sections merge
-    assert.deepEqual(j('[a.b]\nx=1\n[a.b]\ny=2'),
+    assert.deepEqual(j.parse('[a.b]\nx=1\n[a.b]\ny=2'),
       { a: { b: { x: '1', y: '2' } } })
 
     // Intermediate path preserved when merging
-    assert.deepEqual(j('[a.b]\nx=1\n[a]\ny=2'),
+    assert.deepEqual(j.parse('[a.b]\nx=1\n[a]\ny=2'),
       { a: { b: { x: '1' }, y: '2' } })
   })
 
   test('merge-explicit', () => {
-    const jm = Jsonic.make().use(Ini, { section: { duplicate: 'merge' } })
+    const jm = new Tabnas().use(jsonic).use(Ini, { section: { duplicate: 'merge' } })
 
-    assert.deepEqual(jm('[a]\nx=1\n[a]\ny=2'),
+    assert.deepEqual(jm.parse('[a]\nx=1\n[a]\ny=2'),
       { a: { x: '1', y: '2' } })
   })
 
   test('override', () => {
-    const jo = Jsonic.make().use(Ini, { section: { duplicate: 'override' } })
+    const jo = new Tabnas().use(jsonic).use(Ini, { section: { duplicate: 'override' } })
 
     // Second occurrence replaces first
-    assert.deepEqual(jo('[a]\nx=1\ny=2\n[a]\nz=3'),
+    assert.deepEqual(jo.parse('[a]\nx=1\ny=2\n[a]\nz=3'),
       { a: { z: '3' } })
 
     // First occurrence works normally
-    assert.deepEqual(jo('[a]\nx=1'),
+    assert.deepEqual(jo.parse('[a]\nx=1'),
       { a: { x: '1' } })
 
     // Override clears subsections too
-    assert.deepEqual(jo('[a.b]\nx=1\n[a]\ny=2\n[a]\nz=3'),
+    assert.deepEqual(jo.parse('[a.b]\nx=1\n[a]\ny=2\n[a]\nz=3'),
       { a: { z: '3' } })
 
     // Non-duplicate sections unaffected
-    assert.deepEqual(jo('[a]\nx=1\n[b]\ny=2'),
+    assert.deepEqual(jo.parse('[a]\nx=1\n[b]\ny=2'),
       { a: { x: '1' }, b: { y: '2' } })
 
     // Nested override
-    assert.deepEqual(jo('[a.b]\nx=1\n[a.b]\ny=2'),
+    assert.deepEqual(jo.parse('[a.b]\nx=1\n[a.b]\ny=2'),
       { a: { b: { y: '2' } } })
   })
 
   test('error', () => {
-    const je = Jsonic.make().use(Ini, { section: { duplicate: 'error' } })
+    const je = new Tabnas().use(jsonic).use(Ini, { section: { duplicate: 'error' } })
 
     // Single section: no error
-    assert.deepEqual(je('[a]\nx=1'), { a: { x: '1' } })
+    assert.deepEqual(je.parse('[a]\nx=1'), { a: { x: '1' } })
 
     // Multiple distinct sections: no error
-    assert.deepEqual(je('[a]\nx=1\n[b]\ny=2'),
+    assert.deepEqual(je.parse('[a]\nx=1\n[b]\ny=2'),
       { a: { x: '1' }, b: { y: '2' } })
 
     // Duplicate section: throws
-    assert.throws(() => je('[a]\nx=1\n[a]\ny=2'),
+    assert.throws(() => je.parse('[a]\nx=1\n[a]\ny=2'),
       /Duplicate section/)
 
     // Duplicate nested section: throws
-    assert.throws(() => je('[a.b]\nx=1\n[a.b]\ny=2'),
+    assert.throws(() => je.parse('[a.b]\nx=1\n[a.b]\ny=2'),
       /Duplicate section/)
 
     // Intermediate path is NOT a declared section
     // [a.b] creates intermediate [a] but does not declare it
-    assert.deepEqual(je('[a.b]\nx=1\n[a]\ny=2'),
+    assert.deepEqual(je.parse('[a.b]\nx=1\n[a]\ny=2'),
       { a: { b: { x: '1' }, y: '2' } })
   })
 })
@@ -426,86 +427,86 @@ describe('inline-comment', () => {
 
   test('off-by-default', () => {
     // Default: inline comments are off. ; and # mid-value are literal.
-    const j = Jsonic.make().use(Ini)
+    const j = new Tabnas().use(jsonic).use(Ini)
 
-    assert.deepEqual(j('a = hello ; world'), { a: 'hello ; world' })
-    assert.deepEqual(j('a = hello # world'), { a: 'hello # world' })
-    assert.deepEqual(j('a = x;y;z'), { a: 'x;y;z' })
+    assert.deepEqual(j.parse('a = hello ; world'), { a: 'hello ; world' })
+    assert.deepEqual(j.parse('a = hello # world'), { a: 'hello # world' })
+    assert.deepEqual(j.parse('a = x;y;z'), { a: 'x;y;z' })
 
     // Line-start comments still work
-    assert.deepEqual(j('; comment\na = 1'), { a: '1' })
-    assert.deepEqual(j('# comment\na = 1'), { a: '1' })
+    assert.deepEqual(j.parse('; comment\na = 1'), { a: '1' })
+    assert.deepEqual(j.parse('# comment\na = 1'), { a: '1' })
   })
 
   test('active-basic', () => {
     // Inline comments active with defaults (chars: ['#', ';'])
-    const j = Jsonic.make().use(Ini, {
+    const j = new Tabnas().use(jsonic).use(Ini, {
       comment: { inline: { active: true } },
     })
 
-    assert.deepEqual(j('a = hello ; comment'), { a: 'hello' })
-    assert.deepEqual(j('a = hello # comment'), { a: 'hello' })
-    assert.deepEqual(j('a = x;y'), { a: 'x' })
-    assert.deepEqual(j('a = value\nb = other'), { a: 'value', b: 'other' })
+    assert.deepEqual(j.parse('a = hello ; comment'), { a: 'hello' })
+    assert.deepEqual(j.parse('a = hello # comment'), { a: 'hello' })
+    assert.deepEqual(j.parse('a = x;y'), { a: 'x' })
+    assert.deepEqual(j.parse('a = value\nb = other'), { a: 'value', b: 'other' })
   })
 
   test('custom-chars', () => {
     // Only ; is an inline comment char, not #
-    const j = Jsonic.make().use(Ini, {
+    const j = new Tabnas().use(jsonic).use(Ini, {
       comment: { inline: { active: true, chars: [';'] } },
     })
 
-    assert.deepEqual(j('a = hello ; comment'), { a: 'hello' })
-    assert.deepEqual(j('a = hello # not a comment'), { a: 'hello # not a comment' })
+    assert.deepEqual(j.parse('a = hello ; comment'), { a: 'hello' })
+    assert.deepEqual(j.parse('a = hello # not a comment'), { a: 'hello # not a comment' })
   })
 
   test('backslash-escape', () => {
     // Backslash escaping enabled (default when active)
-    const j = Jsonic.make().use(Ini, {
+    const j = new Tabnas().use(jsonic).use(Ini, {
       comment: { inline: { active: true, escape: { backslash: true } } },
     })
 
-    assert.deepEqual(j('a = hello\\; world'), { a: 'hello; world' })
-    assert.deepEqual(j('a = hello\\# world'), { a: 'hello# world' })
-    assert.deepEqual(j('a = x\\;y ; comment'), { a: 'x;y' })
+    assert.deepEqual(j.parse('a = hello\\; world'), { a: 'hello; world' })
+    assert.deepEqual(j.parse('a = hello\\# world'), { a: 'hello# world' })
+    assert.deepEqual(j.parse('a = x\\;y ; comment'), { a: 'x;y' })
   })
 
   test('backslash-escape-disabled', () => {
     // Backslash escaping explicitly disabled: \; keeps both chars but
     // the escapeChar still prevents ; from terminating. The difference
     // is that backslash is preserved in the output rather than consumed.
-    const j = Jsonic.make().use(Ini, {
+    const j = new Tabnas().use(jsonic).use(Ini, {
       comment: { inline: { active: true, escape: { backslash: false } } },
     })
 
     // \; → \; (backslash preserved, ; did not terminate)
-    assert.deepEqual(j('a = hello\\; world'), { a: 'hello\\; world' })
+    assert.deepEqual(j.parse('a = hello\\; world'), { a: 'hello\\; world' })
 
     // Unescaped ; still terminates
-    assert.deepEqual(j('a = hello ; comment'), { a: 'hello' })
+    assert.deepEqual(j.parse('a = hello ; comment'), { a: 'hello' })
   })
 
   test('whitespace-prefix', () => {
     // Whitespace-prefix mode: only treat as comment if preceded by whitespace
-    const j = Jsonic.make().use(Ini, {
+    const j = new Tabnas().use(jsonic).use(Ini, {
       comment: { inline: { active: true, escape: { whitespace: true } } },
     })
 
     // No whitespace before ;  →  literal
-    assert.deepEqual(j('a = x;y;z'), { a: 'x;y;z' })
+    assert.deepEqual(j.parse('a = x;y;z'), { a: 'x;y;z' })
 
     // Whitespace before ;  →  inline comment
-    assert.deepEqual(j('a = hello ;comment'), { a: 'hello' })
-    assert.deepEqual(j('a = hello\t;comment'), { a: 'hello' })
+    assert.deepEqual(j.parse('a = hello ;comment'), { a: 'hello' })
+    assert.deepEqual(j.parse('a = hello\t;comment'), { a: 'hello' })
 
     // Same for #
-    assert.deepEqual(j('a = x#y'), { a: 'x#y' })
-    assert.deepEqual(j('a = hello #comment'), { a: 'hello' })
+    assert.deepEqual(j.parse('a = x#y'), { a: 'x#y' })
+    assert.deepEqual(j.parse('a = hello #comment'), { a: 'hello' })
   })
 
   test('whitespace-prefix-with-backslash', () => {
     // Both whitespace and backslash escaping
-    const j = Jsonic.make().use(Ini, {
+    const j = new Tabnas().use(jsonic).use(Ini, {
       comment: {
         inline: {
           active: true,
@@ -515,50 +516,50 @@ describe('inline-comment', () => {
     })
 
     // No whitespace: literal
-    assert.deepEqual(j('a = x;y'), { a: 'x;y' })
+    assert.deepEqual(j.parse('a = x;y'), { a: 'x;y' })
 
     // Whitespace present: comment
-    assert.deepEqual(j('a = hello ;comment'), { a: 'hello' })
+    assert.deepEqual(j.parse('a = hello ;comment'), { a: 'hello' })
 
     // Backslash escape overrides whitespace: literal
-    assert.deepEqual(j('a = hello \\;not-a-comment'), { a: 'hello ;not-a-comment' })
+    assert.deepEqual(j.parse('a = hello \\;not-a-comment'), { a: 'hello ;not-a-comment' })
   })
 
   test('with-multiline', () => {
     // Inline comments active + multiline continuation
-    const j = Jsonic.make().use(Ini, {
+    const j = new Tabnas().use(jsonic).use(Ini, {
       multiline: true,
       comment: { inline: { active: true } },
     })
 
     // Comment terminates continued value
-    assert.deepEqual(j('a = hello \\\nworld ;comment\nb = 2'),
+    assert.deepEqual(j.parse('a = hello \\\nworld ;comment\nb = 2'),
       { a: 'hello world', b: '2' })
 
     // Escaped comment char in multiline value
-    assert.deepEqual(j('a = hello\\; \\\nworld'),
+    assert.deepEqual(j.parse('a = hello\\; \\\nworld'),
       { a: 'hello; world' })
   })
 
   test('with-sections', () => {
-    const j = Jsonic.make().use(Ini, {
+    const j = new Tabnas().use(jsonic).use(Ini, {
       comment: { inline: { active: true } },
     })
 
-    assert.deepEqual(j('[s]\na = val ; comment\nb = other'),
+    assert.deepEqual(j.parse('[s]\na = val ; comment\nb = other'),
       { s: { a: 'val', b: 'other' } })
   })
 
   test('line-comments-always-work', () => {
     // Line-start comments work regardless of inline comment setting
-    const jOff = Jsonic.make().use(Ini)
-    const jOn = Jsonic.make().use(Ini, {
+    const jOff = new Tabnas().use(jsonic).use(Ini)
+    const jOn = new Tabnas().use(jsonic).use(Ini, {
       comment: { inline: { active: true } },
     })
 
     const input = '; line comment\n# hash comment\na = 1'
-    assert.deepEqual(jOff(input), { a: '1' })
-    assert.deepEqual(jOn(input), { a: '1' })
+    assert.deepEqual(jOff.parse(input), { a: '1' })
+    assert.deepEqual(jOn.parse(input), { a: '1' })
   })
 })
 
@@ -567,7 +568,7 @@ describe('number-lex', () => {
 
   // Enable number lexing via post-config so Jsonic parses numeric values as numbers
   function makeWithNumbers() {
-    const jn = Jsonic.make().use(Ini)
+    const jn = new Tabnas().use(jsonic).use(Ini)
     jn.options({ number: { lex: true } })
     return jn
   }
@@ -575,71 +576,71 @@ describe('number-lex', () => {
   test('integers', () => {
     const jn = makeWithNumbers()
 
-    assert.deepEqual(jn('a=1'), { a: 1 })
-    assert.deepEqual(jn('a=0'), { a: 0 })
-    assert.deepEqual(jn('a=-3'), { a: -3 })
-    assert.deepEqual(jn('a=+2'), { a: 2 })
-    assert.deepEqual(jn('a=42\nb=99'), { a: 42, b: 99 })
+    assert.deepEqual(jn.parse('a=1'), { a: 1 })
+    assert.deepEqual(jn.parse('a=0'), { a: 0 })
+    assert.deepEqual(jn.parse('a=-3'), { a: -3 })
+    assert.deepEqual(jn.parse('a=+2'), { a: 2 })
+    assert.deepEqual(jn.parse('a=42\nb=99'), { a: 42, b: 99 })
   })
 
   test('floats', () => {
     const jn = makeWithNumbers()
 
-    assert.deepEqual(jn('a=2.5'), { a: 2.5 })
-    assert.deepEqual(jn('a=0.0'), { a: 0 })
-    assert.deepEqual(jn('a=-1.25'), { a: -1.25 })
+    assert.deepEqual(jn.parse('a=2.5'), { a: 2.5 })
+    assert.deepEqual(jn.parse('a=0.0'), { a: 0 })
+    assert.deepEqual(jn.parse('a=-1.25'), { a: -1.25 })
   })
 
   test('scientific-notation', () => {
     const jn = makeWithNumbers()
 
-    assert.deepEqual(jn('a=1e10'), { a: 1e10 })
+    assert.deepEqual(jn.parse('a=1e10'), { a: 1e10 })
   })
 
   test('hex', () => {
     const jn = makeWithNumbers()
 
-    assert.deepEqual(jn('a=0xFF'), { a: 255 })
+    assert.deepEqual(jn.parse('a=0xFF'), { a: 255 })
   })
 
   test('mixed-types', () => {
     const jn = makeWithNumbers()
 
     // Numbers and strings coexist
-    assert.deepEqual(jn('a=1\nb=hello\nc=2.5\nd=true'),
+    assert.deepEqual(jn.parse('a=1\nb=hello\nc=2.5\nd=true'),
       { a: 1, b: 'hello', c: 2.5, d: true })
 
     // Non-numeric strings stay as strings
-    assert.deepEqual(jn('a=1abc'), { a: '1abc' })
+    assert.deepEqual(jn.parse('a=1abc'), { a: '1abc' })
 
     // Empty value stays as empty string
-    assert.deepEqual(jn('a=\nb=1'), { a: '', b: 1 })
+    assert.deepEqual(jn.parse('a=\nb=1'), { a: '', b: 1 })
   })
 
   test('in-sections', () => {
     const jn = makeWithNumbers()
 
-    assert.deepEqual(jn('[s]\na=42\nb=text'),
+    assert.deepEqual(jn.parse('[s]\na=42\nb=text'),
       { s: { a: 42, b: 'text' } })
 
-    assert.deepEqual(jn('[s]\na=1\n[t]\nb=2'),
+    assert.deepEqual(jn.parse('[s]\na=1\n[t]\nb=2'),
       { s: { a: 1 }, t: { b: 2 } })
   })
 
   test('arrays', () => {
     const jn = makeWithNumbers()
 
-    assert.deepEqual(jn('a[]=1\na[]=2\na[]=hello'),
+    assert.deepEqual(jn.parse('a[]=1\na[]=2\na[]=hello'),
       { a: [1, 2, 'hello'] })
   })
 
   test('default-numbers-are-strings', () => {
     // Without number.lex, all values are strings
-    const j = Jsonic.make().use(Ini)
+    const j = new Tabnas().use(jsonic).use(Ini)
 
-    assert.deepEqual(j('a=1'), { a: '1' })
-    assert.deepEqual(j('a=2.5'), { a: '2.5' })
-    assert.deepEqual(j('a=-3'), { a: '-3' })
-    assert.deepEqual(j('a=0xFF'), { a: '0xFF' })
+    assert.deepEqual(j.parse('a=1'), { a: '1' })
+    assert.deepEqual(j.parse('a=2.5'), { a: '2.5' })
+    assert.deepEqual(j.parse('a=-3'), { a: '-3' })
+    assert.deepEqual(j.parse('a=0xFF'), { a: '0xFF' })
   })
 })
