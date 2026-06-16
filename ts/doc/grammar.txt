@@ -125,3 +125,15 @@ dive:
 └───┬──┘   │
     └───┬──┘
         │
+
+Tokens:
+  CB  = }
+  CL  = :
+  DK  = DK token
+  HK  = HK token
+  HV  = HV token
+  KEY = map key (text, number, string, or value)
+  OB  = {
+  ST  = string
+  VAL = a value (text, number, string, or value)
+  VL  = value literal (true, false, null, ...)
