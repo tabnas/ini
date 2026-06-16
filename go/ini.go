@@ -779,6 +779,13 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		})
 	})
 
+	// INI has no array syntax, so `val` is restricted to scalars and maps
+	// and Jsonic's inherited `list`/`elem` rules are unreachable. Remove
+	// them so the grammar definition matches the TypeScript port.
+	for _, name := range []string{"list", "elem"} {
+		j.Rule(name, nil)
+	}
+
 	return nil
 }
 
