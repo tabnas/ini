@@ -522,6 +522,14 @@ function Ini(tn: Tabnas, _options: IniOptions) {
         },
       )
   })
+
+  // INI has no array syntax: `val` is restricted to scalars and maps above,
+  // leaving Jsonic's `list`/`elem` rules unreachable. Remove them from the
+  // grammar definition so the parser — and its railroad diagram — only
+  // contains the rules INI actually uses.
+  for (const name of ['list', 'elem']) {
+    tn.rule(name, null)
+  }
 }
 
 export { Ini }
