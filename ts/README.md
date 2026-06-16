@@ -78,6 +78,16 @@ result, err := ini.Parse("[database]\nhost = localhost\nport = 5432\ntags[] = pr
 ```
 
 
+
+## Grammar diagram
+
+The installed grammar as a railroad/syntax diagram, generated from the live
+grammar with [`@tabnas/railroad`](https://github.com/tabnas/railroad):
+
+![ini grammar railroad diagram](doc/grammar.svg)
+
+A vertical ASCII version is in [`doc/grammar.txt`](doc/grammar.txt).
+
 ## License
 
 MIT. Copyright (c) Richard Rodger and other contributors.
