@@ -1,7 +1,11 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
-// Import Jsonic types used by plugin (from the @tabnas/jsonic relaxed-grammar shim).
-import { Jsonic, RuleSpec, AltSpec, Lex, makePoint, Token, Tin } from '@tabnas/jsonic'
+// The engine is the tabnas parser; jsonic supplies the relaxed-JSON
+// grammar that the embedded grammar text is authored in. Engine types
+// (RuleSpec, AltSpec, Lex, makePoint, Token, Tin) are re-exported by
+// @tabnas/parser.
+import { Tabnas, RuleSpec, AltSpec, Lex, makePoint, Token, Tin } from '@tabnas/parser'
+import { jsonic } from '@tabnas/jsonic'
 import { Hoover } from '@tabnas/hoover'
 
 type InlineCommentOptions = {
@@ -114,7 +118,7 @@ const grammarText = `
 `
 // --- END EMBEDDED ini-grammar.jsonic ---
 
-function Ini(jsonic: Jsonic, _options: IniOptions) {
+function Ini(tn: Tabnas, _options: IniOptions) {
   // Resolve inline comment options.
   const inlineComment = {
     active: _options.comment?.inline?.active ?? false,
@@ -154,7 +158,7 @@ function Ini(jsonic: Jsonic, _options: IniOptions) {
     }
   }
 
-  jsonic.use(Hoover as any, {
+  tn.use(Hoover as any, {
     lex: {
       order: 8.5e6,
     },
@@ -228,7 +232,7 @@ function Ini(jsonic: Jsonic, _options: IniOptions) {
   // Cleared in the ini rule's bo handler, used in the table rule.
   const declaredSections = new Set<string>()
 
-  const ST = jsonic.token.ST as number
+  const ST = tn.token.ST as number
 
   // Named function references for declarative grammar definition.
   const refs: Record<string, Function> = {
@@ -333,11 +337,12 @@ function Ini(jsonic: Jsonic, _options: IniOptions) {
     },
   }
 
-  // Parse embedded grammar definition using a separate standard Jsonic instance.
-  const grammarDef = Jsonic.make()(grammarText)
+  // Parse embedded grammar definition using a separate jsonic-grammar
+  // engine, then install the resulting spec on this tabnas instance.
+  const grammarDef = new Tabnas().use(jsonic).parse(grammarText)
   grammarDef.ref = refs
   grammarDef.options.string.chars = `'"`
-  jsonic.grammar(grammarDef)
+  tn.grammar(grammarDef)
 
   // Custom value lex matcher.
   // Needed when: (a) multiline continuation is enabled, or
@@ -352,12 +357,12 @@ function Ini(jsonic: Jsonic, _options: IniOptions) {
       ? (multiline.continuation !== undefined ? multiline.continuation : '\\')
       : false
     const indent = multiline ? (multiline.indent || false) : false
-    const HV_TIN = jsonic.token('#HV') as Tin
+    const HV_TIN = tn.token('#HV') as Tin
 
     // Build a Set for fast comment char lookup in the matcher.
     const commentCharSet = new Set(inlineComment.chars)
 
-    jsonic.options({
+    tn.options({
       lex: {
         match: {
           multiline: {
@@ -499,7 +504,7 @@ function Ini(jsonic: Jsonic, _options: IniOptions) {
   // Val rule needs custom injection modifier not supported by grammar spec.
   // Note: state actions (@ini-bo, @table-bo, @table-bc, @val-ac) are
   // auto-applied by fnref() via the @rulename-{bo,ao,bc,ac} convention.
-  jsonic.rule('val', (rs: RuleSpec) => {
+  tn.rule('val', (rs: RuleSpec) => {
     rs.fnref(refs)
       .open(
         [

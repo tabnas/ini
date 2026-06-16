@@ -62,12 +62,13 @@ Parse an INI file with sections, keys, and arrays:
 
 **TypeScript**
 ```js
-import { Jsonic } from '@tabnas/jsonic'
+import { Tabnas } from '@tabnas/parser'
+import { jsonic } from '@tabnas/jsonic'
 import { Ini } from '@tabnas/ini'
 
-const j = Jsonic.make().use(Ini)
+const j = new Tabnas().use(jsonic).use(Ini)
 
-j("[database]\nhost = localhost\nport = 5432\ntags[] = primary\ntags[] = read") // => { database: { host: 'localhost', port: '5432', tags: ['primary', 'read'] } }
+j.parse("[database]\nhost = localhost\nport = 5432\ntags[] = primary\ntags[] = read") // => { database: { host: 'localhost', port: '5432', tags: ['primary', 'read'] } }
 ```
 
 **Go**
@@ -76,6 +77,16 @@ result, err := ini.Parse("[database]\nhost = localhost\nport = 5432\ntags[] = pr
 // map[string]any{"database": map[string]any{"host": "localhost", "port": "5432", "tags": []any{"primary", "read"}}}
 ```
 
+
+
+## Grammar diagram
+
+The installed grammar as a railroad/syntax diagram, generated from the live
+grammar with [`@tabnas/railroad`](https://github.com/tabnas/railroad):
+
+![ini grammar railroad diagram](doc/grammar.svg)
+
+A vertical ASCII version is in [`doc/grammar.txt`](doc/grammar.txt).
 
 ## License
 

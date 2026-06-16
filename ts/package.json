@@ -37,12 +37,14 @@
   ],
   "peerDependencies": {
     "@tabnas/hoover": ">=0",
+    "@tabnas/parser": ">=2",
     "@tabnas/jsonic": ">=2"
   },
   "devDependencies": {
     "@types/node": "25.6.0",
     "typescript": "6.0.3",
     "@tabnas/hoover": "file:../../hoover/ts",
+    "@tabnas/parser": "file:../../parser/ts",
     "@tabnas/jsonic": "file:../../jsonic/ts"
   }
 }
