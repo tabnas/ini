@@ -119,6 +119,22 @@ const grammarText = `
 // --- END EMBEDDED ini-grammar.jsonic ---
 
 function Ini(tn: Tabnas, _options: IniOptions) {
+  // Human descriptions for INI tokens, surfaced in railroad diagram legends
+  // (read off the live config by @tabnas/railroad).
+  tn.options({
+    config: {
+      modify: {
+        'ini-tokendesc': (cfg: any) => {
+          cfg.tokenDesc = Object.assign(cfg.tokenDesc || {}, {
+            '#DK': 'section-header path segment, as in [a.b.c]',
+            '#HK': 'property key (left of key = value)',
+            '#HV': 'property value (right of key = value)',
+          })
+        },
+      },
+    },
+  })
+
   // Resolve inline comment options.
   const inlineComment = {
     active: _options.comment?.inline?.active ?? false,

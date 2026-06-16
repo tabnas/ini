@@ -101,13 +101,13 @@ dive:
         │
 
 Tokens:
-  CB  = }
-  CL  = :
-  DK  = DK token
-  HK  = HK token
-  HV  = HV token
-  KEY = map key (text, number, string, or value)
-  OB  = {
-  ST  = string
-  VAL = a value (text, number, string, or value)
-  VL  = value literal (true, false, null, ...)
+  CB  = close brace } (end of a map)
+  CL  = colon : (separates a key from its value)
+  DK  = section-header path segment, as in [a.b.c]
+  HK  = property key (left of key = value)
+  HV  = property value (right of key = value)
+  KEY = map key: bare text, number, string, or keyword
+  OB  = open brace { (start of a map)
+  ST  = quoted string (e.g. "text")
+  VAL = value: bare text, number, string, or keyword
+  VL  = value keyword (true, false, null, ...)
