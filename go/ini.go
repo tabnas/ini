@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 
 	hoover "github.com/tabnas/hoover/go"
 	jsonic "github.com/tabnas/jsonic/go"
@@ -74,13 +75,29 @@ type resolved struct {
 	escWhitespace bool
 }
 
+// defaultParser is a lazily-created instance reused by the no-options Parse
+// path, so repeated default calls don't rebuild the engine and grammar each
+// time. Building the INI grammar (parsing the embedded grammar text, wiring
+// Hoover blocks, and applying the rule spec) dominates a parse, so a
+// rebuild-per-call Parse() is many times slower than reusing one instance —
+// see perf_test.go. Parsing builds a fresh context per call and only reads
+// instance state, so the shared instance is safe for concurrent use. Mirrors
+// @tabnas/json's Parse. Option-taking calls still build a fresh instance,
+// since their configuration cannot be shared.
+var (
+	defaultOnce   sync.Once
+	defaultParser *jsonic.Jsonic
+)
+
 // Parse parses an INI string and returns a map.
 func Parse(src string, opts ...IniOptions) (map[string]any, error) {
-	var o IniOptions
+	var j *jsonic.Jsonic
 	if len(opts) > 0 {
-		o = opts[0]
+		j = MakeJsonic(opts[0])
+	} else {
+		defaultOnce.Do(func() { defaultParser = MakeJsonic() })
+		j = defaultParser
 	}
-	j := MakeJsonic(o)
 	result, err := j.Parse(src)
 	if err != nil {
 		return nil, err
