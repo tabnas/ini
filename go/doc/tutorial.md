@@ -35,11 +35,11 @@ package main
 import (
 	"fmt"
 
-	ini "github.com/tabnas/ini/go"
+	tabnasini "github.com/tabnas/ini/go"
 )
 
 func main() {
-	result, err := ini.Parse("a = 1\nb = hello world")
+	result, err := tabnasini.Parse("a = 1\nb = hello world")
 	if err != nil {
 		panic(err)
 	}
@@ -47,7 +47,7 @@ func main() {
 }
 ```
 
-Run it with `go run .`. `ini.Parse` is the zero-config convenience
+Run it with `go run .`. `tabnasini.Parse` is the zero-config convenience
 function: it returns a `map[string]any` and an `error`. The value
 `hello world` kept its internal space — values run to the end of the
 line, no quotes needed. And `1` came back as the **string** `"1"`, not
@@ -55,11 +55,11 @@ a number: by default every INI value is text.
 
 ## 3. Inspect the result
 
-`ini.Parse` always returns `map[string]any` for a successful parse, so
+`tabnasini.Parse` always returns `map[string]any` for a successful parse, so
 type-assert nested values and read them:
 
 ```go
-result, _ := ini.Parse("[database]\nhost = localhost\nport = 5432")
+result, _ := tabnasini.Parse("[database]\nhost = localhost\nport = 5432")
 db := result["database"].(map[string]any)
 fmt.Println(db["host"]) // localhost
 ```
@@ -75,7 +75,7 @@ A `[name]` header starts a section; following keys nest under it. Use
 dots for deeper nesting:
 
 ```go
-result, _ := ini.Parse("[server.production]\nhost = example.com")
+result, _ := tabnasini.Parse("[server.production]\nhost = example.com")
 // map[string]any{"server": map[string]any{"production": map[string]any{"host": "example.com"}}}
 ```
 
@@ -89,13 +89,13 @@ Append `[]` to a key to push values into a `[]any` instead of
 overwriting:
 
 ```go
-result, _ := ini.Parse("tags[] = web\ntags[] = api\ntags[] = v2")
+result, _ := tabnasini.Parse("tags[] = web\ntags[] = api\ntags[] = v2")
 // map[string]any{"tags": []any{"web", "api", "v2"}}
 ```
 
 ## 6. Make a configured, reusable parser
 
-`ini.Parse` builds a fresh parser per call. To set options or reuse one
+`tabnasini.Parse` builds a fresh parser per call. To set options or reuse one
 instance across many parses, use `MakeJsonic` and call `Parse` on it.
 Options fields are pointers, so `nil` means "use the default" — a tiny
 helper takes the address of a literal:
@@ -107,9 +107,9 @@ func boolp(b bool) *bool { return &b }
 Now turn on inline comments so `;` and `#` end a value:
 
 ```go
-j := ini.MakeJsonic(ini.IniOptions{
-	Comment: &ini.CommentOptions{
-		Inline: &ini.InlineCommentOptions{Active: boolp(true)},
+j := tabnasini.MakeJsonic(tabnasini.IniOptions{
+	Comment: &tabnasini.CommentOptions{
+		Inline: &tabnasini.InlineCommentOptions{Active: boolp(true)},
 	},
 })
 
@@ -118,7 +118,7 @@ result, _ := j.Parse("a = hello ; trailing comment")
 ```
 
 `j.Parse` returns `(any, error)` (type-assert the `any` to
-`map[string]any`); the convenience `ini.Parse` does the assertion for
+`map[string]any`); the convenience `tabnasini.Parse` does the assertion for
 you. Every option is documented in the [reference](reference.md#options).
 
 ## Where to go next

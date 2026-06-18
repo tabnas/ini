@@ -13,10 +13,10 @@ func boolp(b bool) *bool { return &b }
 
 ## Parse once vs reuse an instance
 
-`ini.Parse` builds a fresh parser each call — convenient for one-offs:
+`tabnasini.Parse` builds a fresh parser each call — convenient for one-offs:
 
 ```go
-result, err := ini.Parse("x = 0\n[s]\na = 1\nb = 2")
+result, err := tabnasini.Parse("x = 0\n[s]\na = 1\nb = 2")
 // map[string]any{"x": "0", "s": map[string]any{"a": "1", "b": "2"}}
 ```
 
@@ -24,16 +24,16 @@ To parse many strings with the same options, build one instance with
 `MakeJsonic` and reuse it:
 
 ```go
-j := ini.MakeJsonic()
+j := tabnasini.MakeJsonic()
 r1, _ := j.Parse("a=1")        // map[string]any{"a": "1"}
 r2, _ := j.Parse("b=2")        // map[string]any{"b": "2"}
 _ = r1
 _ = r2
 ```
 
-`MakeJsonic` returns a `*jsonic.Jsonic`; its `Parse` returns
+`MakeJsonic` returns a `*tabnasjsonic.Jsonic`; its `Parse` returns
 `(any, error)`, so type-assert the result to `map[string]any`. (The
-no-options `ini.Parse` already reuses one cached default instance
+no-options `tabnasini.Parse` already reuses one cached default instance
 internally.)
 
 ## Read numbers as numbers
@@ -43,11 +43,11 @@ lex numeric-looking values as numbers, build an instance and turn
 jsonic's number matcher on with `SetOptions`:
 
 ```go
-import jsonic "github.com/tabnas/jsonic/go"
+import tabnasjsonic "github.com/tabnas/jsonic/go"
 
-j := ini.MakeJsonic()
-j.SetOptions(jsonic.Options{
-	Number: &jsonic.NumberOptions{Lex: boolp(true)},
+j := tabnasini.MakeJsonic()
+j.SetOptions(tabnasjsonic.Options{
+	Number: &tabnasjsonic.NumberOptions{Lex: boolp(true)},
 })
 
 result, _ := j.Parse("a=1\nb=hello\nc=2.5")
@@ -63,7 +63,7 @@ A key with no `=` is set to `true` — but only after at least one
 `key = value` pair has opened the surrounding map:
 
 ```go
-result, _ := ini.Parse("[features]\nname = app\ndebug\nverbose")
+result, _ := tabnasini.Parse("[features]\nname = app\ndebug\nverbose")
 // map[string]any{"features": map[string]any{"name": "app", "debug": true, "verbose": true}}
 ```
 
@@ -71,7 +71,7 @@ The unquoted keywords `true`, `false`, and `null` as *values* resolve
 to `bool` / `bool` / `nil`:
 
 ```go
-result, _ := ini.Parse("a = true\nb = false\nc = null")
+result, _ := tabnasini.Parse("a = true\nb = false\nc = null")
 // map[string]any{"a": true, "b": false, "c": nil}
 ```
 
@@ -81,9 +81,9 @@ By default `;` and `#` mid-value are literal. Activate inline comments
 to make them end the value:
 
 ```go
-j := ini.MakeJsonic(ini.IniOptions{
-	Comment: &ini.CommentOptions{
-		Inline: &ini.InlineCommentOptions{Active: boolp(true)},
+j := tabnasini.MakeJsonic(tabnasini.IniOptions{
+	Comment: &tabnasini.CommentOptions{
+		Inline: &tabnasini.InlineCommentOptions{Active: boolp(true)},
 	},
 })
 
@@ -95,10 +95,10 @@ _, _ = r1, r2
 Restrict which characters start a comment with `Chars`:
 
 ```go
-result, _ := ini.Parse("a = hello ; comment\nb = hello # not a comment",
-	ini.IniOptions{
-		Comment: &ini.CommentOptions{
-			Inline: &ini.InlineCommentOptions{
+result, _ := tabnasini.Parse("a = hello ; comment\nb = hello # not a comment",
+	tabnasini.IniOptions{
+		Comment: &tabnasini.CommentOptions{
+			Inline: &tabnasini.InlineCommentOptions{
 				Active: boolp(true),
 				Chars:  []string{";"},
 			},
@@ -113,11 +113,11 @@ With inline comments active, a backslash escapes a comment char so it
 stays in the value (`Backslash` defaults to `true`):
 
 ```go
-result, _ := ini.Parse("a = hello\\; world", ini.IniOptions{
-	Comment: &ini.CommentOptions{
-		Inline: &ini.InlineCommentOptions{
+result, _ := tabnasini.Parse("a = hello\\; world", tabnasini.IniOptions{
+	Comment: &tabnasini.CommentOptions{
+		Inline: &tabnasini.InlineCommentOptions{
 			Active: boolp(true),
-			Escape: &ini.InlineEscapeOptions{Backslash: boolp(true)},
+			Escape: &tabnasini.InlineEscapeOptions{Backslash: boolp(true)},
 		},
 	},
 })
@@ -128,11 +128,11 @@ Or use whitespace-prefix mode, where a comment char only starts a
 comment when whitespace precedes it:
 
 ```go
-result, _ := ini.Parse("a = x;y;z", ini.IniOptions{
-	Comment: &ini.CommentOptions{
-		Inline: &ini.InlineCommentOptions{
+result, _ := tabnasini.Parse("a = x;y;z", tabnasini.IniOptions{
+	Comment: &tabnasini.CommentOptions{
+		Inline: &tabnasini.InlineCommentOptions{
 			Active: boolp(true),
-			Escape: &ini.InlineEscapeOptions{Whitespace: boolp(true)},
+			Escape: &tabnasini.InlineEscapeOptions{Whitespace: boolp(true)},
 		},
 	},
 })
@@ -145,8 +145,8 @@ A non-`nil` `Multiline` enables backslash continuation: a `\` right
 before the newline joins the next line, with a single space between:
 
 ```go
-result, _ := ini.Parse("a = one \\\ntwo \\\nthree", ini.IniOptions{
-	Multiline: &ini.MultilineOptions{},
+result, _ := tabnasini.Parse("a = one \\\ntwo \\\nthree", tabnasini.IniOptions{
+	Multiline: &tabnasini.MultilineOptions{},
 })
 // map[string]any{"a": "one two three"}
 ```
@@ -156,8 +156,8 @@ continuation character (set it to `""`):
 
 ```go
 noBackslash := ""
-result, _ := ini.Parse("a = line1\n  line2\n  line3", ini.IniOptions{
-	Multiline: &ini.MultilineOptions{
+result, _ := tabnasini.Parse("a = line1\n  line2\n  line3", tabnasini.IniOptions{
+	Multiline: &tabnasini.MultilineOptions{
 		Indent:       boolp(true),
 		Continuation: &noBackslash,
 	},
@@ -172,8 +172,8 @@ Choose what happens when a `[section]` header appears twice with
 wins on a clash):
 
 ```go
-result, _ := ini.Parse("[a]\nx=1\ny=2\n[a]\nz=3", ini.IniOptions{
-	Section: &ini.SectionOptions{Duplicate: "merge"},
+result, _ := tabnasini.Parse("[a]\nx=1\ny=2\n[a]\nz=3", tabnasini.IniOptions{
+	Section: &tabnasini.SectionOptions{Duplicate: "merge"},
 })
 // map[string]any{"a": map[string]any{"x": "1", "y": "2", "z": "3"}}
 ```
@@ -181,8 +181,8 @@ result, _ := ini.Parse("[a]\nx=1\ny=2\n[a]\nz=3", ini.IniOptions{
 `"override"` makes the later section replace the earlier one entirely:
 
 ```go
-result, _ := ini.Parse("[a]\nx=1\ny=2\n[a]\nz=3", ini.IniOptions{
-	Section: &ini.SectionOptions{Duplicate: "override"},
+result, _ := tabnasini.Parse("[a]\nx=1\ny=2\n[a]\nz=3", tabnasini.IniOptions{
+	Section: &tabnasini.SectionOptions{Duplicate: "override"},
 })
 // map[string]any{"a": map[string]any{"z": "3"}}
 ```
@@ -192,8 +192,8 @@ as a non-`nil` `error` (or, on some engine builds, a recovered panic),
 so check `err`:
 
 ```go
-_, err := ini.Parse("[a]\nx=1\n[a]\ny=2", ini.IniOptions{
-	Section: &ini.SectionOptions{Duplicate: "error"},
+_, err := tabnasini.Parse("[a]\nx=1\n[a]\ny=2", tabnasini.IniOptions{
+	Section: &tabnasini.SectionOptions{Duplicate: "error"},
 })
 // err != nil  — message contains "Duplicate section: [a]"
 ```
@@ -205,9 +205,9 @@ literal brackets. A double-quoted value is taken verbatim; a
 single-quoted value is JSON-decoded:
 
 ```go
-r1, _ := ini.Parse(`a = "hello world"`)       // map[string]any{"a": "hello world"}
-r2, _ := ini.Parse("a = 'hello world'")       // map[string]any{"a": "hello world"}
-r3, _ := ini.Parse(`w = '{"y":{"z":6}}'`)     // {"w": {"y": {"z": float64(6)}}}
+r1, _ := tabnasini.Parse(`a = "hello world"`)       // map[string]any{"a": "hello world"}
+r2, _ := tabnasini.Parse("a = 'hello world'")       // map[string]any{"a": "hello world"}
+r3, _ := tabnasini.Parse(`w = '{"y":{"z":6}}'`)     // {"w": {"y": {"z": float64(6)}}}
 _, _, _ = r1, r2, r3
 ```
 

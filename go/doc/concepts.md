@@ -139,10 +139,10 @@ types, and a few mechanics.
 
 | | TypeScript | Go |
 |---|---|---|
-| Entry | `new Tabnas().use(jsonic).use(Ini, opts?)` then `.parse(src)` | `ini.Parse(src, opts...)` or `ini.MakeJsonic(opts...).Parse(src)` |
+| Entry | `new Tabnas().use(jsonic).use(Ini, opts?)` then `.parse(src)` | `tabnasini.Parse(src, opts...)` or `tabnasini.MakeJsonic(opts...).Parse(src)` |
 | Plugin form | `Ini` is a function you pass to `use` | applied internally by `MakeJsonic`; there is no exported `use`-style plugin entry |
 | Options | one `IniOptions` object with optional fields | `IniOptions` struct with **pointer** leaf fields (`nil` = default), passed as a variadic argument |
-| Number lexing | `j.options({ number: { lex: true } })` | `j.SetOptions(jsonic.Options{Number: &jsonic.NumberOptions{Lex: boolp(true)}})` |
+| Number lexing | `j.options({ number: { lex: true } })` | `j.SetOptions(tabnasjsonic.Options{Number: &tabnasjsonic.NumberOptions{Lex: boolp(true)}})` |
 
 ### Value types
 

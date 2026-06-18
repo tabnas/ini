@@ -20,11 +20,11 @@ package main
 import (
 	"fmt"
 
-	ini "github.com/tabnas/ini/go"
+	tabnasini "github.com/tabnas/ini/go"
 )
 
 func main() {
-	result, err := ini.Parse("[database]\nhost = localhost\nport = 5432")
+	result, err := tabnasini.Parse("[database]\nhost = localhost\nport = 5432")
 	if err != nil {
 		panic(err)
 	}
@@ -38,8 +38,8 @@ the keywords `true`/`false`/`null` resolve to `bool`/`bool`/`nil`. See
 the [how-to guide](doc/guide.md#read-numbers-as-numbers) to lex numbers
 as `float64`.
 
-`ini.Parse` builds a parser each call; for reuse and options use
-`ini.MakeJsonic(opts...)` and call `Parse` on the returned instance.
+`tabnasini.Parse` builds a parser each call; for reuse and options use
+`tabnasini.MakeJsonic(opts...)` and call `Parse` on the returned instance.
 
 ## Documentation
 
