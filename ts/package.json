@@ -1,6 +1,6 @@
 {
   "name": "@tabnas/ini",
-  "version": "0.9.1",
+  "version": "0.2.0",
   "description": "This plugin allows the [Tabnas](https://github.com/tabnas/jsonic) JSON parser to support INI syntax.",
   "main": "dist/ini.js",
   "type": "commonjs",
@@ -36,9 +36,9 @@
     "LICENSE"
   ],
   "peerDependencies": {
-    "@tabnas/hoover": ">=0",
-    "@tabnas/jsonic": ">=2",
-    "@tabnas/parser": ">=2"
+    "@tabnas/hoover": "^0.2.0",
+    "@tabnas/jsonic": "^0.2.0",
+    "@tabnas/parser": "^0.2.0"
   },
   "devDependencies": {
     "@tabnas/debug": "file:../../debug/ts",
