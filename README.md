@@ -16,6 +16,15 @@ This repository contains:
 Start with [`ts/README.md`](ts/README.md) for the JS API or
 [`go/README.md`](go/README.md) for Go.
 
+## Grammar
+
+The grammar is defined once in the top-level
+[`ini-grammar.jsonic`](ini-grammar.jsonic) and embedded into both
+implementations — TypeScript ([`ts/src/ini.ts`](ts/src/ini.ts)) and Go
+([`go/ini.go`](go/ini.go)) — by [`ts/embed-grammar.js`](ts/embed-grammar.js)
+(run as part of `npm run build`). Edit the `.jsonic` file, never the embedded
+copies.
+
 ## Grammar diagram
 
 The grammar as a railroad/syntax diagram, generated from the live grammar

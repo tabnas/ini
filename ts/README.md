@@ -88,6 +88,9 @@ grammar with [`@tabnas/railroad`](https://github.com/tabnas/railroad):
 
 A vertical ASCII version is in [`doc/grammar.txt`](doc/grammar.txt).
 
+The grammar source is the top-level [`ini-grammar.jsonic`](../ini-grammar.jsonic),
+embedded into [`src/ini.ts`](src/ini.ts) by [`embed-grammar.js`](embed-grammar.js).
+
 ## License
 
 MIT. Copyright (c) Richard Rodger and other contributors.

@@ -6,7 +6,7 @@
 const fs = require('fs')
 const path = require('path')
 
-const grammar = fs.readFileSync(path.join(__dirname, 'ini-grammar.jsonic'), 'utf8')
+const grammar = fs.readFileSync(path.join(__dirname, '..', 'ini-grammar.jsonic'), 'utf8')
 
 const BEGIN = '// --- BEGIN EMBEDDED ini-grammar.jsonic ---'
 const END = '// --- END EMBEDDED ini-grammar.jsonic ---'
