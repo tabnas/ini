@@ -13,7 +13,7 @@ go get github.com/tabnas/ini/go@latest
 ```
 
 ```go
-import ini "github.com/tabnas/ini/go"
+import tabnasini "github.com/tabnas/ini/go"
 ```
 
 `Version` is a package constant.
@@ -35,10 +35,10 @@ an empty map. On a malformed parse it returns a non-`nil` `error`.
 ### `MakeJsonic`
 
 ```go
-func MakeJsonic(opts ...IniOptions) *jsonic.Jsonic
+func MakeJsonic(opts ...IniOptions) *tabnasjsonic.Jsonic
 ```
 
-Returns a reusable `*jsonic.Jsonic` instance configured for INI
+Returns a reusable `*tabnasjsonic.Jsonic` instance configured for INI
 parsing. Use it to parse many strings with the same options, or to
 apply further jsonic configuration with `SetOptions` (e.g. enabling
 number lexing). Its `Parse` method returns `(any, error)`; type-assert
@@ -140,7 +140,7 @@ always a `map[string]any` on success). Concrete value types:
 
 By default numeric values are strings (`a=1` ⇒ `"1"`). Enable number
 lexing on a `MakeJsonic` instance with
-`SetOptions(jsonic.Options{Number: &jsonic.NumberOptions{Lex: boolp(true)}})`.
+`SetOptions(tabnasjsonic.Options{Number: &tabnasjsonic.NumberOptions{Lex: boolp(true)}})`.
 
 ## Syntax
 

@@ -1,6 +1,6 @@
 /* Copyright (c) 2021-2025 Richard Rodger, MIT License */
 
-package ini
+package tabnasini
 
 import (
 	"bufio"

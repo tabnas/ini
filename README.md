@@ -36,7 +36,7 @@ j.parse('[server]\nhost = localhost\nport = 5432\ntags[] = a\ntags[] = b')
 **Go**
 
 ```go
-result, _ := ini.Parse("[server]\nhost = localhost\nport = 5432\ntags[] = a\ntags[] = b")
+result, _ := tabnasini.Parse("[server]\nhost = localhost\nport = 5432\ntags[] = a\ntags[] = b")
 // map[string]any{"server": map[string]any{
 //   "host": "localhost", "port": "5432", "tags": []any{"a", "b"}}}
 ```
