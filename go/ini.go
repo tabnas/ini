@@ -570,7 +570,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		"@table-close-dive": jsonic.AltAction(func(r *jsonic.Rule, ctx *jsonic.Context) {
 			if r.Child != nil && r.Child != jsonic.NoRule {
 				if dive, ok := r.Child.U["dive"].([]string); ok {
-					r.U["dive"] = dive
+					r.EnsureU()["dive"] = dive
 				}
 			}
 		}),
@@ -579,9 +579,9 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 			dive := getDive(r.Parent)
 			val, _ := r.O0.Val.(string)
 			dive = append(dive, val)
-			r.U["dive"] = dive
+			r.EnsureU()["dive"] = dive
 			if r.Parent != nil && r.Parent != jsonic.NoRule {
-				r.Parent.U["dive"] = dive
+				r.Parent.EnsureU()["dive"] = dive
 			}
 		}),
 
@@ -591,9 +591,9 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		"@dive-bc": jsonic.StateAction(func(r *jsonic.Rule, ctx *jsonic.Context) {
 			if r.Child != nil && r.Child != jsonic.NoRule {
 				if dive, ok := r.Child.U["dive"].([]string); ok {
-					r.U["dive"] = dive
+					r.EnsureU()["dive"] = dive
 					if r.Parent != nil && r.Parent != jsonic.NoRule {
-						r.Parent.U["dive"] = dive
+						r.Parent.EnsureU()["dive"] = dive
 					}
 				}
 			}
@@ -607,24 +607,24 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 			}
 
 			if _, isArr := nodeMap[key].([]any); isArr {
-				r.U["key"] = key
-				r.U["ini_array"] = nodeMap[key]
+				r.EnsureU()["key"] = key
+				r.EnsureU()["ini_array"] = nodeMap[key]
 			} else if len(key) > 2 && strings.HasSuffix(key, "[]") {
 				arrayKey := key[:len(key)-2]
-				r.U["key"] = arrayKey
+				r.EnsureU()["key"] = arrayKey
 				if existing, ok := nodeMap[arrayKey].([]any); ok {
-					r.U["ini_array"] = existing
+					r.EnsureU()["ini_array"] = existing
 				} else if _, exists := nodeMap[arrayKey]; exists {
-					r.U["ini_array"] = []any{nodeMap[arrayKey]}
-					nodeMap[arrayKey] = r.U["ini_array"]
+					r.EnsureU()["ini_array"] = []any{nodeMap[arrayKey]}
+					nodeMap[arrayKey] = r.EnsureU()["ini_array"]
 				} else {
 					arr := make([]any, 0)
 					nodeMap[arrayKey] = arr
-					r.U["ini_array"] = arr
+					r.EnsureU()["ini_array"] = arr
 				}
 			} else {
-				r.U["key"] = key
-				r.U["pair"] = true
+				r.EnsureU()["key"] = key
+				r.EnsureU()["pair"] = true
 			}
 		}),
 
@@ -771,10 +771,10 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 
 			// Handle array push.
 			if r.Parent != nil && r.Parent != jsonic.NoRule {
-				if arr, ok := r.Parent.U["ini_array"].([]any); ok {
+				if arr, ok := r.Parent.EnsureU()["ini_array"].([]any); ok {
 					arr = append(arr, r.Node)
-					r.Parent.U["ini_array"] = arr
-					if key, ok := r.Parent.U["key"].(string); ok {
+					r.Parent.EnsureU()["ini_array"] = arr
+					if key, ok := r.Parent.EnsureU()["key"].(string); ok {
 						if nodeMap, ok := r.Parent.Node.(map[string]any); ok {
 							nodeMap[key] = arr
 						}
@@ -785,8 +785,8 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 
 			// Normal pair assignment.
 			if r.Parent != nil && r.Parent != jsonic.NoRule {
-				if key, ok := r.Parent.U["key"].(string); ok {
-					if _, isPair := r.Parent.U["pair"]; isPair {
+				if key, ok := r.Parent.EnsureU()["key"].(string); ok {
+					if _, isPair := r.Parent.EnsureU()["pair"]; isPair {
 						if nodeMap, ok := r.Parent.Node.(map[string]any); ok {
 							nodeMap[key] = r.Node
 						}
@@ -881,7 +881,7 @@ func getDive(r *jsonic.Rule) []string {
 	if r == nil || r == jsonic.NoRule {
 		return nil
 	}
-	if dive, ok := r.U["dive"].([]string); ok {
+	if dive, ok := r.EnsureU()["dive"].([]string); ok {
 		return dive
 	}
 	return nil
