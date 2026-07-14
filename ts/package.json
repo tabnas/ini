@@ -36,9 +36,9 @@
     "LICENSE"
   ],
   "peerDependencies": {
-    "@tabnas/hoover": "^0.2.0",
-    "@tabnas/jsonic": "^0.2.0",
-    "@tabnas/parser": "^0.2.0"
+    "@tabnas/hoover": ">=0",
+    "@tabnas/jsonic": ">=0",
+    "@tabnas/parser": ">=0"
   },
   "devDependencies": {
     "@tabnas/debug": "file:../../debug/ts",
