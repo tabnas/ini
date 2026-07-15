@@ -1,5 +1,12 @@
 # @tabnas/ini
 
+<!-- tabnas-badges -->
+[![npm](https://tabnas.github.io/status/badges/ini-npm.svg)](https://www.npmjs.com/package/@tabnas/ini)
+[![CI](https://github.com/tabnas/ini/actions/workflows/ci.yml/badge.svg)](https://github.com/tabnas/ini/actions/workflows/ci.yml)
+[![go](https://tabnas.github.io/status/badges/ini-go.svg)](https://pkg.go.dev/github.com/tabnas/ini/go)
+[![tabnas standard](https://tabnas.github.io/status/badges/ini-standard.svg)](https://tabnas.github.io/status/)
+<!-- /tabnas-badges -->
+
 A [jsonic](https://github.com/tabnas/jsonic) syntax plugin that parses
 [INI](https://en.wikipedia.org/wiki/INI_file) files into objects / maps
 — with sections, dot-nested keys, `[]` arrays, multiline values, and
