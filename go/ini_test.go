@@ -15,7 +15,6 @@ func assert(t *testing.T, name string, got, want any) {
 	}
 }
 
-
 func TestHappy(t *testing.T) {
 	j := MakeJsonic()
 
