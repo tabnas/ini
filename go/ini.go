@@ -136,8 +136,11 @@ func MakeJsonic(opts ...IniOptions) *jsonic.Jsonic {
 		Comment: &jsonic.CommentOptions{
 			Lex: &bTrue,
 			Def: map[string]*jsonic.CommentDef{
-				"hash": {Line: true, Start: "#"},
-				"semi": {Line: true, Start: ";"},
+				// Explicit Lex: post the comment.def merge alignment, a def for
+				// a NEW comment name (not a jsonic default) is inactive unless
+				// it sets Lex — so ini's `#` and `;` line comments turn it on.
+				"hash": {Line: true, Start: "#", Lex: &bTrue},
+				"semi": {Line: true, Start: ";", Lex: &bTrue},
 			},
 		},
 		String: &jsonic.StringOptions{
