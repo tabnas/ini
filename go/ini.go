@@ -136,8 +136,11 @@ func MakeJsonic(opts ...IniOptions) *jsonic.Jsonic {
 		Comment: &jsonic.CommentOptions{
 			Lex: &bTrue,
 			Def: map[string]*jsonic.CommentDef{
-				"hash": {Line: true, Start: "#"},
-				"semi": {Line: true, Start: ";"},
+				// Explicit Lex: post the comment.def merge alignment, a def for
+				// a NEW comment name (not a jsonic default) is inactive unless
+				// it sets Lex — so ini's `#` and `;` line comments turn it on.
+				"hash": {Line: true, Start: "#", Lex: &bTrue},
+				"semi": {Line: true, Start: ";", Lex: &bTrue},
 			},
 		},
 		String: &jsonic.StringOptions{
@@ -234,6 +237,7 @@ const grammarText = `
   ]
 }
 `
+
 // --- END EMBEDDED ini-grammar.jsonic ---
 
 // iniPlugin is the jsonic plugin that adds INI parsing support.
@@ -534,7 +538,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 						panic(fmt.Sprintf("Duplicate section: [%s]", strings.Join(dive, ".")))
 					}
 
-					node, _ := r.Node.(map[string]any)
+					node, _ := nodeMap(r.Node)
 					for dI := 0; dI < len(dive); dI++ {
 						if dI == len(dive)-1 && isDuplicate && opts.dupSection == "override" {
 							newSection := make(map[string]any)
@@ -557,10 +561,13 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		}),
 
 		"@table-bc": jsonic.StateAction(func(r *jsonic.Rule, ctx *jsonic.Context) {
-			if childMap, ok := r.Child.Node.(map[string]any); ok {
-				if nodeMap, ok := r.Node.(map[string]any); ok {
+			// The child `map` rule now builds its node as a *jsonic.OrderedMap
+			// (jsonic's default object node), so unwrap both sides to their
+			// underlying maps before merging the section's pairs up.
+			if childMap, ok := nodeMap(r.Child.Node); ok {
+				if node, ok := nodeMap(r.Node); ok {
 					for k, v := range childMap {
-						nodeMap[k] = v
+						node[k] = v
 					}
 				}
 			}
@@ -601,25 +608,28 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 
 		"@pair-key-eq": jsonic.AltAction(func(r *jsonic.Rule, ctx *jsonic.Context) {
 			key := tokenString(r.O0)
-			nodeMap, _ := r.Node.(map[string]any)
-			if nodeMap == nil {
+			// The map rule's node is a *jsonic.OrderedMap; unwrap it (reads
+			// and existing-key updates go through the underlying map, new
+			// keys via nodeSet to keep order).
+			nm, _ := nodeMap(r.Node)
+			if nm == nil {
 				return
 			}
 
-			if _, isArr := nodeMap[key].([]any); isArr {
+			if _, isArr := nm[key].([]any); isArr {
 				r.EnsureU()["key"] = key
-				r.EnsureU()["ini_array"] = nodeMap[key]
+				r.EnsureU()["ini_array"] = nm[key]
 			} else if len(key) > 2 && strings.HasSuffix(key, "[]") {
 				arrayKey := key[:len(key)-2]
 				r.EnsureU()["key"] = arrayKey
-				if existing, ok := nodeMap[arrayKey].([]any); ok {
+				if existing, ok := nm[arrayKey].([]any); ok {
 					r.EnsureU()["ini_array"] = existing
-				} else if _, exists := nodeMap[arrayKey]; exists {
-					r.EnsureU()["ini_array"] = []any{nodeMap[arrayKey]}
-					nodeMap[arrayKey] = r.EnsureU()["ini_array"]
+				} else if _, exists := nm[arrayKey]; exists {
+					r.EnsureU()["ini_array"] = []any{nm[arrayKey]}
+					nm[arrayKey] = r.EnsureU()["ini_array"]
 				} else {
 					arr := make([]any, 0)
-					nodeMap[arrayKey] = arr
+					nodeSet(r.Node, arrayKey, arr)
 					r.EnsureU()["ini_array"] = arr
 				}
 			} else {
@@ -631,9 +641,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		"@pair-key-bool": jsonic.AltAction(func(r *jsonic.Rule, ctx *jsonic.Context) {
 			key := tokenString(r.O0)
 			if key != "" {
-				if nodeMap, ok := r.Parent.Node.(map[string]any); ok {
-					nodeMap[key] = true
-				}
+				nodeSet(r.Parent.Node, key, true)
 			}
 		}),
 
@@ -663,7 +671,13 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse ini grammar: %w", err)
 	}
-	parsedMap := parsed.(map[string]any)
+	// The grammar text is parsed by a stock jsonic instance, which now
+	// returns objects as insertion-ordered *jsonic.OrderedMap rather than a
+	// bare map[string]any. The grammar-conversion helpers below (and the
+	// parser's own MapToOptions/ResolveFuncRefs, which only recurse into
+	// map[string]any) expect plain maps, and grammar key order is
+	// irrelevant here, so flatten the whole tree to plain Go maps first.
+	parsedMap, _ := deepPlain(parsed).(map[string]any)
 
 	// Build GrammarSpec with both options and rules from the grammar text.
 	grammarDef := &jsonic.GrammarSpec{
@@ -769,15 +783,14 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 				}
 			}
 
-			// Handle array push.
+			// Handle array push. The parent (map/pair) node is a
+			// *jsonic.OrderedMap now, so write through nodeSet.
 			if r.Parent != nil && r.Parent != jsonic.NoRule {
 				if arr, ok := r.Parent.EnsureU()["ini_array"].([]any); ok {
 					arr = append(arr, r.Node)
 					r.Parent.EnsureU()["ini_array"] = arr
 					if key, ok := r.Parent.EnsureU()["key"].(string); ok {
-						if nodeMap, ok := r.Parent.Node.(map[string]any); ok {
-							nodeMap[key] = arr
-						}
+						nodeSet(r.Parent.Node, key, arr)
 					}
 					return
 				}
@@ -787,9 +800,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 			if r.Parent != nil && r.Parent != jsonic.NoRule {
 				if key, ok := r.Parent.EnsureU()["key"].(string); ok {
 					if _, isPair := r.Parent.EnsureU()["pair"]; isPair {
-						if nodeMap, ok := r.Parent.Node.(map[string]any); ok {
-							nodeMap[key] = r.Node
-						}
+						nodeSet(r.Parent.Node, key, r.Node)
 					}
 				}
 			}
@@ -904,6 +915,67 @@ func resolveTokenVal(t *jsonic.Token) any {
 	return t.Src
 }
 
+// nodeMap returns the underlying string-keyed map for a parse node,
+// unwrapping a *jsonic.OrderedMap (its Vals) or accepting a plain
+// map[string]any. Reads via the returned map, and value updates to keys
+// that already exist, are safe on either shape; use nodeSet to add new
+// keys so a *OrderedMap keeps its key order. The bool reports whether node
+// was one of those object shapes.
+func nodeMap(node any) (map[string]any, bool) {
+	switch m := node.(type) {
+	case *jsonic.OrderedMap:
+		if m.Vals == nil {
+			m.Vals = map[string]any{}
+		}
+		return m.Vals, true
+	case map[string]any:
+		return m, true
+	}
+	return nil, false
+}
+
+// nodeSet assigns key=val on a parse node, whether it is a
+// *jsonic.OrderedMap (via Set, so a new key is appended to Keys and order
+// is preserved) or a plain map[string]any.
+func nodeSet(node any, key string, val any) {
+	switch m := node.(type) {
+	case *jsonic.OrderedMap:
+		m.Set(key, val)
+	case map[string]any:
+		m[key] = val
+	}
+}
+
+// deepPlain converts a parsed value tree into plain Go containers,
+// unwrapping every *jsonic.OrderedMap into a map[string]any (dropping the
+// remembered key order) and recursing through nested objects and slices.
+// The grammar-conversion code and the parser's own MapToOptions expect
+// bare map[string]any, and grammar key order carries no meaning, so this
+// normalization is safe here.
+func deepPlain(v any) any {
+	if om, ok := v.(*jsonic.OrderedMap); ok {
+		out := make(map[string]any, len(om.Keys))
+		for _, k := range om.Keys {
+			out[k] = deepPlain(om.Vals[k])
+		}
+		return out
+	}
+	if m, ok := v.(map[string]any); ok {
+		out := make(map[string]any, len(m))
+		for k, val := range m {
+			out[k] = deepPlain(val)
+		}
+		return out
+	}
+	if arr, ok := v.([]any); ok {
+		out := make([]any, len(arr))
+		for i, val := range arr {
+			out[i] = deepPlain(val)
+		}
+		return out
+	}
+	return v
+}
 
 func tryParseJSON(s string) any {
 	var result any
