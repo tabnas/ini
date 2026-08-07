@@ -31,6 +31,33 @@ function loadDebug(): any {
 }
 
 const Debug = loadDebug()
+
+// @tabnas/debug is a devDependency, so `npm test` in this package always has
+// it and these tests always run. The skip exists only for consumers running
+// the suite outside the package. Guard it: if the dependency IS installed but
+// failed to load, that is a real failure, not an absence -- a silent skip
+// there would hide a broken build of the sibling.
+const debugInstalled = (() => {
+  try {
+    req.resolve('@tabnas/debug')
+    return true
+  } catch {
+    return false
+  }
+})()
+
+if (!Debug && (debugInstalled || process.env.TABNAS_DEBUG_PATH)) {
+  throw new Error(
+    '@tabnas/debug resolves on disk' +
+      (process.env.TABNAS_DEBUG_PATH
+        ? ' (or TABNAS_DEBUG_PATH is set)'
+        : '') +
+      ' but could not be loaded. Refusing to skip: a skip here would hide a ' +
+      'broken sibling build behind a green tick. Build the sibling ' +
+      '(cd ../../debug/ts && npm run build) and re-run.',
+  )
+}
+
 const skip = Debug ? false : '@tabnas/debug not available (set TABNAS_DEBUG_PATH)'
 
 

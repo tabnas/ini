@@ -1,0 +1,4 @@
+input	expected
+x=a\	{"x":"a\\"}
+x=a\\n	{"x":"a\\"}
+[a]\nx=a\	{"a":{"x":"a\\"}}

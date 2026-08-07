@@ -157,6 +157,27 @@ func tsvUnescape(s string) string {
 	return s
 }
 
+// errorCodeMatches turns an `ERROR:<code>` fixture cell into a real
+// assertion: `duplicate_section` requires the reported error to say
+// "duplicate section". Must stay identical to the TypeScript half in
+// ts/test/ini-tsv.test.ts.
+func errorCodeMatches(code, message string) bool {
+	want := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(code), "_", " "))
+	return want != "" && strings.Contains(strings.ToLower(message), want)
+}
+
+// parseGuarded2 runs Parse with options, converting a panic into an error so
+// a panicking rejection is still inspectable rather than silently swallowed.
+func parseGuarded2(src string, opts ...IniOptions) (result map[string]any, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			result = nil
+			err = fmt.Errorf("panic: %v", r)
+		}
+	}()
+	return Parse(src, opts...)
+}
+
 func runIniTSV(t *testing.T, file string, opts ...IniOptions) {
 	t.Helper()
 	path := filepath.Join(tsvSpecDir(), file)
@@ -165,25 +186,44 @@ func runIniTSV(t *testing.T, file string, opts ...IniOptions) {
 		t.Fatalf("failed to load %s: %v", file, err)
 	}
 
+	// A fixture that loads zero rows used to pass green: the loop below just
+	// never ran. An emptied, renamed or header-only .tsv must be a failure.
+	if len(rows) == 0 {
+		t.Fatalf("%s: loaded 0 cases. An empty or header-only fixture proves "+
+			"nothing and must not pass.", file)
+	}
+
 	for _, row := range rows {
+		// A line with no tab used to be silently dropped here (and to crash
+		// the TypeScript loader). Both runtimes now reject it by name.
 		if len(row.cols) < 2 {
+			t.Errorf("%s line %d: expected 2 tab-separated columns, got %d: %q",
+				file, row.lineNo, len(row.cols), row.cols[0])
 			continue
 		}
+		// TypeScript decodes escapes in EVERY column; Go used to decode only
+		// `input`, so a `\n` in an `expected` cell meant two different things
+		// in the two runtimes. TypeScript is canonical: decode both.
 		input := tsvUnescape(row.cols[0])
-		expectedStr := row.cols[1]
+		expectedStr := tsvUnescape(row.cols[1])
 
 		if strings.HasPrefix(expectedStr, "ERROR:") {
-			func() {
-				// The tabnas engine recovers state-action panics and returns
-				// them as a parse error; accept either a panic or a non-nil err.
-				defer func() {
-					_ = recover()
-				}()
-				if _, perr := Parse(input, opts...); perr == nil {
-					// Returned cleanly and did not panic: rejection missing.
-					t.Errorf("line %d: expected panic or error for input %q", row.lineNo, row.cols[0])
-				}
-			}()
+			// `ERROR:<code>` used to be a bare rejection marker whose text
+			// nobody read: any error or panic at all counted as a pass. Now
+			// the code IS the assertion, matching the TypeScript half.
+			code := strings.TrimPrefix(expectedStr, "ERROR:")
+			got, perr := parseGuarded2(input, opts...)
+			if perr == nil {
+				t.Errorf("%s line %d: expected error %q for input %q, but it "+
+					"parsed to %s", file, row.lineNo, code, row.cols[0],
+					formatValue(any(got)))
+				continue
+			}
+			if !errorCodeMatches(code, perr.Error()) {
+				t.Errorf("%s line %d: input %q was rejected, but not with the "+
+					"declared code %q\n  error: %v",
+					file, row.lineNo, row.cols[0], code, perr)
+			}
 			continue
 		}
 
@@ -399,4 +439,20 @@ func TestTSVMultilineNoInline(t *testing.T) {
 
 func TestTSVNumbersAreStrings(t *testing.T) {
 	runIniTSV(t, "numbers-are-strings.tsv")
+}
+
+// KNOWN GAP, LEFT FAILING ON PURPOSE (TypeScript only).
+//
+// A value whose last character is a backslash at end-of-input, with no
+// trailing newline, is rejected by the TypeScript runtime
+// ([jsonic/invalid_text]) and accepted by Go. Found by differential fuzzing
+// of the two runtimes; the minimal case is `x=a\` with no newline.
+//
+// The expected values are the npm/ini oracle's, not TypeScript's, because Go
+// and the oracle agree and TypeScript is the outlier -- the "Go has exposed a
+// genuine TS defect" carve-out in test/AGENTS.md. This side passes; the
+// TypeScript side is the honest red. Do not flip the fixture to ERROR to get
+// TypeScript green: that would enshrine the defect.
+func TestTSVEOFTrailingBackslash(t *testing.T) {
+	runIniTSV(t, "eof-trailing-backslash.tsv")
 }
