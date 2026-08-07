@@ -186,7 +186,21 @@ describe('doc-examples', () => {
   }
 
   it('found at least one tested example (sanity)', () => {
-    // Not a hard failure if a repo has no `// =>` examples yet.
-    assert.ok(testable >= 0, `tested ${testable} doc example block(s)`)
+    // This used to assert `testable >= 0`, which is true of every possible
+    // value: if extraction broke and zero examples ran, the suite still
+    // reported green. This repo's README and ts/doc/*.md do carry `// =>`
+    // examples, so zero means the harness stopped working, not that there
+    // is nothing to test.
+    assert.ok(
+      files.length > 0,
+      `found no markdown docs to scan (looked in ${DOC_GLOBS.join(', ')})`,
+    )
+    assert.ok(
+      testable > 0,
+      `tested ${testable} doc example block(s) across ${files.length} doc ` +
+        `file(s): the extractor found no \`// =>\` assertions at all. Either ` +
+        `the docs lost their examples or doc-examples.test.ts is broken; ` +
+        `both are failures.`,
+    )
   })
 })

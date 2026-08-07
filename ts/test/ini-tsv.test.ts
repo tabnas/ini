@@ -1,7 +1,7 @@
 /* Copyright (c) 2021-2025 Richard Rodger and other contributors, MIT License */
 
 import { test, describe } from 'node:test'
-import { deepEqual, throws } from 'node:assert'
+import { deepEqual, ok, strictEqual } from 'node:assert'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
@@ -24,10 +24,26 @@ function unescape(str: string): string {
 function loadTSV(name: string): { cols: string[]; row: number }[] {
   const specPath = join(__dirname, '..', '..', 'test', 'spec', name + '.tsv')
   const lines = readFileSync(specPath, 'utf8').split(/\r?\n/).filter(Boolean)
-  return lines.slice(1).map((line, i) => {
+  const entries = lines.slice(1).map((line, i) => {
     const cols = line.split('\t').map(unescape)
     return { cols, row: i + 2 }
   })
+
+  // A fixture that loads zero rows used to pass green: the loop below just
+  // never ran. An emptied, renamed or header-only .tsv must be a failure.
+  ok(entries.length > 0,
+    `${name}.tsv: loaded 0 cases. An empty or header-only fixture proves ` +
+    `nothing and must not pass.`)
+
+  // A line with no tab used to be dropped by Go and to crash TypeScript on
+  // `undefined.startsWith`. Reject it here, in both runtimes, by name.
+  for (const e of entries) {
+    ok(e.cols.length >= 2,
+      `${name}.tsv row ${e.row}: expected 2 tab-separated columns, got ` +
+      `${e.cols.length}: ${JSON.stringify(e.cols[0])}`)
+  }
+
+  return entries
 }
 
 
@@ -36,12 +52,40 @@ function makeIni(opts?: IniOptions) {
 }
 
 
+// `ERROR:<code>` used to be a bare rejection marker whose text nobody read:
+// TypeScript matched a hardcoded /Duplicate section/ whatever the cell said,
+// and Go accepted any error or panic at all. Now the code IS the assertion --
+// `ERROR:duplicate_section` requires the reported error to say
+// "duplicate section". Keep both runtimes' checks identical.
+function errorCodeMatches(code: string, message: string): boolean {
+  const want = code.trim().replace(/_/g, ' ').toLowerCase()
+  return '' !== want && message.toLowerCase().includes(want)
+}
+
+
 function runTSV(name: string, j: ReturnType<typeof makeIni>) {
   const entries = loadTSV(name)
+  let checked = 0
   for (const { cols: [input, expected], row } of entries) {
+    checked++
     if (expected.startsWith('ERROR:')) {
-      throws(() => j.parse(input), /Duplicate section/,
-        `${name}.tsv row ${row}: expected error for input=${JSON.stringify(input)}`)
+      const code = expected.slice('ERROR:'.length)
+      let message: string | null = null
+      try {
+        const got = j.parse(input)
+        message = null
+        ok(false,
+          `${name}.tsv row ${row}: expected error ${JSON.stringify(code)} for ` +
+          `input=${JSON.stringify(input)}, but it parsed to ` +
+          `${JSON.stringify(got)}`)
+      } catch (err: any) {
+        if (err && 'ERR_ASSERTION' === err.code) throw err
+        message = String((err && err.message) || err)
+      }
+      ok(errorCodeMatches(code, message as string),
+        `${name}.tsv row ${row}: input=${JSON.stringify(input)} was rejected, ` +
+        `but not with the declared code ${JSON.stringify(code)}\n` +
+        `  error: ${(message as string).split('\n')[0]}`)
     } else {
       try {
         deepEqual(j.parse(input), JSON.parse(expected))
@@ -51,6 +95,8 @@ function runTSV(name: string, j: ReturnType<typeof makeIni>) {
       }
     }
   }
+  strictEqual(checked, entries.length,
+    `${name}.tsv: ran ${checked} of ${entries.length} cases`)
 }
 
 
@@ -199,6 +245,22 @@ describe('ini-tsv', () => {
 
   test('numbers-are-strings', () => {
     runTSV('numbers-are-strings', makeIni())
+  })
+
+  // KNOWN GAP, LEFT FAILING ON PURPOSE (TypeScript only).
+  //
+  // A value whose last character is a backslash at end-of-input, with no
+  // trailing newline, is rejected by the TypeScript runtime
+  // ([jsonic/invalid_text]) and accepted by Go. Found by differential
+  // fuzzing of the two runtimes; the minimal case is `x=a\` with no newline.
+  //
+  // The expected values here are the npm/ini oracle's, not TypeScript's,
+  // because Go and the oracle agree and TypeScript is the outlier -- the
+  // "Go has exposed a genuine TS defect" carve-out in test/AGENTS.md. Do not
+  // flip these to ERROR to get green: that would enshrine the defect.
+  // Phase 1 is instrumentation only, so this is recorded, not fixed.
+  test('eof-trailing-backslash', () => {
+    runTSV('eof-trailing-backslash', makeIni())
   })
 
 })

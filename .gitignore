@@ -142,3 +142,9 @@ dist-test
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Third-party INI conformance corpus.
+# NEVER COMMITTED. Fetched at pinned commit SHAs by
+# ./scripts/fetch-ini-corpus.sh; the manifest is generated from it.
+# See scripts/build-ini-corpus.js for provenance.
+test/corpus/
