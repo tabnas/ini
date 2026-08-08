@@ -1,0 +1,899 @@
+{
+  "suite": "tabnas-ini third-party corpus (assembled; INI has no authoritative suite)",
+  "oracle": {
+    "name": "npm/ini",
+    "url": "https://github.com/npm/ini",
+    "sha": "3c96c74fd42584bd655e17a4e63e2ef0a3b406ee",
+    "note": "expected values for the valid half are this implementation's output"
+  },
+  "upstreams": {
+    "inih": {
+      "url": "https://github.com/benhoyt/inih",
+      "sha": "577ae2dee1f0d9c2d11c7f10375c1715f3d6940c"
+    },
+    "npm-ini": {
+      "url": "https://github.com/npm/ini",
+      "sha": "3c96c74fd42584bd655e17a4e63e2ef0a3b406ee"
+    },
+    "iniparser": {
+      "url": "https://github.com/ndevilla/iniparser",
+      "sha": "4bef811283e0ec1658c60e09950bd5a1ddc92e4b"
+    },
+    "go-ini": {
+      "url": "https://github.com/go-ini/ini",
+      "sha": "2045e714610fdab6c659c937154732ca28f65213"
+    }
+  },
+  "generatedBy": "scripts/build-ini-corpus.js",
+  "counts": {
+    "valid": 30,
+    "invalid": 6,
+    "total": 36
+  },
+  "cases": [
+    {
+      "name": "go-ini/testdata/full.ini",
+      "upstream": "go-ini",
+      "upstreamUrl": "https://github.com/go-ini/ini",
+      "upstreamSha": "2045e714610fdab6c659c937154732ca28f65213",
+      "kind": "valid",
+      "source": "; Package name\nNAME        = ini\n; Package version\nVERSION     = v1\n; Package import path\nIMPORT_PATH = gopkg.in/%(NAME)s.%(VERSION)s\n\n# Information about package author\n# Bio can be written in multiple lines.\n[author]\nNAME   = Unknwon\nE-MAIL = u@gogs.io\nGITHUB = https://github.com/%(NAME)s\nBIO    = \"\"\"Gopher.\nCoding addict.\nGood man.\n\"\"\"  # Succeeding comment\n\n[package]\nCLONE_URL = https://%(IMPORT_PATH)s\n\n[package.sub]\nUNUSED_KEY = should be deleted\n\n[features]\n-: Support read/write comments of keys and sections\n-: Support auto-increment of key names\n-: Support load multiple files to overwrite key values\n\n[types]\nSTRING     = str\nBOOL       = true\nBOOL_FALSE = false\nFLOAT64    = 1.25\nINT        = 10\nTIME       = 2015-01-01T20:17:05Z\nDURATION   = 2h45m\nUINT       = 3\nHEX_NUMBER = 0x3000\n\n[array]\nSTRINGS  = en, zh, de\nFLOAT64S = 1.1, 2.2, 3.3\nINTS     = 1, 2, 3\nUINTS    = 1, 2, 3\nTIMES    = 2015-01-01T20:17:05Z,2015-01-01T20:17:05Z,2015-01-01T20:17:05Z\nBOOLS    = true, false, false\n\n[note]\nempty_lines = next line is empty\\\n\n; Comment before the section\n[comments] ; This is a comment for the section too\n; Comment before key\nkey  = \"value\"\nkey2 = \"value2\" ; This is a comment for key2\nkey3 = \"one\", \"two\", \"three\"\n\n[string escapes]\nkey1 = value1, value2, value3\nkey2 = value1\\, value2\nkey3 = val\\ue1, value2\nkey4 = value1\\\\, value\\\\\\\\2\nkey5 = value1\\,, value2\nkey6 = aaa bbb\\ and\\ space ccc\n\n[advance]\nvalue with quotes      = \"some value\"\nvalue quote2 again     = 'some value'\nincludes comment sign  = `my#password`\nincludes comment sign2 = `my;password`\ntrue                   = 2+3=5\n\"1+1=2\"                = true\n\"\"\"6+1=7\"\"\"            = true\n\"\"\"`5+5`\"\"\"            = 10\n`\"6+6\"`                = 12\n`7-2=4`                = false\nADDRESS                = `404 road,\nNotFound, State, 50000`\ntwo_lines = how about \\\n\tcontinuation lines?\nlots_of_lines = 1 \\\n\t2 \\\n\t3 \\\n\t4 \\\n",
+      "sourceSha256": "24b912bb2b81771a24da06063a02af4c15f6599db5a53f37eaba59f5f4820de3",
+      "expected": {
+        "NAME": "ini",
+        "VERSION": "v1",
+        "IMPORT_PATH": "gopkg.in/%(NAME)s.%(VERSION)s",
+        "author": {
+          "NAME": "Unknwon",
+          "E-MAIL": "u@gogs.io",
+          "GITHUB": "https://github.com/%(NAME)s",
+          "BIO": "\"\"\"Gopher.",
+          "Coding addict.": true,
+          "Good man.": true,
+          "\"\"\"": true
+        },
+        "package": {
+          "CLONE_URL": "https://%(IMPORT_PATH)s",
+          "sub": {
+            "UNUSED_KEY": "should be deleted"
+          }
+        },
+        "features": {
+          "-: Support read/write comments of keys and sections": true,
+          "-: Support auto-increment of key names": true,
+          "-: Support load multiple files to overwrite key values": true
+        },
+        "types": {
+          "STRING": "str",
+          "BOOL": true,
+          "BOOL_FALSE": false,
+          "FLOAT64": "1.25",
+          "INT": "10",
+          "TIME": "2015-01-01T20:17:05Z",
+          "DURATION": "2h45m",
+          "UINT": "3",
+          "HEX_NUMBER": "0x3000"
+        },
+        "array": {
+          "STRINGS": "en, zh, de",
+          "FLOAT64S": "1.1, 2.2, 3.3",
+          "INTS": "1, 2, 3",
+          "UINTS": "1, 2, 3",
+          "TIMES": "2015-01-01T20:17:05Z,2015-01-01T20:17:05Z,2015-01-01T20:17:05Z",
+          "BOOLS": "true, false, false"
+        },
+        "note": {
+          "empty_lines": "next line is empty\\",
+          "[comments]": true,
+          "key": "value",
+          "key2": "\"value2\"",
+          "key3": "\"one\", \"two\", \"three\""
+        },
+        "string escapes": {
+          "key1": "value1, value2, value3",
+          "key2": "value1\\, value2",
+          "key3": "val\\ue1, value2",
+          "key4": "value1\\, value\\\\2",
+          "key5": "value1\\,, value2",
+          "key6": "aaa bbb\\ and\\ space ccc"
+        },
+        "advance": {
+          "value with quotes": "some value",
+          "value quote2 again": "some value",
+          "includes comment sign": "`my",
+          "includes comment sign2": "`my",
+          "true": "2+3=5",
+          "\"1+1": "2\"                = true",
+          "\"\"\"6+1": "7\"\"\"            = true",
+          "\"\"\"`5+5`\"\"\"": "10",
+          "`\"6+6\"`": "12",
+          "`7-2": "4`                = false",
+          "ADDRESS": "`404 road,",
+          "NotFound, State, 50000`": true,
+          "two_lines": "how about \\",
+          "continuation lines?": true,
+          "lots_of_lines": "1 \\",
+          "2 \\": true,
+          "3 \\": true,
+          "4 \\": true
+        }
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "go-ini/testdata/large_array.ini",
+      "upstream": "go-ini",
+      "upstreamUrl": "https://github.com/go-ini/ini",
+      "upstreamSha": "2045e714610fdab6c659c937154732ca28f65213",
+      "kind": "valid",
+      "source": "ARRAY = blobfox, ablobfoxbongo, ablobfoxbongohyper, ablobfoxbongoterrified, ablobfoxdundundun, ablobfoxdundundunowo, ablobfoxhyper, ablobfoxhypercofe, ablobfoxhyperowo, ablobfoxhypersnugowo, ablobfoxhyperthinking, ablobfoxhyperwhaaaat, ablobfoxloading, ablobfoxree, blobfox, blobfox0_0, blobfox3c, blobfox3cevil, blobfox_w_, blobfoxangry, blobfoxangrylaugh, blobfoxannoyed, blobfoxartist, blobfoxastronout, blobfoxastronoutgun, blobfoxaww, blobfoxblush, blobfoxblushmore, blobfoxbongo, blobfoxbongostart, blobfoxbongoterrified, blobfoxbongoterrifiedstart, blobfoxbonk, blobfoxboop, blobfoxboop_w_, blobfoxboopblush, blobfoxboopcute, blobfoxboopfloof, blobfoxboopglare, blobfoxboopgoogly, blobfoxboophappy, blobfoxboopmelt, blobfoxboopmelthappy, blobfoxboopmlem, blobfoxboopowo, blobfoxboopterrified, blobfoxbox, blobfoxbreadpeek, blobfoxbreadsnoot, blobfoxbreadsnoot2, blobfoxbreadsnoot2googly, blobfoxbreadsnootgoogly, blobfoxcactus, blobfoxcamera, blobfoxcat, blobfoxcatsnuggle, blobfoxcatterrified, blobfoxcheck, blobfoxcheer, blobfoxcofe, blobfoxcofe_w_, blobfoxcofecute, blobfoxcofeglare, blobfoxcofemlem, blobfoxcofeowo, blobfoxcofeterrified, blobfoxcomfy, blobfoxcomfycofe, blobfoxcomfycomputer, blobfoxcomfyevil, blobfoxcomfyglare, blobfoxcomfyhappy, blobfoxcomfymelt, blobfoxcomfymelthappy, blobfoxcomfyowo, blobfoxcomfysip, blobfoxcomfysleepy, blobfoxcomfysmirk, blobfoxcomfysmug, blobfoxcomfytea, blobfoxcomfyterrified, blobfoxcomputer, blobfoxcomputerowo, blobfoxcomputerowonotice, blobfoxconfused, blobfoxcookie, blobfoxcookienomfox, blobfoxcry, blobfoxcry2, blobfoxcrylaugh, blobfoxcryreach, blobfoxcursedowo, blobfoxcute, blobfoxdab, blobfoxdarkghost, blobfoxdarkghostfloof, blobfoxdarkghostspooky, blobfoxdead, blobfoxdeadinside, blobfoxdealwithit, blobfoxdealwithitfingerguns, blobfoxdetective, blobfoxdetermined, blobfoxdevil, blobfoxdisapprove, blobfoxdisgust, blobfoxdisputed, blobfoxdizzy, blobfoxdoubt, blobfoxdrakedislike, blobfoxdrakelike, blobfoxdrool, blobfoxevil, blobfoxeyes, blobfoxfacepalm, blobfoxfake, blobfoxfingerguns, blobfoxfloof, blobfoxfloof_w_, blobfoxfloofcofe, blobfoxfloofcute, blobfoxfloofdevil, blobfoxfloofevil, blobfoxfloofhappy, blobfoxfloofowo, blobfoxfloofreach, blobfoxflooftea, blobfoxflower, blobfoxflowerhair, blobfoxghost, blobfoxghostfloof, blobfoxghostspooky, blobfoxglare, blobfoxgoogly, blobfoxgooglycry, blobfoxgooglymlem, blobfoxgooglynomlog, blobfoxgooglytrash, blobfoxhappy, blobfoxhappymlem, blobfoxheadphones, blobfoxheart, blobfoxheartcute, blobfoxhyper, blobfoxhyper2, blobfoxinnocent, blobfoxinnocentcute, blobfoxinnocentmlem, blobfoxkirby, blobfoxkirbyinhale, blobfoxknife, blobfoxlaugh, blobfoxlaughsweat, blobfoxlewd, blobfoxlul, blobfoxlurk, blobfoxlurk2, blobfoxlurk2glare, blobfoxlurk2owo, blobfoxlurk2owonotice, blobfoxlurkaww, blobfoxlurkglare, blobfoxlurkowo, blobfoxlurkowonotice, blobfoxmegumin, blobfoxmelt, blobfoxmelt2, blobfoxmelt3, blobfoxmeltblush, blobfoxmelthappy, blobfoxmeltmlem, blobfoxmeltreach, blobfoxmeltsob, blobfoxmeltsoblove, blobfoxmischievous, blobfoxmlem, blobfoxmsnugglecentercat, blobfoxmsnugglecenterfox, blobfoxmsnuggleleftcat, blobfoxmsnuggleleftfox, blobfoxmsnugglerightcat, blobfoxmsnugglerightfox, blobfoxmsnugglerightnone, blobfoxnauseated, blobfoxnerd, blobfoxninja, blobfoxnomball, blobfoxnombook, blobfoxnombread, blobfoxnomburger, blobfoxnomcake, blobfoxnomcat, blobfoxnomcookie, blobfoxnomcorndog, blobfoxnomcroutons, blobfoxnomdonut, blobfoxnomdonutpolice, blobfoxnomdonutterrified, blobfoxnomegg, blobfoxnomfox, blobfoxnomfoxburger, blobfoxnomfoxcookie, blobfoxnomfoxterrified, blobfoxnomhotdog, blobfoxnomicecream, blobfoxnomlog, blobfoxnommelon, blobfoxnommobile, blobfoxnompizza, blobfoxnompizzaterrified, blobfoxnomshoe, blobfoxnomstrawberry, blobfoxnomtomato, blobfoxnotamused, blobfoxnotlikethis, blobfoxo_o, blobfoxonepunch, blobfoxoutage, blobfoxowo, blobfoxowomlem, blobfoxowonotice, blobfoxpat, blobfoxpatdeny, blobfoxpatghost, blobfoxpatgoogly, blobfoxpatmelt, blobfoxpatmelt2, blobfoxpatmelt3, blobfoxpatneutral, blobfoxpatsad, blobfoxpeek, blobfoxpeekcomfy, blobfoxpeekknife, blobfoxpeekowo, blobfoxpeekpolice, blobfoxpirate, blobfoxpleading, blobfoxpolice, blobfoxprelurkcofe, blobfoxprelurkcroutons, blobfoxprelurkdonut, blobfoxrage, blobfoxragelarge1, blobfoxragelarge2, blobfoxragelarge3, blobfoxragelarge4, blobfoxreach, blobfoxreachaww, blobfoxread, blobfoxreinderp, blobfoxretsuko, blobfoxsad, blobfoxsanta, blobfoxscared, blobfoxscience, blobfoxshocked, blobfoxshy, blobfoxsignbaka, blobfoxsignbigfan, blobfoxsignforbidden, blobfoxsigngenau, blobfoxsignno, blobfoxsignnou, blobfoxsignnoublush, blobfoxsignsrcpls, blobfoxsignthx, blobfoxsignyes, blobfoxsignyip, blobfoxsip, blobfoxsipglare, blobfoxsipowo, blobfoxsipsmug, blobfoxsipterrified, blobfoxsleep, blobfoxsleepdab, blobfoxsmirk, blobfoxsmug, blobfoxsnug, blobfoxsnugglare, blobfoxsnuggle, blobfoxsnugowo, blobfoxsnugterrified, blobfoxstabbed, blobfoxsurprised, blobfoxsweating, blobfoxtableflip, blobfoxtea, blobfoxtea_w_, blobfoxteacute, blobfoxteaglare, blobfoxteamlem, blobfoxteaowo, blobfoxteaterrified, blobfoxterrified, blobfoxthief, blobfoxthink, blobfoxthinkanime, blobfoxthinkgoogly, blobfoxthinking, blobfoxthinkowo, blobfoxthinksmart, blobfoxthinksmirk, blobfoxthisisfine, blobfoxthonking, blobfoxthumbsdown, blobfoxthumbsup, blobfoxtrash, blobfoxtsundere, blobfoxuno, blobfoxunoterrified, blobfoxupset, blobfoxupsidedown, blobfoxupsidedowndizzy, blobfoxuwu, blobfoxwashingmachine, blobfoxwater, blobfoxwave, blobfoxwet, blobfoxwhaaaat, blobfoxwhoaa, blobfoxwink, blobfoxwinkmlem, blobfoxworried, blobfoxyandere, blobfoxyeet, blobfoxyoshieat, blobfoxyoshieatpixel, blobfoxyoshiend, blobfoxyoshimid, neobot, aneobot_blink, aneobot_bongo, aneobot_bongo_fast, aneobot_bongo_faster, aneobot_bongo_hyper, aneobot_cylon, aneobot_explode, aneobot_floof_blink, aneobot_jump, aneobot_mlem, aneobot_pat, aneobot_pat_blush, aneobot_pat_explode, aneobot_talk, aneobot_toast, aneobot_walk, neobot, neobot_0_0, neobot_3c, neobot_ahegao, neobot_ahegao_bsod, neobot_ahegao_bsod_mac, neobot_ahegao_bsod_modern, neobot_angel, neobot_angel_pleading, neobot_angry, neobot_aww, neobot_baa, neobot_baa_dizzy, neobot_baby_gob, neobot_blank, neobot_blep, neobot_blow_kiss, neobot_blush, neobot_blush_dizzy, neobot_blush_hide, neobot_bongo_down, neobot_bongo_up, neobot_book, neobot_book_owo, neobot_boop, neobot_boop_blep, neobot_boop_blush, neobot_boop_cute, neobot_boop_happy, neobot_boop_nervous, neobot_boop_owo, neobot_boop_woozy, neobot_bottom, neobot_box, neobot_bsod, neobot_bsod_mac, neobot_bsod_modern, neobot_cartridge, neobot_cat_band, neobot_cat_band_pink, neobot_cat_ears, neobot_cat_headphones, neobot_cat_headphones_pink, neobot_cofe, neobot_cofe_cat_ears, neobot_cofe_dog_ears, neobot_cofe_fox_ears, neobot_cofe_mouse_ears, neobot_cofe_possum_ears, neobot_confused, neobot_confused_dizzy, neobot_console_bash, neobot_console_dos, neobot_cry, neobot_cry_loud, neobot_cute, neobot_cute_reach, neobot_deadpan, neobot_devil, neobot_dizzy, neobot_dog_ears, neobot_drake_dislike, neobot_drake_like, neobot_drowsy, neobot_error, neobot_evil, neobot_evil_3c, neobot_exhale, neobot_exhale_facepalm, neobot_eyes, neobot_facepalm, neobot_fingerguns, neobot_flag_ace, neobot_flag_ambiamorous, neobot_flag_androgyne, neobot_flag_aro, neobot_flag_aroflux, neobot_flag_bi, neobot_flag_bigender, neobot_flag_demiace, neobot_flag_demiaro, neobot_flag_demiflux, neobot_flag_demigirl, neobot_flag_demiguy, neobot_flag_demilesbian, neobot_flag_deminb, neobot_flag_disabled, neobot_flag_enbian, neobot_flag_fedorov, neobot_flag_fedorov_zoomed, neobot_flag_finsexual, neobot_flag_gay, neobot_flag_genderfluid, neobot_flag_intersex, neobot_flag_lesbian, neobot_flag_mental_health, neobot_flag_nb, neobot_flag_pan, neobot_flag_plural, neobot_flag_polyam, neobot_flag_progress, neobot_flag_queer_vilain, neobot_flag_rainbow, neobot_flag_salmacian, neobot_flag_sapphic, neobot_flag_trans, neobot_flag_transbian, neobot_flag_trixic, neobot_floof, neobot_floof_angel, neobot_floof_cute, neobot_floof_devil, neobot_floof_happy, neobot_floof_mug_coffee, neobot_floof_mug_oil, neobot_floof_mug_tea, neobot_floof_owo, neobot_floof_reach, neobot_floof_sad, neobot_floof_sad_reach, neobot_floof_w, neobot_flop, neobot_flop_blep, neobot_flop_happy, neobot_flop_sleep, neobot_flop_tired, neobot_flop_w, neobot_flush, neobot_fox_ears, neobot_fox_ears_booper, neobot_giggle, neobot_glare, neobot_glare_sob, neobot_groan, neobot_gross, neobot_happy, neobot_happy_blep, neobot_heart_blue, neobot_heart_cyan, neobot_heart_eyes_blue, neobot_heart_eyes_cyan, neobot_heart_eyes_gray, neobot_heart_eyes_green, neobot_heart_eyes_orange, neobot_heart_eyes_pink, neobot_heart_eyes_purple, neobot_heart_eyes_red, neobot_heart_eyes_yellow, neobot_heart_gray, neobot_heart_green, neobot_heart_orange, neobot_heart_pink, neobot_heart_purple, neobot_heart_red, neobot_heart_yellow, neobot_hug_bat, neobot_hug_bat_heart, neobot_hug_bee, neobot_hug_bee_heart, neobot_hug_bee_sad, neobot_hug_blob, neobot_hug_blob_heart, neobot_hug_blob_sad, neobot_hug_bot, neobot_hug_bot_heart, neobot_hug_bot_sad, neobot_hug_bread, neobot_hug_bread_heart, neobot_hug_bread_sad, neobot_hug_bun, neobot_hug_bun_heart, neobot_hug_bun_sad, neobot_hug_cat, neobot_hug_cat_heart, neobot_hug_cat_sad, neobot_hug_dog, neobot_hug_dog_heart, neobot_hug_dog_sad, neobot_hug_dragn, neobot_hug_dragn_alt, neobot_hug_dragn_alt_heart, neobot_hug_dragn_alt_sad, neobot_hug_dragn_sad, neobot_hug_duck, neobot_hug_duck_heart, neobot_hug_duck_sad, neobot_hug_fox, neobot_hug_fox_heart, neobot_hug_fox_sad, neobot_hug_griddle, neobot_hug_griddle_heart, neobot_hug_griddle_sad, neobot_hug_haj, neobot_hug_haj_heart, neobot_hug_haj_sad, neobot_hug_mouse, neobot_hug_mouse_heart, neobot_hug_mouse_sad, neobot_hug_mousey, neobot_hug_mousey_heart, neobot_hug_mousey_sad, neobot_hug_pigeon, neobot_hug_pigeon_heart, neobot_hug_pigeon_sad, neobot_hug_possum, neobot_hug_possum_heart, neobot_hug_possum_sad, neobot_hug_potato, neobot_hug_potato_heart, neobot_hug_potato_sad, neobot_hug_puffer, neobot_hug_puffer_heart, neobot_hug_purple_hug, neobot_hug_purple_hug_heart, neobot_hug_rain, neobot_hug_rain_heart_blue, neobot_hug_rain_heart_pink, neobot_hug_sylveon, neobot_hug_sylveon_heart, neobot_hug_sylveon_sad, neobot_hug_tiger, neobot_hug_tiger_heart, neobot_hug_tiger_sad, neobot_hug_yaseen, neobot_hug_yaseen_heart, neobot_hug_yassie, neobot_hug_yassie_heart, neobot_hug_yassie_pink, neobot_hug_yassie_pink_heart, neobot_hyper, neobot_kirby, neobot_kirby_succ, neobot_kiss_bot, neobot_kisser, neobot_laugh, neobot_laugh_nervous, neobot_laugh_sweat, neobot_laugh_tears, neobot_legs, neobot_lul, neobot_mask_bear, neobot_mask_bee, neobot_mask_bot, neobot_mask_bread, neobot_mask_bun, neobot_mask_cat, neobot_mask_cow, neobot_mask_cube, neobot_mask_dino, neobot_mask_dlr, neobot_mask_dog, neobot_mask_fox, neobot_mask_haj, neobot_mask_milk, neobot_mask_person, neobot_mask_possum, neobot_mask_radish, neobot_mask_rat, neobot_mask_red_panda, neobot_mask_ssb, neobot_mask_sylveon, neobot_mask_train, neobot_mask_train_steam, neobot_mask_wyvern, neobot_melt, neobot_melt_2, neobot_melt_3, neobot_melt_blep, neobot_melt_blush, neobot_melt_happy, neobot_melt_reach, neobot_melt_sob, neobot_melt_sob_heart, neobot_mouse_ears, neobot_nervous, neobot_nom_blob, neobot_nom_blob_nervous, neobot_nom_bread, neobot_nom_bread_nervous, neobot_nom_bun, neobot_nom_bun_nervous, neobot_nom_cat, neobot_nom_cat_nervous, neobot_nom_disc, neobot_nom_dog, neobot_nom_dog_nervous, neobot_nom_dragn, neobot_nom_dragn_nervous, neobot_nom_fox, neobot_nom_fox_nervous, neobot_nom_haj, neobot_nom_haj_nervous, neobot_nom_mouse, neobot_nom_mouse_nervous, neobot_nom_possum, neobot_nom_possum_nervous, neobot_nom_yaseen, neobot_notice, neobot_o_o, neobot_orgasm, neobot_orgasm_bsod, neobot_orgasm_bsod_mac, neobot_orgasm_bsod_modern, neobot_outage, neobot_owo, neobot_owo_blep, neobot_pat, neobot_pat_floof, neobot_pat_flop, neobot_pat_happy, neobot_pat_sad, neobot_pat_sob, neobot_pat_up, neobot_pat_woozy, neobot_peek, neobot_peek_bread, neobot_peek_kisser, neobot_peek_owo, neobot_pensive, neobot_pirate, neobot_pleading, neobot_pleading_reach, neobot_possum_ears, neobot_pout, neobot_power_loss, neobot_power_loss_ahegao, neobot_reach, neobot_reach_drool, neobot_reject, neobot_sad, neobot_sad_reach, neobot_salute, neobot_scream, neobot_scream_angry, neobot_scream_scared, neobot_scream_stare, neobot_shocked, neobot_shutdown, neobot_shy, neobot_sign_aaa, neobot_sign_abort, neobot_sign_also, neobot_sign_and, neobot_sign_asterisks, neobot_sign_awawa, neobot_sign_ban, neobot_sign_beep, neobot_sign_boobs, neobot_sign_boop, neobot_sign_bort, neobot_sign_breed_me, neobot_sign_breed_me_bottom, neobot_sign_butts, neobot_sign_cum, neobot_sign_error, neobot_sign_gay, neobot_sign_go_to_sleep, neobot_sign_hcf, neobot_sign_heart, neobot_sign_help, neobot_sign_hornt, neobot_sign_horny, neobot_sign_hot, neobot_sign_if, neobot_sign_lewd, neobot_sign_log_off, neobot_sign_maybe, neobot_sign_nerd, neobot_sign_no, neobot_sign_no_u, neobot_sign_nya, neobot_sign_or, neobot_sign_please, neobot_sign_star, neobot_sign_t4t, neobot_sign_this, neobot_sign_thx, neobot_sign_to, neobot_sign_touch_grass, neobot_sign_what, neobot_sign_with, neobot_sign_woof, neobot_sign_yes, neobot_sign_yip, neobot_smoke, neobot_smoke_ahegao, neobot_smol, neobot_smug, neobot_snuggle_beans, neobot_snuggle_bot, neobot_snuggle_bread, neobot_snuggle_cat, neobot_snuggle_dog, neobot_snuggle_fox, neobot_snuggle_mouse, neobot_snuggle_possum, neobot_snuggle_sylveon, neobot_sob, neobot_spoon_bot, neobot_spoon_bread, neobot_spoon_cat, neobot_spoon_fox, neobot_spoon_possum, neobot_spoon_potato, neobot_static, neobot_stretch_dl, neobot_stretch_down, neobot_stretch_down_end, neobot_stretch_dr, neobot_stretch_h, neobot_stretch_left, neobot_stretch_right, neobot_stretch_ul, neobot_stretch_up, neobot_stretch_ur, neobot_stretch_v, neobot_surprised, neobot_swallow_yaseen, neobot_swearing, neobot_swearing_binary, neobot_sweat, neobot_think, neobot_think_smart, neobot_thinking, neobot_this_is_fine, neobot_this_is_fine_kisser, neobot_thonk, neobot_thumbsdown, neobot_thumbsup, neobot_toaster_down, neobot_toaster_empty, neobot_toaster_heat, neobot_toaster_load, neobot_toaster_mid, neobot_toaster_up, neobot_train_wagon, neobot_turned_on, neobot_up, neobot_up_paws, neobot_up_sleep, neobot_up_w, neobot_upside_down, neobot_uwu, neobot_w, neobot_wave, neobot_what, neobot_wink, neobot_wink_blep, neobot_woem, neobot_womb, neobot_womb_dizzy, neobot_womb_happy, neobot_woozy, neobot_x_x, neobot_yeet, neobot_yell, neocat, neocat-extras, neocat_dizzy_baa, neocat_dizzy_blush, neocat_dizzy_confused, neocat_drake_dislike, neocat_drake_like, neocat_eyes, neocat_flag_lesbian_kisser, neocat_flag_trans_kisser, neocat_flag_transbian, neocat_flag_transbian_kisser, neocat_flag_yaseen, neocat_flag_yaseen_kisser, neocat_floof_bottom, neocat_floof_pleading, neocat_floof_pleading_reach, neocat_floof_sad_low_ears, neocat_floof_sad_reach_low_ears, neocat_flop_tired, neocat_giggle, neocat_groan, neocat_heart_eyes, neocat_hug_bat, neocat_hug_bat_heart, neocat_hug_bot, neocat_hug_bot_heart, neocat_hug_bot_sad, neocat_hug_bread, neocat_hug_bread_heart, neocat_hug_bread_sad, neocat_hug_griddle, neocat_hug_griddle_heart, neocat_hug_griddle_sad, neocat_hug_pigeon, neocat_hug_pigeon_heart, neocat_hug_pigeon_sad, neocat_hug_possum, neocat_hug_possum_heart, neocat_hug_possum_sad, neocat_hug_puffer, neocat_hug_puffer_heart, neocat_hug_purple_hug, neocat_hug_purple_hug_heart, neocat_hug_rain, neocat_hug_rain_heart, neocat_hug_sylveon, neocat_hug_sylveon_heart, neocat_hug_sylveon_sad, neocat_hug_tiger, neocat_hug_tiger_heart, neocat_hug_tiger_sad, neocat_hug_yaseen, neocat_hug_yaseen_heart, neocat_hug_yassie, neocat_hug_yassie_heart, neocat_hug_yassie_pink, neocat_hug_yassie_pink_heart, neocat_hugged_by_bot, neocat_hugged_by_bot_heart, neocat_hugged_by_bot_sad, neocat_mask_bot, neocat_nom_yaseen, neocat_salute, neocat_swallow_yaseen, neocat_swearing, neocat_the_ninth, neocat_this_is_fine, neocat_this_is_fine_kisser, neocat_wave, neocat, neocat_0_0, neocat_3c, neocat__w_, neocat_amogus, neocat_angel, neocat_angel_pleading, neocat_angry, neocat_approve, neocat_astronaut, neocat_astronaut_gun, neocat_aww, neocat_baa, neocat_blank, neocat_blep, neocat_blush, neocat_blush_hide, neocat_bongo_down, neocat_bongo_up, neocat_book, neocat_book_owo, neocat_boop, neocat_boop_blep, neocat_boop_blush, neocat_boop_cute, neocat_boop_googly, neocat_boop_happy, neocat_boop_nervous, neocat_boop_owo, neocat_boop_woozy, neocat_bottom, neocat_box, neocat_catmode, neocat_cofe, neocat_comfy, neocat_comfy__w_, neocat_comfy_happy, neocat_comfy_mug, neocat_comfy_sip, neocat_confused, neocat_cool, neocat_cool_fingerguns, neocat_cry, neocat_cry_loud, neocat_cute, neocat_cute_reach, neocat_devil, neocat_dizzy, neocat_drowsy, neocat_evil, neocat_evil_3c, neocat_facepalm, neocat_fingerguns, neocat_flag_ace, neocat_flag_agender, neocat_flag_ambiamorous, neocat_flag_androgyne, neocat_flag_aro, neocat_flag_aroflux, neocat_flag_bi, neocat_flag_bigender, neocat_flag_demiace, neocat_flag_demiaro, neocat_flag_demiflux, neocat_flag_demigay, neocat_flag_demigirl, neocat_flag_demigiuy, neocat_flag_demiguy, neocat_flag_demilesbian, neocat_flag_deminb, neocat_flag_disabled, neocat_flag_finsexual, neocat_flag_gay, neocat_flag_genderfluid, neocat_flag_intersex, neocat_flag_lesbian, neocat_flag_nb, neocat_flag_pan, neocat_flag_plural, neocat_flag_polyam, neocat_flag_salmacian, neocat_flag_sapphic, neocat_flag_trans, neocat_floof, neocat_floof__w_, neocat_floof_angel, neocat_floof_cute, neocat_floof_devil, neocat_floof_happy, neocat_floof_mug, neocat_floof_owo, neocat_floof_reach, neocat_floof_sad, neocat_floof_sad_reach, neocat_flop, neocat_flop__w_, neocat_flop_blep, neocat_flop_happy, neocat_flop_sleep, neocat_flush, neocat_foxmask, neocat_glare, neocat_glare_sob, neocat_glasses, neocat_googly, neocat_googly_blep, neocat_googly_drool, neocat_googly_shocked, neocat_googly_woozy, neocat_gun, neocat_happy, neocat_happy_blep, neocat_heart, neocat_hug, neocat_hug_blob, neocat_hug_blob_heart, neocat_hug_blob_sad, neocat_hug_bun, neocat_hug_bun_heart, neocat_hug_bun_sad, neocat_hug_dragn, neocat_hug_dragn_alt, neocat_hug_dragn_heart, neocat_hug_dragn_sad, neocat_hug_dragn_sad_alt, neocat_hug_duck, neocat_hug_duck_heart, neocat_hug_duck_sad, neocat_hug_fox, neocat_hug_fox_heart, neocat_hug_fox_sad, neocat_hug_haj, neocat_hug_haj_heart, neocat_hug_haj_sad, neocat_hug_heart, neocat_hug_sad, neocat_hyper, neocat_kirby, neocat_kirby_succ, neocat_kisser, neocat_knife, neocat_knives, neocat_laptop, neocat_laptop_notice, neocat_laptop_owo, neocat_laugh, neocat_laugh_nervous, neocat_laugh_sweat, neocat_laugh_tears, neocat_lul, neocat_magnify, neocat_melt, neocat_melt_2, neocat_melt_3, neocat_melt_blep, neocat_melt_blush, neocat_melt_happy, neocat_melt_reach, neocat_melt_sob, neocat_melt_sob_heart, neocat_mug, neocat_mug__w_, neocat_mug_drink, neocat_mug_owo, neocat_nervous, neocat_nom_blob, neocat_nom_blob_nervous, neocat_nom_bread, neocat_nom_bun, neocat_nom_bun_nervous, neocat_nom_burger, neocat_nom_cat, neocat_nom_cat_nervous, neocat_nom_cookie, neocat_nom_donut, neocat_nom_dragn, neocat_nom_dragn_nervous, neocat_nom_egg, neocat_nom_fox, neocat_nom_fox_nervous, neocat_nom_haj, neocat_nom_haj_nervous, neocat_nom_melon, neocat_nom_pita, neocat_nom_pizza, neocat_nom_toblerone, neocat_nom_verified, neocat_nom_waffle, neocat_notice, neocat_o_o, neocat_owo, neocat_owo_blep, neocat_pat, neocat_pat_floof, neocat_pat_flop, neocat_pat_googly, neocat_pat_happy, neocat_pat_sad, neocat_pat_sob, neocat_pat_up, neocat_pat_woozy, neocat_peek, neocat_peek_bread, neocat_peek_comfy, neocat_peek_knife, neocat_peek_owo, neocat_pensive, neocat_phone, neocat_pleading, neocat_pleading_reach, neocat_police, neocat_pout, neocat_rainbow, neocat_reach, neocat_reach_drool, neocat_reject, neocat_sad, neocat_sad_reach, neocat_santa, neocat_science, neocat_scream, neocat_scream_angry, neocat_scream_scared, neocat_scream_stare, neocat_shocked, neocat_shy, neocat_sign_aaa, neocat_sign_no, neocat_sign_nya, neocat_sign_thx, neocat_sign_yes, neocat_sign_yip, neocat_sip, neocat_sip_glare, neocat_sip_nervous, neocat_sip_owo, neocat_smol, neocat_smug, neocat_snuggle, neocat_snuggle_fox, neocat_sob, neocat_solder, neocat_solder_googly, neocat_stretch_dl, neocat_stretch_down, neocat_stretch_down_end, neocat_stretch_dr, neocat_stretch_h, neocat_stretch_left, neocat_stretch_right, neocat_stretch_ul, neocat_stretch_up, neocat_stretch_ur, neocat_stretch_v, neocat_surprised, neocat_surprised_pika, neocat_sweat, neocat_thief, neocat_think, neocat_think_anime, neocat_think_cool, neocat_think_googly, neocat_think_owo, neocat_think_woozy, neocat_thinking, neocat_thonk, neocat_thumbsdown, neocat_thumbsup, neocat_up, neocat_up__w_, neocat_up_paws, neocat_up_sleep, neocat_uwu, neocat_verified, neocat_vr, neocat_what, neocat_wink, neocat_wink_blep, neocat_woozy, neocat_x_x, neocat_yeet, neocat_yell, neofox, neofox-extras, neofox_dizzy_baa, neofox_dizzy_blush, neofox_dizzy_confused, neofox_drake_dislike, neofox_drake_like, neofox_eyes, neofox_flag_lesbian_kisser, neofox_flag_trans_kisser, neofox_flag_transbian, neofox_flag_transbian_kisser, neofox_flag_yaseen, neofox_flag_yaseen_kisser, neofox_floof_bottom, neofox_floof_pleading, neofox_floof_pleading_reach, neofox_floof_sad_ears_low, neofox_flop_tired, neofox_giggle, neofox_groan, neofox_heart_eyes, neofox_hug_bat, neofox_hug_bat_heart, neofox_hug_bot, neofox_hug_bot_heart, neofox_hug_bot_sad, neofox_hug_bread, neofox_hug_bread_heart, neofox_hug_bread_sad, neofox_hug_griddle, neofox_hug_griddle_heart, neofox_hug_griddle_sad, neofox_hug_pigeon, neofox_hug_pigeon_heart, neofox_hug_pigeon_sad, neofox_hug_possum, neofox_hug_possum_heart, neofox_hug_possum_sad, neofox_hug_puffer, neofox_hug_puffer_heart, neofox_hug_purple_hug, neofox_hug_purple_hug_heart, neofox_hug_rain, neofox_hug_rain_heart, neofox_hug_sylveon, neofox_hug_sylveon_heart, neofox_hug_sylveon_sad, neofox_hug_tiger, neofox_hug_tiger_heart, neofox_hug_tiger_sad, neofox_hug_yaseen, neofox_hug_yaseen_heart, neofox_hug_yassie, neofox_hug_yassie_heart, neofox_hug_yassie_pink, neofox_hug_yassie_pink_heart, neofox_hugged_by_bot, neofox_hugged_by_bot_heart, neofox_hugged_by_bot_sad, neofox_mask_bot, neofox_nom_yaseen, neofox_salute, neofox_swallow_yaseen, neofox_swearing, neofox_this_is_fine, neofox_this_is_fine_kisser, neofox_wave, neofox, neofox_0_0, neofox_3c, neofox__w_, neofox_amogus, neofox_angel, neofox_angel_pleading, neofox_angry, neofox_approve, neofox_astronaut, neofox_astronaut_gun, neofox_aww, neofox_baa, neofox_blank, neofox_blep, neofox_blush, neofox_blush_hide, neofox_bongo_down, neofox_bongo_up, neofox_book, neofox_book_owo, neofox_boop, neofox_boop_blep, neofox_boop_blush, neofox_boop_cute, neofox_boop_googly, neofox_boop_happy, neofox_boop_nervous, neofox_boop_owo, neofox_boop_woozy, neofox_bottom, neofox_box, neofox_catmask, neofox_catmode, neofox_cofe, neofox_comfy, neofox_comfy__w_, neofox_comfy_happy, neofox_comfy_mug, neofox_comfy_sip, neofox_confused, neofox_cool, neofox_cool_fingerguns, neofox_cry, neofox_cry_loud, neofox_cute, neofox_cute_reach, neofox_devil, neofox_dizzy, neofox_drowsy, neofox_evil, neofox_evil_3c, neofox_facepalm, neofox_fingerguns, neofox_flag_ace, neofox_flag_agender, neofox_flag_ambiamorous, neofox_flag_androgyne, neofox_flag_aro, neofox_flag_aroflux, neofox_flag_bi, neofox_flag_bigender, neofox_flag_demiace, neofox_flag_demiaro, neofox_flag_demiflux, neofox_flag_demigirl, neofox_flag_demiguy, neofox_flag_demilesbian, neofox_flag_deminb, neofox_flag_disabled, neofox_flag_finsexual, neofox_flag_gay, neofox_flag_genderfluid, neofox_flag_intersex, neofox_flag_lesbian, neofox_flag_nb, neofox_flag_pan, neofox_flag_plural, neofox_flag_polyam, neofox_flag_salmacian, neofox_flag_sapphic, neofox_flag_trans, neofox_floof, neofox_floof__w_, neofox_floof_angel, neofox_floof_cute, neofox_floof_devil, neofox_floof_happy, neofox_floof_mug, neofox_floof_owo, neofox_floof_reach, neofox_floof_sad, neofox_floof_sad_reach, neofox_flop, neofox_flop__w_, neofox_flop_blep, neofox_flop_happy, neofox_flop_sleep, neofox_flush, neofox_glare, neofox_glare_sob, neofox_glasses, neofox_googly, neofox_googly_blep, neofox_googly_drool, neofox_googly_shocked, neofox_googly_woozy, neofox_gun, neofox_happy, neofox_happy_blep, neofox_heart, neofox_hug, neofox_hug_blob, neofox_hug_blob_heart, neofox_hug_blob_sad, neofox_hug_bun, neofox_hug_bun_heart, neofox_hug_bun_sad, neofox_hug_cat, neofox_hug_cat_heart, neofox_hug_cat_sad, neofox_hug_dragn, neofox_hug_dragn_alt, neofox_hug_dragn_heart, neofox_hug_dragn_sad, neofox_hug_dragn_sad_alt, neofox_hug_duck, neofox_hug_duck_heart, neofox_hug_duck_sad, neofox_hug_haj, neofox_hug_haj_heart, neofox_hug_haj_sad, neofox_hug_heart, neofox_hug_sad, neofox_hyper, neofox_kirby, neofox_kirby_succ, neofox_kisser, neofox_knife, neofox_knives, neofox_laptop, neofox_laptop_notice, neofox_laptop_owo, neofox_laugh, neofox_laugh_nervous, neofox_laugh_sweat, neofox_laugh_tears, neofox_lul, neofox_magnify, neofox_melt, neofox_melt_2, neofox_melt_3, neofox_melt_blep, neofox_melt_blush, neofox_melt_happy, neofox_melt_reach, neofox_melt_sob, neofox_melt_sob_heart, neofox_mug, neofox_mug__w_, neofox_mug_drink, neofox_mug_owo, neofox_nervous, neofox_nom_blob, neofox_nom_blob_nervous, neofox_nom_bread, neofox_nom_bun, neofox_nom_bun_nervous, neofox_nom_burger, neofox_nom_cat, neofox_nom_cat_nervous, neofox_nom_cookie, neofox_nom_donut, neofox_nom_dragn, neofox_nom_dragn_nervous, neofox_nom_egg, neofox_nom_fox, neofox_nom_fox_nervous, neofox_nom_haj, neofox_nom_haj_nervous, neofox_nom_melon, neofox_nom_pita, neofox_nom_pizza, neofox_nom_toblerone, neofox_nom_verified, neofox_nom_waffle, neofox_notice, neofox_o_o, neofox_owo, neofox_owo_blep, neofox_pat, neofox_pat_floof, neofox_pat_flop, neofox_pat_googly, neofox_pat_happy, neofox_pat_sad, neofox_pat_snug, neofox_pat_sob, neofox_pat_up, neofox_pat_woozy, neofox_peek, neofox_peek_bread, neofox_peek_comfy, neofox_peek_knife, neofox_peek_owo, neofox_pensive, neofox_phone, neofox_pleading, neofox_pleading_reach, neofox_police, neofox_pout, neofox_rainbow, neofox_reach, neofox_reach_drool, neofox_reject, neofox_sad, neofox_sad_reach, neofox_santa, neofox_science, neofox_scream, neofox_scream_angry, neofox_scream_scared, neofox_scream_stare, neofox_shocked, neofox_shy, neofox_sign_aaa, neofox_sign_no, neofox_sign_nya, neofox_sign_thx, neofox_sign_yes, neofox_sign_yip, neofox_sip, neofox_sip_glare, neofox_sip_nervous, neofox_sip_owo, neofox_smol, neofox_smug, neofox_snug, neofox_snug_glare, neofox_snug_nervous, neofox_snug_owo, neofox_snuggle, neofox_snuggle_cat, neofox_sob, neofox_solder, neofox_solder_googly, neofox_stretch_dl, neofox_stretch_down, neofox_stretch_down_end, neofox_stretch_dr, neofox_stretch_h, neofox_stretch_left, neofox_stretch_right, neofox_stretch_ul, neofox_stretch_up, neofox_stretch_ur, neofox_stretch_v, neofox_surprised, neofox_surprised_pika, neofox_sweat, neofox_thief, neofox_think, neofox_think_anime, neofox_think_cool, neofox_think_googly, neofox_think_owo, neofox_think_woozy, neofox_thinking, neofox_thonk, neofox_thumbsdown, neofox_thumbsup, neofox_up, neofox_up__w_, neofox_up_paws, neofox_up_sleep, neofox_uwu, neofox_verified, neofox_vr, neofox_what, neofox_wink, neofox_wink_blep, neofox_woozy, neofox_x_x, neofox_yeet, neofox_yell\n",
+      "sourceSha256": "035843e12c74a3c0732b2d585b55c523a85da05a00b737b08c976e60ecce2926",
+      "expected": {
+        "ARRAY": "blobfox, ablobfoxbongo, ablobfoxbongohyper, ablobfoxbongoterrified, ablobfoxdundundun, ablobfoxdundundunowo, ablobfoxhyper, ablobfoxhypercofe, ablobfoxhyperowo, ablobfoxhypersnugowo, ablobfoxhyperthinking, ablobfoxhyperwhaaaat, ablobfoxloading, ablobfoxree, blobfox, blobfox0_0, blobfox3c, blobfox3cevil, blobfox_w_, blobfoxangry, blobfoxangrylaugh, blobfoxannoyed, blobfoxartist, blobfoxastronout, blobfoxastronoutgun, blobfoxaww, blobfoxblush, blobfoxblushmore, blobfoxbongo, blobfoxbongostart, blobfoxbongoterrified, blobfoxbongoterrifiedstart, blobfoxbonk, blobfoxboop, blobfoxboop_w_, blobfoxboopblush, blobfoxboopcute, blobfoxboopfloof, blobfoxboopglare, blobfoxboopgoogly, blobfoxboophappy, blobfoxboopmelt, blobfoxboopmelthappy, blobfoxboopmlem, blobfoxboopowo, blobfoxboopterrified, blobfoxbox, blobfoxbreadpeek, blobfoxbreadsnoot, blobfoxbreadsnoot2, blobfoxbreadsnoot2googly, blobfoxbreadsnootgoogly, blobfoxcactus, blobfoxcamera, blobfoxcat, blobfoxcatsnuggle, blobfoxcatterrified, blobfoxcheck, blobfoxcheer, blobfoxcofe, blobfoxcofe_w_, blobfoxcofecute, blobfoxcofeglare, blobfoxcofemlem, blobfoxcofeowo, blobfoxcofeterrified, blobfoxcomfy, blobfoxcomfycofe, blobfoxcomfycomputer, blobfoxcomfyevil, blobfoxcomfyglare, blobfoxcomfyhappy, blobfoxcomfymelt, blobfoxcomfymelthappy, blobfoxcomfyowo, blobfoxcomfysip, blobfoxcomfysleepy, blobfoxcomfysmirk, blobfoxcomfysmug, blobfoxcomfytea, blobfoxcomfyterrified, blobfoxcomputer, blobfoxcomputerowo, blobfoxcomputerowonotice, blobfoxconfused, blobfoxcookie, blobfoxcookienomfox, blobfoxcry, blobfoxcry2, blobfoxcrylaugh, blobfoxcryreach, blobfoxcursedowo, blobfoxcute, blobfoxdab, blobfoxdarkghost, blobfoxdarkghostfloof, blobfoxdarkghostspooky, blobfoxdead, blobfoxdeadinside, blobfoxdealwithit, blobfoxdealwithitfingerguns, blobfoxdetective, blobfoxdetermined, blobfoxdevil, blobfoxdisapprove, blobfoxdisgust, blobfoxdisputed, blobfoxdizzy, blobfoxdoubt, blobfoxdrakedislike, blobfoxdrakelike, blobfoxdrool, blobfoxevil, blobfoxeyes, blobfoxfacepalm, blobfoxfake, blobfoxfingerguns, blobfoxfloof, blobfoxfloof_w_, blobfoxfloofcofe, blobfoxfloofcute, blobfoxfloofdevil, blobfoxfloofevil, blobfoxfloofhappy, blobfoxfloofowo, blobfoxfloofreach, blobfoxflooftea, blobfoxflower, blobfoxflowerhair, blobfoxghost, blobfoxghostfloof, blobfoxghostspooky, blobfoxglare, blobfoxgoogly, blobfoxgooglycry, blobfoxgooglymlem, blobfoxgooglynomlog, blobfoxgooglytrash, blobfoxhappy, blobfoxhappymlem, blobfoxheadphones, blobfoxheart, blobfoxheartcute, blobfoxhyper, blobfoxhyper2, blobfoxinnocent, blobfoxinnocentcute, blobfoxinnocentmlem, blobfoxkirby, blobfoxkirbyinhale, blobfoxknife, blobfoxlaugh, blobfoxlaughsweat, blobfoxlewd, blobfoxlul, blobfoxlurk, blobfoxlurk2, blobfoxlurk2glare, blobfoxlurk2owo, blobfoxlurk2owonotice, blobfoxlurkaww, blobfoxlurkglare, blobfoxlurkowo, blobfoxlurkowonotice, blobfoxmegumin, blobfoxmelt, blobfoxmelt2, blobfoxmelt3, blobfoxmeltblush, blobfoxmelthappy, blobfoxmeltmlem, blobfoxmeltreach, blobfoxmeltsob, blobfoxmeltsoblove, blobfoxmischievous, blobfoxmlem, blobfoxmsnugglecentercat, blobfoxmsnugglecenterfox, blobfoxmsnuggleleftcat, blobfoxmsnuggleleftfox, blobfoxmsnugglerightcat, blobfoxmsnugglerightfox, blobfoxmsnugglerightnone, blobfoxnauseated, blobfoxnerd, blobfoxninja, blobfoxnomball, blobfoxnombook, blobfoxnombread, blobfoxnomburger, blobfoxnomcake, blobfoxnomcat, blobfoxnomcookie, blobfoxnomcorndog, blobfoxnomcroutons, blobfoxnomdonut, blobfoxnomdonutpolice, blobfoxnomdonutterrified, blobfoxnomegg, blobfoxnomfox, blobfoxnomfoxburger, blobfoxnomfoxcookie, blobfoxnomfoxterrified, blobfoxnomhotdog, blobfoxnomicecream, blobfoxnomlog, blobfoxnommelon, blobfoxnommobile, blobfoxnompizza, blobfoxnompizzaterrified, blobfoxnomshoe, blobfoxnomstrawberry, blobfoxnomtomato, blobfoxnotamused, blobfoxnotlikethis, blobfoxo_o, blobfoxonepunch, blobfoxoutage, blobfoxowo, blobfoxowomlem, blobfoxowonotice, blobfoxpat, blobfoxpatdeny, blobfoxpatghost, blobfoxpatgoogly, blobfoxpatmelt, blobfoxpatmelt2, blobfoxpatmelt3, blobfoxpatneutral, blobfoxpatsad, blobfoxpeek, blobfoxpeekcomfy, blobfoxpeekknife, blobfoxpeekowo, blobfoxpeekpolice, blobfoxpirate, blobfoxpleading, blobfoxpolice, blobfoxprelurkcofe, blobfoxprelurkcroutons, blobfoxprelurkdonut, blobfoxrage, blobfoxragelarge1, blobfoxragelarge2, blobfoxragelarge3, blobfoxragelarge4, blobfoxreach, blobfoxreachaww, blobfoxread, blobfoxreinderp, blobfoxretsuko, blobfoxsad, blobfoxsanta, blobfoxscared, blobfoxscience, blobfoxshocked, blobfoxshy, blobfoxsignbaka, blobfoxsignbigfan, blobfoxsignforbidden, blobfoxsigngenau, blobfoxsignno, blobfoxsignnou, blobfoxsignnoublush, blobfoxsignsrcpls, blobfoxsignthx, blobfoxsignyes, blobfoxsignyip, blobfoxsip, blobfoxsipglare, blobfoxsipowo, blobfoxsipsmug, blobfoxsipterrified, blobfoxsleep, blobfoxsleepdab, blobfoxsmirk, blobfoxsmug, blobfoxsnug, blobfoxsnugglare, blobfoxsnuggle, blobfoxsnugowo, blobfoxsnugterrified, blobfoxstabbed, blobfoxsurprised, blobfoxsweating, blobfoxtableflip, blobfoxtea, blobfoxtea_w_, blobfoxteacute, blobfoxteaglare, blobfoxteamlem, blobfoxteaowo, blobfoxteaterrified, blobfoxterrified, blobfoxthief, blobfoxthink, blobfoxthinkanime, blobfoxthinkgoogly, blobfoxthinking, blobfoxthinkowo, blobfoxthinksmart, blobfoxthinksmirk, blobfoxthisisfine, blobfoxthonking, blobfoxthumbsdown, blobfoxthumbsup, blobfoxtrash, blobfoxtsundere, blobfoxuno, blobfoxunoterrified, blobfoxupset, blobfoxupsidedown, blobfoxupsidedowndizzy, blobfoxuwu, blobfoxwashingmachine, blobfoxwater, blobfoxwave, blobfoxwet, blobfoxwhaaaat, blobfoxwhoaa, blobfoxwink, blobfoxwinkmlem, blobfoxworried, blobfoxyandere, blobfoxyeet, blobfoxyoshieat, blobfoxyoshieatpixel, blobfoxyoshiend, blobfoxyoshimid, neobot, aneobot_blink, aneobot_bongo, aneobot_bongo_fast, aneobot_bongo_faster, aneobot_bongo_hyper, aneobot_cylon, aneobot_explode, aneobot_floof_blink, aneobot_jump, aneobot_mlem, aneobot_pat, aneobot_pat_blush, aneobot_pat_explode, aneobot_talk, aneobot_toast, aneobot_walk, neobot, neobot_0_0, neobot_3c, neobot_ahegao, neobot_ahegao_bsod, neobot_ahegao_bsod_mac, neobot_ahegao_bsod_modern, neobot_angel, neobot_angel_pleading, neobot_angry, neobot_aww, neobot_baa, neobot_baa_dizzy, neobot_baby_gob, neobot_blank, neobot_blep, neobot_blow_kiss, neobot_blush, neobot_blush_dizzy, neobot_blush_hide, neobot_bongo_down, neobot_bongo_up, neobot_book, neobot_book_owo, neobot_boop, neobot_boop_blep, neobot_boop_blush, neobot_boop_cute, neobot_boop_happy, neobot_boop_nervous, neobot_boop_owo, neobot_boop_woozy, neobot_bottom, neobot_box, neobot_bsod, neobot_bsod_mac, neobot_bsod_modern, neobot_cartridge, neobot_cat_band, neobot_cat_band_pink, neobot_cat_ears, neobot_cat_headphones, neobot_cat_headphones_pink, neobot_cofe, neobot_cofe_cat_ears, neobot_cofe_dog_ears, neobot_cofe_fox_ears, neobot_cofe_mouse_ears, neobot_cofe_possum_ears, neobot_confused, neobot_confused_dizzy, neobot_console_bash, neobot_console_dos, neobot_cry, neobot_cry_loud, neobot_cute, neobot_cute_reach, neobot_deadpan, neobot_devil, neobot_dizzy, neobot_dog_ears, neobot_drake_dislike, neobot_drake_like, neobot_drowsy, neobot_error, neobot_evil, neobot_evil_3c, neobot_exhale, neobot_exhale_facepalm, neobot_eyes, neobot_facepalm, neobot_fingerguns, neobot_flag_ace, neobot_flag_ambiamorous, neobot_flag_androgyne, neobot_flag_aro, neobot_flag_aroflux, neobot_flag_bi, neobot_flag_bigender, neobot_flag_demiace, neobot_flag_demiaro, neobot_flag_demiflux, neobot_flag_demigirl, neobot_flag_demiguy, neobot_flag_demilesbian, neobot_flag_deminb, neobot_flag_disabled, neobot_flag_enbian, neobot_flag_fedorov, neobot_flag_fedorov_zoomed, neobot_flag_finsexual, neobot_flag_gay, neobot_flag_genderfluid, neobot_flag_intersex, neobot_flag_lesbian, neobot_flag_mental_health, neobot_flag_nb, neobot_flag_pan, neobot_flag_plural, neobot_flag_polyam, neobot_flag_progress, neobot_flag_queer_vilain, neobot_flag_rainbow, neobot_flag_salmacian, neobot_flag_sapphic, neobot_flag_trans, neobot_flag_transbian, neobot_flag_trixic, neobot_floof, neobot_floof_angel, neobot_floof_cute, neobot_floof_devil, neobot_floof_happy, neobot_floof_mug_coffee, neobot_floof_mug_oil, neobot_floof_mug_tea, neobot_floof_owo, neobot_floof_reach, neobot_floof_sad, neobot_floof_sad_reach, neobot_floof_w, neobot_flop, neobot_flop_blep, neobot_flop_happy, neobot_flop_sleep, neobot_flop_tired, neobot_flop_w, neobot_flush, neobot_fox_ears, neobot_fox_ears_booper, neobot_giggle, neobot_glare, neobot_glare_sob, neobot_groan, neobot_gross, neobot_happy, neobot_happy_blep, neobot_heart_blue, neobot_heart_cyan, neobot_heart_eyes_blue, neobot_heart_eyes_cyan, neobot_heart_eyes_gray, neobot_heart_eyes_green, neobot_heart_eyes_orange, neobot_heart_eyes_pink, neobot_heart_eyes_purple, neobot_heart_eyes_red, neobot_heart_eyes_yellow, neobot_heart_gray, neobot_heart_green, neobot_heart_orange, neobot_heart_pink, neobot_heart_purple, neobot_heart_red, neobot_heart_yellow, neobot_hug_bat, neobot_hug_bat_heart, neobot_hug_bee, neobot_hug_bee_heart, neobot_hug_bee_sad, neobot_hug_blob, neobot_hug_blob_heart, neobot_hug_blob_sad, neobot_hug_bot, neobot_hug_bot_heart, neobot_hug_bot_sad, neobot_hug_bread, neobot_hug_bread_heart, neobot_hug_bread_sad, neobot_hug_bun, neobot_hug_bun_heart, neobot_hug_bun_sad, neobot_hug_cat, neobot_hug_cat_heart, neobot_hug_cat_sad, neobot_hug_dog, neobot_hug_dog_heart, neobot_hug_dog_sad, neobot_hug_dragn, neobot_hug_dragn_alt, neobot_hug_dragn_alt_heart, neobot_hug_dragn_alt_sad, neobot_hug_dragn_sad, neobot_hug_duck, neobot_hug_duck_heart, neobot_hug_duck_sad, neobot_hug_fox, neobot_hug_fox_heart, neobot_hug_fox_sad, neobot_hug_griddle, neobot_hug_griddle_heart, neobot_hug_griddle_sad, neobot_hug_haj, neobot_hug_haj_heart, neobot_hug_haj_sad, neobot_hug_mouse, neobot_hug_mouse_heart, neobot_hug_mouse_sad, neobot_hug_mousey, neobot_hug_mousey_heart, neobot_hug_mousey_sad, neobot_hug_pigeon, neobot_hug_pigeon_heart, neobot_hug_pigeon_sad, neobot_hug_possum, neobot_hug_possum_heart, neobot_hug_possum_sad, neobot_hug_potato, neobot_hug_potato_heart, neobot_hug_potato_sad, neobot_hug_puffer, neobot_hug_puffer_heart, neobot_hug_purple_hug, neobot_hug_purple_hug_heart, neobot_hug_rain, neobot_hug_rain_heart_blue, neobot_hug_rain_heart_pink, neobot_hug_sylveon, neobot_hug_sylveon_heart, neobot_hug_sylveon_sad, neobot_hug_tiger, neobot_hug_tiger_heart, neobot_hug_tiger_sad, neobot_hug_yaseen, neobot_hug_yaseen_heart, neobot_hug_yassie, neobot_hug_yassie_heart, neobot_hug_yassie_pink, neobot_hug_yassie_pink_heart, neobot_hyper, neobot_kirby, neobot_kirby_succ, neobot_kiss_bot, neobot_kisser, neobot_laugh, neobot_laugh_nervous, neobot_laugh_sweat, neobot_laugh_tears, neobot_legs, neobot_lul, neobot_mask_bear, neobot_mask_bee, neobot_mask_bot, neobot_mask_bread, neobot_mask_bun, neobot_mask_cat, neobot_mask_cow, neobot_mask_cube, neobot_mask_dino, neobot_mask_dlr, neobot_mask_dog, neobot_mask_fox, neobot_mask_haj, neobot_mask_milk, neobot_mask_person, neobot_mask_possum, neobot_mask_radish, neobot_mask_rat, neobot_mask_red_panda, neobot_mask_ssb, neobot_mask_sylveon, neobot_mask_train, neobot_mask_train_steam, neobot_mask_wyvern, neobot_melt, neobot_melt_2, neobot_melt_3, neobot_melt_blep, neobot_melt_blush, neobot_melt_happy, neobot_melt_reach, neobot_melt_sob, neobot_melt_sob_heart, neobot_mouse_ears, neobot_nervous, neobot_nom_blob, neobot_nom_blob_nervous, neobot_nom_bread, neobot_nom_bread_nervous, neobot_nom_bun, neobot_nom_bun_nervous, neobot_nom_cat, neobot_nom_cat_nervous, neobot_nom_disc, neobot_nom_dog, neobot_nom_dog_nervous, neobot_nom_dragn, neobot_nom_dragn_nervous, neobot_nom_fox, neobot_nom_fox_nervous, neobot_nom_haj, neobot_nom_haj_nervous, neobot_nom_mouse, neobot_nom_mouse_nervous, neobot_nom_possum, neobot_nom_possum_nervous, neobot_nom_yaseen, neobot_notice, neobot_o_o, neobot_orgasm, neobot_orgasm_bsod, neobot_orgasm_bsod_mac, neobot_orgasm_bsod_modern, neobot_outage, neobot_owo, neobot_owo_blep, neobot_pat, neobot_pat_floof, neobot_pat_flop, neobot_pat_happy, neobot_pat_sad, neobot_pat_sob, neobot_pat_up, neobot_pat_woozy, neobot_peek, neobot_peek_bread, neobot_peek_kisser, neobot_peek_owo, neobot_pensive, neobot_pirate, neobot_pleading, neobot_pleading_reach, neobot_possum_ears, neobot_pout, neobot_power_loss, neobot_power_loss_ahegao, neobot_reach, neobot_reach_drool, neobot_reject, neobot_sad, neobot_sad_reach, neobot_salute, neobot_scream, neobot_scream_angry, neobot_scream_scared, neobot_scream_stare, neobot_shocked, neobot_shutdown, neobot_shy, neobot_sign_aaa, neobot_sign_abort, neobot_sign_also, neobot_sign_and, neobot_sign_asterisks, neobot_sign_awawa, neobot_sign_ban, neobot_sign_beep, neobot_sign_boobs, neobot_sign_boop, neobot_sign_bort, neobot_sign_breed_me, neobot_sign_breed_me_bottom, neobot_sign_butts, neobot_sign_cum, neobot_sign_error, neobot_sign_gay, neobot_sign_go_to_sleep, neobot_sign_hcf, neobot_sign_heart, neobot_sign_help, neobot_sign_hornt, neobot_sign_horny, neobot_sign_hot, neobot_sign_if, neobot_sign_lewd, neobot_sign_log_off, neobot_sign_maybe, neobot_sign_nerd, neobot_sign_no, neobot_sign_no_u, neobot_sign_nya, neobot_sign_or, neobot_sign_please, neobot_sign_star, neobot_sign_t4t, neobot_sign_this, neobot_sign_thx, neobot_sign_to, neobot_sign_touch_grass, neobot_sign_what, neobot_sign_with, neobot_sign_woof, neobot_sign_yes, neobot_sign_yip, neobot_smoke, neobot_smoke_ahegao, neobot_smol, neobot_smug, neobot_snuggle_beans, neobot_snuggle_bot, neobot_snuggle_bread, neobot_snuggle_cat, neobot_snuggle_dog, neobot_snuggle_fox, neobot_snuggle_mouse, neobot_snuggle_possum, neobot_snuggle_sylveon, neobot_sob, neobot_spoon_bot, neobot_spoon_bread, neobot_spoon_cat, neobot_spoon_fox, neobot_spoon_possum, neobot_spoon_potato, neobot_static, neobot_stretch_dl, neobot_stretch_down, neobot_stretch_down_end, neobot_stretch_dr, neobot_stretch_h, neobot_stretch_left, neobot_stretch_right, neobot_stretch_ul, neobot_stretch_up, neobot_stretch_ur, neobot_stretch_v, neobot_surprised, neobot_swallow_yaseen, neobot_swearing, neobot_swearing_binary, neobot_sweat, neobot_think, neobot_think_smart, neobot_thinking, neobot_this_is_fine, neobot_this_is_fine_kisser, neobot_thonk, neobot_thumbsdown, neobot_thumbsup, neobot_toaster_down, neobot_toaster_empty, neobot_toaster_heat, neobot_toaster_load, neobot_toaster_mid, neobot_toaster_up, neobot_train_wagon, neobot_turned_on, neobot_up, neobot_up_paws, neobot_up_sleep, neobot_up_w, neobot_upside_down, neobot_uwu, neobot_w, neobot_wave, neobot_what, neobot_wink, neobot_wink_blep, neobot_woem, neobot_womb, neobot_womb_dizzy, neobot_womb_happy, neobot_woozy, neobot_x_x, neobot_yeet, neobot_yell, neocat, neocat-extras, neocat_dizzy_baa, neocat_dizzy_blush, neocat_dizzy_confused, neocat_drake_dislike, neocat_drake_like, neocat_eyes, neocat_flag_lesbian_kisser, neocat_flag_trans_kisser, neocat_flag_transbian, neocat_flag_transbian_kisser, neocat_flag_yaseen, neocat_flag_yaseen_kisser, neocat_floof_bottom, neocat_floof_pleading, neocat_floof_pleading_reach, neocat_floof_sad_low_ears, neocat_floof_sad_reach_low_ears, neocat_flop_tired, neocat_giggle, neocat_groan, neocat_heart_eyes, neocat_hug_bat, neocat_hug_bat_heart, neocat_hug_bot, neocat_hug_bot_heart, neocat_hug_bot_sad, neocat_hug_bread, neocat_hug_bread_heart, neocat_hug_bread_sad, neocat_hug_griddle, neocat_hug_griddle_heart, neocat_hug_griddle_sad, neocat_hug_pigeon, neocat_hug_pigeon_heart, neocat_hug_pigeon_sad, neocat_hug_possum, neocat_hug_possum_heart, neocat_hug_possum_sad, neocat_hug_puffer, neocat_hug_puffer_heart, neocat_hug_purple_hug, neocat_hug_purple_hug_heart, neocat_hug_rain, neocat_hug_rain_heart, neocat_hug_sylveon, neocat_hug_sylveon_heart, neocat_hug_sylveon_sad, neocat_hug_tiger, neocat_hug_tiger_heart, neocat_hug_tiger_sad, neocat_hug_yaseen, neocat_hug_yaseen_heart, neocat_hug_yassie, neocat_hug_yassie_heart, neocat_hug_yassie_pink, neocat_hug_yassie_pink_heart, neocat_hugged_by_bot, neocat_hugged_by_bot_heart, neocat_hugged_by_bot_sad, neocat_mask_bot, neocat_nom_yaseen, neocat_salute, neocat_swallow_yaseen, neocat_swearing, neocat_the_ninth, neocat_this_is_fine, neocat_this_is_fine_kisser, neocat_wave, neocat, neocat_0_0, neocat_3c, neocat__w_, neocat_amogus, neocat_angel, neocat_angel_pleading, neocat_angry, neocat_approve, neocat_astronaut, neocat_astronaut_gun, neocat_aww, neocat_baa, neocat_blank, neocat_blep, neocat_blush, neocat_blush_hide, neocat_bongo_down, neocat_bongo_up, neocat_book, neocat_book_owo, neocat_boop, neocat_boop_blep, neocat_boop_blush, neocat_boop_cute, neocat_boop_googly, neocat_boop_happy, neocat_boop_nervous, neocat_boop_owo, neocat_boop_woozy, neocat_bottom, neocat_box, neocat_catmode, neocat_cofe, neocat_comfy, neocat_comfy__w_, neocat_comfy_happy, neocat_comfy_mug, neocat_comfy_sip, neocat_confused, neocat_cool, neocat_cool_fingerguns, neocat_cry, neocat_cry_loud, neocat_cute, neocat_cute_reach, neocat_devil, neocat_dizzy, neocat_drowsy, neocat_evil, neocat_evil_3c, neocat_facepalm, neocat_fingerguns, neocat_flag_ace, neocat_flag_agender, neocat_flag_ambiamorous, neocat_flag_androgyne, neocat_flag_aro, neocat_flag_aroflux, neocat_flag_bi, neocat_flag_bigender, neocat_flag_demiace, neocat_flag_demiaro, neocat_flag_demiflux, neocat_flag_demigay, neocat_flag_demigirl, neocat_flag_demigiuy, neocat_flag_demiguy, neocat_flag_demilesbian, neocat_flag_deminb, neocat_flag_disabled, neocat_flag_finsexual, neocat_flag_gay, neocat_flag_genderfluid, neocat_flag_intersex, neocat_flag_lesbian, neocat_flag_nb, neocat_flag_pan, neocat_flag_plural, neocat_flag_polyam, neocat_flag_salmacian, neocat_flag_sapphic, neocat_flag_trans, neocat_floof, neocat_floof__w_, neocat_floof_angel, neocat_floof_cute, neocat_floof_devil, neocat_floof_happy, neocat_floof_mug, neocat_floof_owo, neocat_floof_reach, neocat_floof_sad, neocat_floof_sad_reach, neocat_flop, neocat_flop__w_, neocat_flop_blep, neocat_flop_happy, neocat_flop_sleep, neocat_flush, neocat_foxmask, neocat_glare, neocat_glare_sob, neocat_glasses, neocat_googly, neocat_googly_blep, neocat_googly_drool, neocat_googly_shocked, neocat_googly_woozy, neocat_gun, neocat_happy, neocat_happy_blep, neocat_heart, neocat_hug, neocat_hug_blob, neocat_hug_blob_heart, neocat_hug_blob_sad, neocat_hug_bun, neocat_hug_bun_heart, neocat_hug_bun_sad, neocat_hug_dragn, neocat_hug_dragn_alt, neocat_hug_dragn_heart, neocat_hug_dragn_sad, neocat_hug_dragn_sad_alt, neocat_hug_duck, neocat_hug_duck_heart, neocat_hug_duck_sad, neocat_hug_fox, neocat_hug_fox_heart, neocat_hug_fox_sad, neocat_hug_haj, neocat_hug_haj_heart, neocat_hug_haj_sad, neocat_hug_heart, neocat_hug_sad, neocat_hyper, neocat_kirby, neocat_kirby_succ, neocat_kisser, neocat_knife, neocat_knives, neocat_laptop, neocat_laptop_notice, neocat_laptop_owo, neocat_laugh, neocat_laugh_nervous, neocat_laugh_sweat, neocat_laugh_tears, neocat_lul, neocat_magnify, neocat_melt, neocat_melt_2, neocat_melt_3, neocat_melt_blep, neocat_melt_blush, neocat_melt_happy, neocat_melt_reach, neocat_melt_sob, neocat_melt_sob_heart, neocat_mug, neocat_mug__w_, neocat_mug_drink, neocat_mug_owo, neocat_nervous, neocat_nom_blob, neocat_nom_blob_nervous, neocat_nom_bread, neocat_nom_bun, neocat_nom_bun_nervous, neocat_nom_burger, neocat_nom_cat, neocat_nom_cat_nervous, neocat_nom_cookie, neocat_nom_donut, neocat_nom_dragn, neocat_nom_dragn_nervous, neocat_nom_egg, neocat_nom_fox, neocat_nom_fox_nervous, neocat_nom_haj, neocat_nom_haj_nervous, neocat_nom_melon, neocat_nom_pita, neocat_nom_pizza, neocat_nom_toblerone, neocat_nom_verified, neocat_nom_waffle, neocat_notice, neocat_o_o, neocat_owo, neocat_owo_blep, neocat_pat, neocat_pat_floof, neocat_pat_flop, neocat_pat_googly, neocat_pat_happy, neocat_pat_sad, neocat_pat_sob, neocat_pat_up, neocat_pat_woozy, neocat_peek, neocat_peek_bread, neocat_peek_comfy, neocat_peek_knife, neocat_peek_owo, neocat_pensive, neocat_phone, neocat_pleading, neocat_pleading_reach, neocat_police, neocat_pout, neocat_rainbow, neocat_reach, neocat_reach_drool, neocat_reject, neocat_sad, neocat_sad_reach, neocat_santa, neocat_science, neocat_scream, neocat_scream_angry, neocat_scream_scared, neocat_scream_stare, neocat_shocked, neocat_shy, neocat_sign_aaa, neocat_sign_no, neocat_sign_nya, neocat_sign_thx, neocat_sign_yes, neocat_sign_yip, neocat_sip, neocat_sip_glare, neocat_sip_nervous, neocat_sip_owo, neocat_smol, neocat_smug, neocat_snuggle, neocat_snuggle_fox, neocat_sob, neocat_solder, neocat_solder_googly, neocat_stretch_dl, neocat_stretch_down, neocat_stretch_down_end, neocat_stretch_dr, neocat_stretch_h, neocat_stretch_left, neocat_stretch_right, neocat_stretch_ul, neocat_stretch_up, neocat_stretch_ur, neocat_stretch_v, neocat_surprised, neocat_surprised_pika, neocat_sweat, neocat_thief, neocat_think, neocat_think_anime, neocat_think_cool, neocat_think_googly, neocat_think_owo, neocat_think_woozy, neocat_thinking, neocat_thonk, neocat_thumbsdown, neocat_thumbsup, neocat_up, neocat_up__w_, neocat_up_paws, neocat_up_sleep, neocat_uwu, neocat_verified, neocat_vr, neocat_what, neocat_wink, neocat_wink_blep, neocat_woozy, neocat_x_x, neocat_yeet, neocat_yell, neofox, neofox-extras, neofox_dizzy_baa, neofox_dizzy_blush, neofox_dizzy_confused, neofox_drake_dislike, neofox_drake_like, neofox_eyes, neofox_flag_lesbian_kisser, neofox_flag_trans_kisser, neofox_flag_transbian, neofox_flag_transbian_kisser, neofox_flag_yaseen, neofox_flag_yaseen_kisser, neofox_floof_bottom, neofox_floof_pleading, neofox_floof_pleading_reach, neofox_floof_sad_ears_low, neofox_flop_tired, neofox_giggle, neofox_groan, neofox_heart_eyes, neofox_hug_bat, neofox_hug_bat_heart, neofox_hug_bot, neofox_hug_bot_heart, neofox_hug_bot_sad, neofox_hug_bread, neofox_hug_bread_heart, neofox_hug_bread_sad, neofox_hug_griddle, neofox_hug_griddle_heart, neofox_hug_griddle_sad, neofox_hug_pigeon, neofox_hug_pigeon_heart, neofox_hug_pigeon_sad, neofox_hug_possum, neofox_hug_possum_heart, neofox_hug_possum_sad, neofox_hug_puffer, neofox_hug_puffer_heart, neofox_hug_purple_hug, neofox_hug_purple_hug_heart, neofox_hug_rain, neofox_hug_rain_heart, neofox_hug_sylveon, neofox_hug_sylveon_heart, neofox_hug_sylveon_sad, neofox_hug_tiger, neofox_hug_tiger_heart, neofox_hug_tiger_sad, neofox_hug_yaseen, neofox_hug_yaseen_heart, neofox_hug_yassie, neofox_hug_yassie_heart, neofox_hug_yassie_pink, neofox_hug_yassie_pink_heart, neofox_hugged_by_bot, neofox_hugged_by_bot_heart, neofox_hugged_by_bot_sad, neofox_mask_bot, neofox_nom_yaseen, neofox_salute, neofox_swallow_yaseen, neofox_swearing, neofox_this_is_fine, neofox_this_is_fine_kisser, neofox_wave, neofox, neofox_0_0, neofox_3c, neofox__w_, neofox_amogus, neofox_angel, neofox_angel_pleading, neofox_angry, neofox_approve, neofox_astronaut, neofox_astronaut_gun, neofox_aww, neofox_baa, neofox_blank, neofox_blep, neofox_blush, neofox_blush_hide, neofox_bongo_down, neofox_bongo_up, neofox_book, neofox_book_owo, neofox_boop, neofox_boop_blep, neofox_boop_blush, neofox_boop_cute, neofox_boop_googly, neofox_boop_happy, neofox_boop_nervous, neofox_boop_owo, neofox_boop_woozy, neofox_bottom, neofox_box, neofox_catmask, neofox_catmode, neofox_cofe, neofox_comfy, neofox_comfy__w_, neofox_comfy_happy, neofox_comfy_mug, neofox_comfy_sip, neofox_confused, neofox_cool, neofox_cool_fingerguns, neofox_cry, neofox_cry_loud, neofox_cute, neofox_cute_reach, neofox_devil, neofox_dizzy, neofox_drowsy, neofox_evil, neofox_evil_3c, neofox_facepalm, neofox_fingerguns, neofox_flag_ace, neofox_flag_agender, neofox_flag_ambiamorous, neofox_flag_androgyne, neofox_flag_aro, neofox_flag_aroflux, neofox_flag_bi, neofox_flag_bigender, neofox_flag_demiace, neofox_flag_demiaro, neofox_flag_demiflux, neofox_flag_demigirl, neofox_flag_demiguy, neofox_flag_demilesbian, neofox_flag_deminb, neofox_flag_disabled, neofox_flag_finsexual, neofox_flag_gay, neofox_flag_genderfluid, neofox_flag_intersex, neofox_flag_lesbian, neofox_flag_nb, neofox_flag_pan, neofox_flag_plural, neofox_flag_polyam, neofox_flag_salmacian, neofox_flag_sapphic, neofox_flag_trans, neofox_floof, neofox_floof__w_, neofox_floof_angel, neofox_floof_cute, neofox_floof_devil, neofox_floof_happy, neofox_floof_mug, neofox_floof_owo, neofox_floof_reach, neofox_floof_sad, neofox_floof_sad_reach, neofox_flop, neofox_flop__w_, neofox_flop_blep, neofox_flop_happy, neofox_flop_sleep, neofox_flush, neofox_glare, neofox_glare_sob, neofox_glasses, neofox_googly, neofox_googly_blep, neofox_googly_drool, neofox_googly_shocked, neofox_googly_woozy, neofox_gun, neofox_happy, neofox_happy_blep, neofox_heart, neofox_hug, neofox_hug_blob, neofox_hug_blob_heart, neofox_hug_blob_sad, neofox_hug_bun, neofox_hug_bun_heart, neofox_hug_bun_sad, neofox_hug_cat, neofox_hug_cat_heart, neofox_hug_cat_sad, neofox_hug_dragn, neofox_hug_dragn_alt, neofox_hug_dragn_heart, neofox_hug_dragn_sad, neofox_hug_dragn_sad_alt, neofox_hug_duck, neofox_hug_duck_heart, neofox_hug_duck_sad, neofox_hug_haj, neofox_hug_haj_heart, neofox_hug_haj_sad, neofox_hug_heart, neofox_hug_sad, neofox_hyper, neofox_kirby, neofox_kirby_succ, neofox_kisser, neofox_knife, neofox_knives, neofox_laptop, neofox_laptop_notice, neofox_laptop_owo, neofox_laugh, neofox_laugh_nervous, neofox_laugh_sweat, neofox_laugh_tears, neofox_lul, neofox_magnify, neofox_melt, neofox_melt_2, neofox_melt_3, neofox_melt_blep, neofox_melt_blush, neofox_melt_happy, neofox_melt_reach, neofox_melt_sob, neofox_melt_sob_heart, neofox_mug, neofox_mug__w_, neofox_mug_drink, neofox_mug_owo, neofox_nervous, neofox_nom_blob, neofox_nom_blob_nervous, neofox_nom_bread, neofox_nom_bun, neofox_nom_bun_nervous, neofox_nom_burger, neofox_nom_cat, neofox_nom_cat_nervous, neofox_nom_cookie, neofox_nom_donut, neofox_nom_dragn, neofox_nom_dragn_nervous, neofox_nom_egg, neofox_nom_fox, neofox_nom_fox_nervous, neofox_nom_haj, neofox_nom_haj_nervous, neofox_nom_melon, neofox_nom_pita, neofox_nom_pizza, neofox_nom_toblerone, neofox_nom_verified, neofox_nom_waffle, neofox_notice, neofox_o_o, neofox_owo, neofox_owo_blep, neofox_pat, neofox_pat_floof, neofox_pat_flop, neofox_pat_googly, neofox_pat_happy, neofox_pat_sad, neofox_pat_snug, neofox_pat_sob, neofox_pat_up, neofox_pat_woozy, neofox_peek, neofox_peek_bread, neofox_peek_comfy, neofox_peek_knife, neofox_peek_owo, neofox_pensive, neofox_phone, neofox_pleading, neofox_pleading_reach, neofox_police, neofox_pout, neofox_rainbow, neofox_reach, neofox_reach_drool, neofox_reject, neofox_sad, neofox_sad_reach, neofox_santa, neofox_science, neofox_scream, neofox_scream_angry, neofox_scream_scared, neofox_scream_stare, neofox_shocked, neofox_shy, neofox_sign_aaa, neofox_sign_no, neofox_sign_nya, neofox_sign_thx, neofox_sign_yes, neofox_sign_yip, neofox_sip, neofox_sip_glare, neofox_sip_nervous, neofox_sip_owo, neofox_smol, neofox_smug, neofox_snug, neofox_snug_glare, neofox_snug_nervous, neofox_snug_owo, neofox_snuggle, neofox_snuggle_cat, neofox_sob, neofox_solder, neofox_solder_googly, neofox_stretch_dl, neofox_stretch_down, neofox_stretch_down_end, neofox_stretch_dr, neofox_stretch_h, neofox_stretch_left, neofox_stretch_right, neofox_stretch_ul, neofox_stretch_up, neofox_stretch_ur, neofox_stretch_v, neofox_surprised, neofox_surprised_pika, neofox_sweat, neofox_thief, neofox_think, neofox_think_anime, neofox_think_cool, neofox_think_googly, neofox_think_owo, neofox_think_woozy, neofox_thinking, neofox_thonk, neofox_thumbsdown, neofox_thumbsup, neofox_up, neofox_up__w_, neofox_up_paws, neofox_up_sleep, neofox_uwu, neofox_verified, neofox_vr, neofox_what, neofox_wink, neofox_wink_blep, neofox_woozy, neofox_x_x, neofox_yeet, neofox_yell"
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "go-ini/testdata/minimal.ini",
+      "upstream": "go-ini",
+      "upstreamUrl": "https://github.com/go-ini/ini",
+      "upstreamSha": "2045e714610fdab6c659c937154732ca28f65213",
+      "kind": "valid",
+      "source": "[author]\nE-MAIL = u@gogs.io",
+      "sourceSha256": "9582f8463b9d337cba4793a494091ec230d70696fd4b9005b889050908cb0259",
+      "expected": {
+        "author": {
+          "E-MAIL": "u@gogs.io"
+        }
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "go-ini/testdata/multiline_eof.ini",
+      "upstream": "go-ini",
+      "upstreamUrl": "https://github.com/go-ini/ini",
+      "upstreamSha": "2045e714610fdab6c659c937154732ca28f65213",
+      "kind": "valid",
+      "source": "value1 = some text here\n\tsome more text here 2",
+      "sourceSha256": "319ebd7454cc20511a810a88d7667241b0675f665dee91f5c91a4f2eaab6fdb3",
+      "expected": {
+        "value1": "some text here",
+        "some more text here 2": true
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "go-ini/testdata/multiline.ini",
+      "upstream": "go-ini",
+      "upstreamUrl": "https://github.com/go-ini/ini",
+      "upstreamSha": "2045e714610fdab6c659c937154732ca28f65213",
+      "kind": "valid",
+      "source": "value1 = some text here\n\tsome more text here\n\t\n\tthere is an empty line above and below\n\t\n\nvalue2 = there is an empty line above\n    that is not indented so it should not be part\n    of the value\n\nvalue3 = .\n \n Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Eu consequat ac felis donec et odio pellentesque diam volutpat. Mauris commodo quis imperdiet massa tincidunt nunc. Interdum velit euismod in pellentesque. Nisl condimentum id venenatis a condimentum vitae sapien pellentesque. Nascetur ridiculus mus mauris vitae. Posuere urna nec tincidunt praesent semper feugiat. Lorem donec massa sapien faucibus et molestie ac feugiat sed. Ipsum dolor sit amet consectetur adipiscing elit. Enim sed faucibus turpis in eu mi. A diam sollicitudin tempor id. Quam nulla porttitor massa id neque aliquam vestibulum morbi blandit.\n \n Lectus sit amet est placerat in egestas. At risus viverra adipiscing at in tellus integer. Tristique senectus et netus et malesuada fames ac. In hac habitasse platea dictumst. Purus in mollis nunc sed. Pellentesque sit amet porttitor eget dolor morbi. Elit at imperdiet dui accumsan sit amet nulla. Cursus in hac habitasse platea dictumst. Bibendum arcu vitae elementum curabitur. Faucibus ornare suspendisse sed nisi lacus. In vitae turpis massa sed. Libero nunc consequat interdum varius sit amet. Molestie a iaculis at erat pellentesque.\n \n Dui faucibus in ornare quam viverra orci sagittis eu. Purus in mollis nunc sed id semper. Sed arcu non odio euismod lacinia at. Quis commodo odio aenean sed adipiscing diam donec. Quisque id diam vel quam elementum pulvinar. Lorem ipsum dolor sit amet. Purus ut faucibus pulvinar elementum integer enim neque volutpat ac. Fermentum posuere urna nec tincidunt praesent semper feugiat nibh sed. Gravida rutrum quisque non tellus orci. Ipsum dolor sit amet consectetur adipiscing elit pellentesque habitant. Et sollicitudin ac orci phasellus egestas tellus rutrum tellus pellentesque. Eget gravida cum sociis natoque penatibus et magnis. Elementum eu facilisis sed odio morbi quis commodo. Mollis nunc sed id semper risus in hendrerit gravida rutrum. Lorem dolor sed viverra ipsum.\n \n Pellentesque adipiscing commodo elit at imperdiet dui accumsan sit amet. Justo eget magna fermentum iaculis eu non diam. Condimentum mattis pellentesque id nibh tortor id aliquet lectus. Tellus molestie nunc non blandit massa enim. Mauris ultrices eros in cursus turpis. Purus viverra accumsan in nisl nisi scelerisque. Quis lectus nulla at volutpat. Purus ut faucibus pulvinar elementum integer enim. In pellentesque massa placerat duis ultricies lacus sed turpis. Elit sed vulputate mi sit amet mauris commodo. Tellus elementum sagittis vitae et. Duis tristique sollicitudin nibh sit amet commodo nulla facilisi nullam. Lectus vestibulum mattis ullamcorper velit sed ullamcorper morbi tincidunt ornare. Libero id faucibus nisl tincidunt eget nullam. Mattis aliquam faucibus purus in massa tempor. Fames ac turpis egestas sed tempus urna. Gravida in fermentum et sollicitudin ac orci phasellus egestas.\n \n Blandit turpis cursus in hac habitasse. Sed id semper risus in. Amet porttitor eget dolor morbi non arcu. Rhoncus est pellentesque elit ullamcorper dignissim cras tincidunt. Ut morbi tincidunt augue interdum velit. Lorem mollis aliquam ut porttitor leo a. Nunc eget lorem dolor sed viverra. Scelerisque mauris pellentesque pulvinar pellentesque. Elit at imperdiet dui accumsan sit amet. Eget magna fermentum iaculis eu non diam phasellus vestibulum lorem. Laoreet non curabitur gravida arcu ac tortor dignissim. Tortor pretium viverra suspendisse potenti nullam ac tortor vitae purus. Lacus sed viverra tellus in hac habitasse platea dictumst vestibulum. Viverra adipiscing at in tellus. Duis at tellus at urna condimentum. Eget gravida cum sociis natoque penatibus et magnis dis parturient. Pharetra massa massa ultricies mi quis hendrerit.\n \n Mauris pellentesque pulvinar pellentesque habitant morbi tristique. Maecenas volutpat blandit aliquam etiam. Sed turpis tincidunt id aliquet. Eget duis at tellus at urna condimentum. Pellentesque habitant morbi tristique senectus et. Amet aliquam id diam maecenas. Volutpat est velit egestas dui id. Vulputate eu scelerisque felis imperdiet proin fermentum leo vel orci. Massa sed elementum tempus egestas sed sed risus pretium. Quam quisque id diam vel quam elementum pulvinar etiam non. Sapien faucibus et molestie ac. Ipsum dolor sit amet consectetur adipiscing. Viverra orci sagittis eu volutpat. Leo urna molestie at elementum. Commodo viverra maecenas accumsan lacus. Non sodales neque sodales ut etiam sit amet. Habitant morbi tristique senectus et netus et malesuada fames. Habitant morbi tristique senectus et netus et malesuada. Blandit aliquam etiam erat velit scelerisque in. Varius duis at consectetur lorem donec massa sapien faucibus et.\n \n Augue mauris augue neque gravida in. Odio ut sem nulla pharetra diam sit amet nisl suscipit. Nulla aliquet enim tortor at auctor urna nunc id. Morbi tristique senectus et netus et malesuada fames ac. Quam id leo in vitae turpis massa sed elementum tempus. Ipsum faucibus vitae aliquet nec ullamcorper sit amet risus nullam. Maecenas volutpat blandit aliquam etiam erat velit scelerisque in. Sagittis nisl rhoncus mattis rhoncus urna neque viverra justo. Massa tempor nec feugiat nisl pretium. Vulputate sapien nec sagittis aliquam malesuada bibendum arcu vitae elementum. Enim lobortis scelerisque fermentum dui faucibus in ornare. Faucibus ornare suspendisse sed nisi lacus. Morbi tristique senectus et netus et malesuada fames. Malesuada pellentesque elit eget gravida cum sociis natoque penatibus et. Dictum non consectetur a erat nam at. Leo urna molestie at elementum eu facilisis sed odio morbi. Quam id leo in vitae turpis massa. Neque egestas congue quisque egestas diam in arcu. Varius morbi enim nunc faucibus a pellentesque sit. Aliquet enim tortor at auctor urna.\n \n Elit scelerisque mauris pellentesque pulvinar pellentesque habitant morbi tristique. Luctus accumsan tortor posuere ac. Eu ultrices vitae auctor eu augue ut lectus arcu bibendum. Pretium nibh ipsum consequat nisl vel pretium lectus. Aliquam etiam erat velit scelerisque in dictum. Sem et tortor consequat id porta nibh venenatis cras sed. A scelerisque purus semper eget duis at tellus at urna. At auctor urna nunc id. Ornare quam viverra orci sagittis eu volutpat odio. Nisl purus in mollis nunc sed id semper. Ornare suspendisse sed nisi lacus sed. Consectetur lorem donec massa sapien faucibus et. Ipsum dolor sit amet consectetur adipiscing elit ut. Porta nibh venenatis cras sed. Dignissim diam quis enim lobortis scelerisque. Quam nulla porttitor massa id. Tellus molestie nunc non blandit massa.\n \n Malesuada fames ac turpis egestas. Suscipit tellus mauris a diam maecenas. Turpis in eu mi bibendum neque egestas. Venenatis tellus in metus vulputate eu scelerisque felis imperdiet. Quis imperdiet massa tincidunt nunc pulvinar sapien et. Urna duis convallis convallis tellus id. Velit egestas dui id ornare arcu odio. Consectetur purus ut faucibus pulvinar elementum integer enim neque. Aenean sed adipiscing diam donec adipiscing tristique. Tortor aliquam nulla facilisi cras fermentum odio eu. Diam in arcu cursus euismod quis viverra nibh cras.\n \n Id ornare arcu odio ut sem. Arcu dictum varius duis at consectetur lorem donec massa sapien. Proin libero nunc consequat interdum varius sit. Ut eu sem integer vitae justo. Vitae elementum curabitur vitae nunc. Diam quam nulla porttitor massa. Lectus mauris ultrices eros in cursus turpis massa tincidunt dui. Natoque penatibus et magnis dis parturient montes. Pellentesque habitant morbi tristique senectus et netus et malesuada fames. Libero nunc consequat interdum varius sit. Rhoncus dolor purus non enim praesent. Pellentesque sit amet porttitor eget. Nibh tortor id aliquet lectus proin nibh. Fermentum iaculis eu non diam phasellus vestibulum lorem sed.\n \n Eu feugiat pretium nibh ipsum consequat nisl vel pretium lectus. Habitant morbi tristique senectus et netus et malesuada fames ac. Urna condimentum mattis pellentesque id. Lorem sed risus ultricies tristique nulla aliquet enim tortor at. Ipsum dolor sit amet consectetur adipiscing elit. Convallis a cras semper auctor neque vitae tempus quam. A diam sollicitudin tempor id eu nisl nunc mi ipsum. Maecenas sed enim ut sem viverra aliquet eget. Massa enim nec dui nunc mattis enim. Nam aliquam sem et tortor consequat. Adipiscing commodo elit at imperdiet dui accumsan sit amet nulla. Nullam eget felis eget nunc lobortis. Mauris a diam maecenas sed enim ut sem viverra. Ornare massa eget egestas purus. In hac habitasse platea dictumst. Ut tortor pretium viverra suspendisse potenti nullam ac tortor. Nisl nunc mi ipsum faucibus. At varius vel pharetra vel. Mauris ultrices eros in cursus turpis massa tincidunt.\n",
+      "sourceSha256": "d40990fb2ad9bd75834d03bc927a4629fdecf7feff2a2ebb63711f01254c16f6",
+      "expected": {
+        "value1": "some text here",
+        "some more text here": true,
+        "there is an empty line above and below": true,
+        "value2": "there is an empty line above",
+        "that is not indented so it should not be part": true,
+        "of the value": true,
+        "value3": ".",
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Eu consequat ac felis donec et odio pellentesque diam volutpat. Mauris commodo quis imperdiet massa tincidunt nunc. Interdum velit euismod in pellentesque. Nisl condimentum id venenatis a condimentum vitae sapien pellentesque. Nascetur ridiculus mus mauris vitae. Posuere urna nec tincidunt praesent semper feugiat. Lorem donec massa sapien faucibus et molestie ac feugiat sed. Ipsum dolor sit amet consectetur adipiscing elit. Enim sed faucibus turpis in eu mi. A diam sollicitudin tempor id. Quam nulla porttitor massa id neque aliquam vestibulum morbi blandit.": true,
+        "Lectus sit amet est placerat in egestas. At risus viverra adipiscing at in tellus integer. Tristique senectus et netus et malesuada fames ac. In hac habitasse platea dictumst. Purus in mollis nunc sed. Pellentesque sit amet porttitor eget dolor morbi. Elit at imperdiet dui accumsan sit amet nulla. Cursus in hac habitasse platea dictumst. Bibendum arcu vitae elementum curabitur. Faucibus ornare suspendisse sed nisi lacus. In vitae turpis massa sed. Libero nunc consequat interdum varius sit amet. Molestie a iaculis at erat pellentesque.": true,
+        "Dui faucibus in ornare quam viverra orci sagittis eu. Purus in mollis nunc sed id semper. Sed arcu non odio euismod lacinia at. Quis commodo odio aenean sed adipiscing diam donec. Quisque id diam vel quam elementum pulvinar. Lorem ipsum dolor sit amet. Purus ut faucibus pulvinar elementum integer enim neque volutpat ac. Fermentum posuere urna nec tincidunt praesent semper feugiat nibh sed. Gravida rutrum quisque non tellus orci. Ipsum dolor sit amet consectetur adipiscing elit pellentesque habitant. Et sollicitudin ac orci phasellus egestas tellus rutrum tellus pellentesque. Eget gravida cum sociis natoque penatibus et magnis. Elementum eu facilisis sed odio morbi quis commodo. Mollis nunc sed id semper risus in hendrerit gravida rutrum. Lorem dolor sed viverra ipsum.": true,
+        "Pellentesque adipiscing commodo elit at imperdiet dui accumsan sit amet. Justo eget magna fermentum iaculis eu non diam. Condimentum mattis pellentesque id nibh tortor id aliquet lectus. Tellus molestie nunc non blandit massa enim. Mauris ultrices eros in cursus turpis. Purus viverra accumsan in nisl nisi scelerisque. Quis lectus nulla at volutpat. Purus ut faucibus pulvinar elementum integer enim. In pellentesque massa placerat duis ultricies lacus sed turpis. Elit sed vulputate mi sit amet mauris commodo. Tellus elementum sagittis vitae et. Duis tristique sollicitudin nibh sit amet commodo nulla facilisi nullam. Lectus vestibulum mattis ullamcorper velit sed ullamcorper morbi tincidunt ornare. Libero id faucibus nisl tincidunt eget nullam. Mattis aliquam faucibus purus in massa tempor. Fames ac turpis egestas sed tempus urna. Gravida in fermentum et sollicitudin ac orci phasellus egestas.": true,
+        "Blandit turpis cursus in hac habitasse. Sed id semper risus in. Amet porttitor eget dolor morbi non arcu. Rhoncus est pellentesque elit ullamcorper dignissim cras tincidunt. Ut morbi tincidunt augue interdum velit. Lorem mollis aliquam ut porttitor leo a. Nunc eget lorem dolor sed viverra. Scelerisque mauris pellentesque pulvinar pellentesque. Elit at imperdiet dui accumsan sit amet. Eget magna fermentum iaculis eu non diam phasellus vestibulum lorem. Laoreet non curabitur gravida arcu ac tortor dignissim. Tortor pretium viverra suspendisse potenti nullam ac tortor vitae purus. Lacus sed viverra tellus in hac habitasse platea dictumst vestibulum. Viverra adipiscing at in tellus. Duis at tellus at urna condimentum. Eget gravida cum sociis natoque penatibus et magnis dis parturient. Pharetra massa massa ultricies mi quis hendrerit.": true,
+        "Mauris pellentesque pulvinar pellentesque habitant morbi tristique. Maecenas volutpat blandit aliquam etiam. Sed turpis tincidunt id aliquet. Eget duis at tellus at urna condimentum. Pellentesque habitant morbi tristique senectus et. Amet aliquam id diam maecenas. Volutpat est velit egestas dui id. Vulputate eu scelerisque felis imperdiet proin fermentum leo vel orci. Massa sed elementum tempus egestas sed sed risus pretium. Quam quisque id diam vel quam elementum pulvinar etiam non. Sapien faucibus et molestie ac. Ipsum dolor sit amet consectetur adipiscing. Viverra orci sagittis eu volutpat. Leo urna molestie at elementum. Commodo viverra maecenas accumsan lacus. Non sodales neque sodales ut etiam sit amet. Habitant morbi tristique senectus et netus et malesuada fames. Habitant morbi tristique senectus et netus et malesuada. Blandit aliquam etiam erat velit scelerisque in. Varius duis at consectetur lorem donec massa sapien faucibus et.": true,
+        "Augue mauris augue neque gravida in. Odio ut sem nulla pharetra diam sit amet nisl suscipit. Nulla aliquet enim tortor at auctor urna nunc id. Morbi tristique senectus et netus et malesuada fames ac. Quam id leo in vitae turpis massa sed elementum tempus. Ipsum faucibus vitae aliquet nec ullamcorper sit amet risus nullam. Maecenas volutpat blandit aliquam etiam erat velit scelerisque in. Sagittis nisl rhoncus mattis rhoncus urna neque viverra justo. Massa tempor nec feugiat nisl pretium. Vulputate sapien nec sagittis aliquam malesuada bibendum arcu vitae elementum. Enim lobortis scelerisque fermentum dui faucibus in ornare. Faucibus ornare suspendisse sed nisi lacus. Morbi tristique senectus et netus et malesuada fames. Malesuada pellentesque elit eget gravida cum sociis natoque penatibus et. Dictum non consectetur a erat nam at. Leo urna molestie at elementum eu facilisis sed odio morbi. Quam id leo in vitae turpis massa. Neque egestas congue quisque egestas diam in arcu. Varius morbi enim nunc faucibus a pellentesque sit. Aliquet enim tortor at auctor urna.": true,
+        "Elit scelerisque mauris pellentesque pulvinar pellentesque habitant morbi tristique. Luctus accumsan tortor posuere ac. Eu ultrices vitae auctor eu augue ut lectus arcu bibendum. Pretium nibh ipsum consequat nisl vel pretium lectus. Aliquam etiam erat velit scelerisque in dictum. Sem et tortor consequat id porta nibh venenatis cras sed. A scelerisque purus semper eget duis at tellus at urna. At auctor urna nunc id. Ornare quam viverra orci sagittis eu volutpat odio. Nisl purus in mollis nunc sed id semper. Ornare suspendisse sed nisi lacus sed. Consectetur lorem donec massa sapien faucibus et. Ipsum dolor sit amet consectetur adipiscing elit ut. Porta nibh venenatis cras sed. Dignissim diam quis enim lobortis scelerisque. Quam nulla porttitor massa id. Tellus molestie nunc non blandit massa.": true,
+        "Malesuada fames ac turpis egestas. Suscipit tellus mauris a diam maecenas. Turpis in eu mi bibendum neque egestas. Venenatis tellus in metus vulputate eu scelerisque felis imperdiet. Quis imperdiet massa tincidunt nunc pulvinar sapien et. Urna duis convallis convallis tellus id. Velit egestas dui id ornare arcu odio. Consectetur purus ut faucibus pulvinar elementum integer enim neque. Aenean sed adipiscing diam donec adipiscing tristique. Tortor aliquam nulla facilisi cras fermentum odio eu. Diam in arcu cursus euismod quis viverra nibh cras.": true,
+        "Id ornare arcu odio ut sem. Arcu dictum varius duis at consectetur lorem donec massa sapien. Proin libero nunc consequat interdum varius sit. Ut eu sem integer vitae justo. Vitae elementum curabitur vitae nunc. Diam quam nulla porttitor massa. Lectus mauris ultrices eros in cursus turpis massa tincidunt dui. Natoque penatibus et magnis dis parturient montes. Pellentesque habitant morbi tristique senectus et netus et malesuada fames. Libero nunc consequat interdum varius sit. Rhoncus dolor purus non enim praesent. Pellentesque sit amet porttitor eget. Nibh tortor id aliquet lectus proin nibh. Fermentum iaculis eu non diam phasellus vestibulum lorem sed.": true,
+        "Eu feugiat pretium nibh ipsum consequat nisl vel pretium lectus. Habitant morbi tristique senectus et netus et malesuada fames ac. Urna condimentum mattis pellentesque id. Lorem sed risus ultricies tristique nulla aliquet enim tortor at. Ipsum dolor sit amet consectetur adipiscing elit. Convallis a cras semper auctor neque vitae tempus quam. A diam sollicitudin tempor id eu nisl nunc mi ipsum. Maecenas sed enim ut sem viverra aliquet eget. Massa enim nec dui nunc mattis enim. Nam aliquam sem et tortor consequat. Adipiscing commodo elit at imperdiet dui accumsan sit amet nulla. Nullam eget felis eget nunc lobortis. Mauris a diam maecenas sed enim ut sem viverra. Ornare massa eget egestas purus. In hac habitasse platea dictumst. Ut tortor pretium viverra suspendisse potenti nullam ac tortor. Nisl nunc mi ipsum faucibus. At varius vel pharetra vel. Mauris ultrices eros in cursus turpis massa tincidunt.": true
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "go-ini/testdata/UTF-16-BE-BOM.ini",
+      "upstream": "go-ini",
+      "upstreamUrl": "https://github.com/go-ini/ini",
+      "upstreamSha": "2045e714610fdab6c659c937154732ca28f65213",
+      "kind": "valid",
+      "source": "��\u0000[\u0000a\u0000u\u0000t\u0000h\u0000o\u0000r\u0000]\u0000\n\u0000E\u0000-\u0000M\u0000A\u0000I\u0000L\u0000 \u0000=\u0000 \u0000e\u0000x\u0000a\u0000m\u0000p\u0000l\u0000e\u0000@\u0000e\u0000m\u0000a\u0000i\u0000l\u0000.\u0000c\u0000o\u0000m",
+      "sourceSha256": "c5ff4533d305329977b380ae2ebe99d57fb8cbf5997e39565af7e64e93a0d678",
+      "expected": {
+        "��\u0000[\u0000a\u0000u\u0000t\u0000h\u0000o\u0000r\u0000]\u0000": true,
+        "\u0000E\u0000-\u0000M\u0000A\u0000I\u0000L\u0000 \u0000": "\u0000 \u0000e\u0000x\u0000a\u0000m\u0000p\u0000l\u0000e\u0000@\u0000e\u0000m\u0000a\u0000i\u0000l\u0000.\u0000c\u0000o\u0000m"
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "go-ini/testdata/UTF-16-LE-BOM.ini",
+      "upstream": "go-ini",
+      "upstreamUrl": "https://github.com/go-ini/ini",
+      "upstreamSha": "2045e714610fdab6c659c937154732ca28f65213",
+      "kind": "valid",
+      "source": "��[\u0000a\u0000u\u0000t\u0000h\u0000o\u0000r\u0000]\u0000\n\u0000E\u0000-\u0000M\u0000A\u0000I\u0000L\u0000 \u0000=\u0000 \u0000e\u0000x\u0000a\u0000m\u0000p\u0000l\u0000e\u0000@\u0000e\u0000m\u0000a\u0000i\u0000l\u0000.\u0000c\u0000o\u0000m\u0000",
+      "sourceSha256": "1fc5df0b9e3af4f24495268a07787f5312d87e4373e4c789c730ce593e03766c",
+      "expected": {
+        "��[\u0000a\u0000u\u0000t\u0000h\u0000o\u0000r\u0000]\u0000": true,
+        "\u0000E\u0000-\u0000M\u0000A\u0000I\u0000L\u0000 \u0000": "\u0000 \u0000e\u0000x\u0000a\u0000m\u0000p\u0000l\u0000e\u0000@\u0000e\u0000m\u0000a\u0000i\u0000l\u0000.\u0000c\u0000o\u0000m\u0000"
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "go-ini/testdata/UTF-8-BOM.ini",
+      "upstream": "go-ini",
+      "upstreamUrl": "https://github.com/go-ini/ini",
+      "upstreamSha": "2045e714610fdab6c659c937154732ca28f65213",
+      "kind": "valid",
+      "source": "﻿[author]\nE-MAIL = example@email.com",
+      "sourceSha256": "d3082a7876d9143588c868a907e46f703621aa2ade3a2bd1faa0de912a15f406",
+      "expected": {
+        "[author]": true,
+        "E-MAIL": "example@email.com"
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "inih/examples/test.ini",
+      "upstream": "inih",
+      "upstreamUrl": "https://github.com/benhoyt/inih",
+      "upstreamSha": "577ae2dee1f0d9c2d11c7f10375c1715f3d6940c",
+      "kind": "valid",
+      "source": "; Test config file for ini_example.c and INIReaderTest.cpp\n\n[protocol]               ; Protocol configuration\nversion=6                ; IPv6\n\n[user]\nname = Bob Smith         ; Spaces around '=' are stripped\nemail = bob@smith.com    ; And comments (like this) ignored\nactive = true            ; Test a boolean\npi = 3.14159             ; Test a floating point number\ntrillion = 1000000000000 ; Test 64-bit integers\n",
+      "sourceSha256": "41eacdf14015e89ad7db2134f09052d5b935cea65993298a5c1730c3f2dda3e0",
+      "expected": {
+        "[protocol]": true,
+        "version": "6",
+        "user": {
+          "name": "Bob Smith",
+          "email": "bob@smith.com",
+          "active": true,
+          "pi": "3.14159",
+          "trillion": "1000000000000"
+        }
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "inih/fuzzing/testcases/case1.ini",
+      "upstream": "inih",
+      "upstreamUrl": "https://github.com/benhoyt/inih",
+      "upstreamSha": "577ae2dee1f0d9c2d11c7f10375c1715f3d6940c",
+      "kind": "valid",
+      "source": "; comment\n\n[foo] ; section\nbar=1 ; name=value\n\n[bar]\nname = Bob\nage: 42\n",
+      "sourceSha256": "9284ad7f3fa8b5d15bdc9bfa729ce15f8d5198fc15a5cac211914a3a83de6fdd",
+      "expected": {
+        "[foo]": true,
+        "bar": "1"
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "inih/tests/bad_comment.ini",
+      "upstream": "inih",
+      "upstreamUrl": "https://github.com/benhoyt/inih",
+      "upstreamSha": "577ae2dee1f0d9c2d11c7f10375c1715f3d6940c",
+      "kind": "invalid",
+      "source": "This is an error\n",
+      "sourceSha256": "1126ecbebd70c2e8855fc16e47903b57987073b4168ebb9fa1ce598f1547c4e8",
+      "expected": null,
+      "oracleAccepts": true,
+      "label": "inih tests/baseline_single.txt records e=1: line 1 \"This is an error\" is neither section, comment nor name=value"
+    },
+    {
+      "name": "inih/tests/bad_multi.ini",
+      "upstream": "inih",
+      "upstreamUrl": "https://github.com/benhoyt/inih",
+      "upstreamSha": "577ae2dee1f0d9c2d11c7f10375c1715f3d6940c",
+      "kind": "invalid",
+      "source": "  indented\n",
+      "sourceSha256": "25c32f97996dce00e1b52e726b6b6e77c50d288f5db12a2026cfd9aee8499718",
+      "expected": null,
+      "oracleAccepts": true,
+      "label": "inih ships it as bad_*: a leading indented continuation line with no preceding name=value"
+    },
+    {
+      "name": "inih/tests/bad_section.ini",
+      "upstream": "inih",
+      "upstreamUrl": "https://github.com/benhoyt/inih",
+      "upstreamSha": "577ae2dee1f0d9c2d11c7f10375c1715f3d6940c",
+      "kind": "invalid",
+      "source": "[section1]\nname1=value1\n[section2\n[section3   ; comment ]\nname2=value2\n",
+      "sourceSha256": "718d3f71e0cff713ca84882cd6bc5ac69633b3755df80bfb8dd43685bd0fbead",
+      "expected": null,
+      "oracleAccepts": true,
+      "label": "inih tests/baseline_single.txt records e=3 (error on line 3): \"[section2\" is an unterminated section header"
+    },
+    {
+      "name": "inih/tests/bom.ini",
+      "upstream": "inih",
+      "upstreamUrl": "https://github.com/benhoyt/inih",
+      "upstreamSha": "577ae2dee1f0d9c2d11c7f10375c1715f3d6940c",
+      "kind": "valid",
+      "source": "﻿[bom_section]\nbom_name=bom_value\nkey“ = value“\n",
+      "sourceSha256": "1277480adb4ef1398aedc8a3bccf1abc3ead79c2cbea207628a02a389cafeb6c",
+      "expected": {
+        "[bom_section]": true,
+        "bom_name": "bom_value",
+        "key“": "value“"
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "inih/tests/duplicate_sections.ini",
+      "upstream": "inih",
+      "upstreamUrl": "https://github.com/benhoyt/inih",
+      "upstreamSha": "577ae2dee1f0d9c2d11c7f10375c1715f3d6940c",
+      "kind": "valid",
+      "source": "[section1]\nsingle1 = abc\nsingle2 = xyz\n[section1]\nsingle1 = def\nsingle2 = qrs",
+      "sourceSha256": "e431760754ba1fa6dcc7b4021b6eac55efb3297a327aadfb0a79553fd8e11389",
+      "expected": {
+        "section1": {
+          "single1": "def",
+          "single2": "qrs"
+        }
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "inih/tests/long_line.ini",
+      "upstream": "inih",
+      "upstreamUrl": "https://github.com/benhoyt/inih",
+      "upstreamSha": "577ae2dee1f0d9c2d11c7f10375c1715f3d6940c",
+      "kind": "valid",
+      "source": "# These tests are\n# only interesting\n# when\n# INI_MAX_LINE=20\n\n[width = 18]\n_123456789=1234567\n\n[width = 19]\n_123456789=12345678\n\n[width = 20]\n_123456789=123456789\n\n[2 assigns]\n_123456789=12345678name=value\n\n[no trailing \\n]\n# trigger a false\n# positive in the\n# incomplete line\n# detection\n_123456782=12345678",
+      "sourceSha256": "0982ef47ea2372dbc971f51238bd4c58a69089cd976a4fb92b71e7dff02b4e8a",
+      "expected": {
+        "width = 18": {
+          "_123456789": "1234567"
+        },
+        "width = 19": {
+          "_123456789": "12345678"
+        },
+        "width = 20": {
+          "_123456789": "123456789"
+        },
+        "2 assigns": {
+          "_123456789": "12345678name=value"
+        },
+        "no trailing \\n": {
+          "_123456782": "12345678"
+        }
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "inih/tests/long_section.ini",
+      "upstream": "inih",
+      "upstreamUrl": "https://github.com/benhoyt/inih",
+      "upstreamSha": "577ae2dee1f0d9c2d11c7f10375c1715f3d6940c",
+      "kind": "valid",
+      "source": "# check that section is truncated\n[_123456789_123456789_123456789_123456789_123456789_123456789]\nname = value\n",
+      "sourceSha256": "d30b9e083f71c6bd2782152d1caa3e5bfc301cf531b6a7de53e14563b9f99ce0",
+      "expected": {
+        "_123456789_123456789_123456789_123456789_123456789_123456789": {
+          "name": "value"
+        }
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "inih/tests/multi_line.ini",
+      "upstream": "inih",
+      "upstreamUrl": "https://github.com/benhoyt/inih",
+      "upstreamSha": "577ae2dee1f0d9c2d11c7f10375c1715f3d6940c",
+      "kind": "valid",
+      "source": "[section1]\nsingle1 = abc\nmulti = this is a\n        multi-line value\nsingle2 = xyz\n[section2]\nmulti = a\n        b\n        c\n[section3]\nsingle: ghi\nmulti: the quick\n       brown fox\nname = bob smith  ; comment line 1\n                  ; comment line 2\nfoo = bar ;c1\n      Hi World ;c2\n",
+      "sourceSha256": "8c7cf26b6d12123e9e8f7035b312575c730ec7b67dca6f2e002651b33e051bf1",
+      "expected": {
+        "section1": {
+          "single1": "abc",
+          "multi": "this is a",
+          "multi-line value": true,
+          "single2": "xyz"
+        },
+        "section2": {
+          "multi": "a",
+          "b": true,
+          "c": true
+        },
+        "section3": {
+          "single: ghi": true,
+          "multi: the quick": true,
+          "brown fox": true,
+          "name": "bob smith",
+          "foo": "bar",
+          "Hi World": true
+        }
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "inih/tests/name_only_after_error.ini",
+      "upstream": "inih",
+      "upstreamUrl": "https://github.com/benhoyt/inih",
+      "upstreamSha": "577ae2dee1f0d9c2d11c7f10375c1715f3d6940c",
+      "kind": "invalid",
+      "source": "; Test case to ensure name only options are still processed after an error if\n; INI_ALLOW_NO_VALUE is set.\n\n; Deliberately cause an error due to unterminated section.\n[broken\n\n; This should still be processed (unless INI_STOP_ON_FIRST_ERROR is set).\nname\n",
+      "sourceSha256": "a61332751cf055e364322e8fa6332a7d0748cc53c932b87dd984a58b872ab5f6",
+      "expected": null,
+      "oracleAccepts": true,
+      "label": "the file's own comment: \"Deliberately cause an error due to unterminated section\" ([broken)"
+    },
+    {
+      "name": "inih/tests/no_value.ini",
+      "upstream": "inih",
+      "upstreamUrl": "https://github.com/benhoyt/inih",
+      "upstreamSha": "577ae2dee1f0d9c2d11c7f10375c1715f3d6940c",
+      "kind": "valid",
+      "source": "[section_list]\r\nsection0\r\nsection1\r\n\r\n[section0]\r\nkey0=val0\r\n\r\n[section1]\r\nkey1=val1\r\n",
+      "sourceSha256": "3ff488d63951f9e6b9f01097745beec8aab4abac8e591d9449a3c2a56665b4ef",
+      "expected": {
+        "section_list": {
+          "section0": true,
+          "section1": true
+        },
+        "section0": {
+          "key0": "val0"
+        },
+        "section1": {
+          "key1": "val1"
+        }
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "inih/tests/normal.ini",
+      "upstream": "inih",
+      "upstreamUrl": "https://github.com/benhoyt/inih",
+      "upstreamSha": "577ae2dee1f0d9c2d11c7f10375c1715f3d6940c",
+      "kind": "valid",
+      "source": "; This is an INI file\n[section1]  ; section comment\none=This is a test  ; name=value comment\ntwo = 1234\n; x=y\n\n[ section 2 ]\nhappy  =  4\nsad =\n\n[empty]\n; do nothing\n\n[comment_test]\ntest1 = 1;2;3 ; only this will be a comment\ntest2 = 2;3;4;this won't be a comment, needs whitespace before ';'\ntest;3 = 345 ; key should be \"test;3\"\ntest4 = 4#5#6 ; '#' only starts a comment at start of line\n#test5 = 567 ; entire line commented\n # test6 = 678 ; entire line commented, except in MULTILINE mode\ntest7 = ; blank value, except if inline comments disabled\ntest8 =; not a comment, needs whitespace before ';'\n\n[colon_tests]\nContent-Type: text/html\nfoo:bar\nadams : 42\nfunny1 : with = equals\nfunny2 = with : colons\nfunny3 = two = equals\nfunny4 : two : colons\n",
+      "sourceSha256": "1698dab99f3d161a6af374bc0073f6c0b7954ff53eec5fcc812aae5a4f210adf",
+      "expected": {
+        "[section1]": true,
+        "one": "This is a test",
+        "two": "1234",
+        "section 2": {
+          "happy": "4",
+          "sad": ""
+        },
+        "empty": {},
+        "comment_test": {
+          "test1": "1",
+          "test2": "2",
+          "test": "345",
+          "test4": "4",
+          "test7": "",
+          "test8": ""
+        },
+        "colon_tests": {
+          "Content-Type: text/html": true,
+          "foo:bar": true,
+          "adams : 42": true,
+          "funny1 : with": "equals",
+          "funny2": "with : colons",
+          "funny3": "two = equals",
+          "funny4 : two : colons": true
+        }
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "inih/tests/user_error.ini",
+      "upstream": "inih",
+      "upstreamUrl": "https://github.com/benhoyt/inih",
+      "upstreamSha": "577ae2dee1f0d9c2d11c7f10375c1715f3d6940c",
+      "kind": "valid",
+      "source": "[section]\na = b\nuser = parse_error\nc = d\n",
+      "sourceSha256": "0983ca845483eb5349765aa78bf39a27ca249bc0825383578c8cf9dccf7b044b",
+      "expected": {
+        "section": {
+          "a": "b",
+          "user": "parse_error",
+          "c": "d"
+        }
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "iniparser/example/twisted.ini",
+      "upstream": "iniparser",
+      "upstreamUrl": "https://github.com/ndevilla/iniparser",
+      "upstreamSha": "4bef811283e0ec1658c60e09950bd5a1ddc92e4b",
+      "kind": "valid",
+      "source": "#\n# Twisted.ini\n# This file is meant for regression tests\n\n# Different blank settings around the equal sign\n[blanks]\na=1\nb=1;\nc=1; comment\nd=1# comment\n\ne =1\nf =1;\ng =1; comment\nh =1# comment\n\ni= 1\nj= 1;\nk= 1; comment\nl= 1# comment\n\nm = 1\nn = 1;\no = 1; comment\np = 1# comment\n\nq=1 ;\nr=1 ; comment\ns=1 ;comment\nt=1 #comment\n\n# Empty values\n[empty]\na = ''\nb = \"\"\n\nc = '' ;\nd = \"\" ;\n\ne = '' ; comment\nf = \"\" ; comment\n\ng =\nh = ;\ni = ; comment\nj = # comment\n\nk=\nl=;\nm=;comment\nn=#\n\n# Peculiar values\n[peculiar]\na=';';\nb='#'#\nc=';';comment\nd='#'#comment\ne=\\;\nf=\\#\ng=\\;comment\nh=\\#comment\ni=;;\nj=##\nk=;;;;;;;;;;\nl=##########\n\n# Quotes\n[quotes]\ns1='\ns2=''\ns3='''\ns4=''''\n\nd1=\"\nd2=\"\"\nd3=\"\"\"\nd4=\"\"\"\"\n\nm1='\"'\nm2=\"'\"\n\nh1=hello'world\nh2='hello'world\nh3='hello'world'\n\nh4=hello\"world\nh5=\"hello\"world\nh6=\"hello\"world\"\n\n# Section names\n[a]\n[ b]\n[c ]\n[ d ]\n[ begin    end ]\n[ open[ ]\n\n# Multi-line inputs\n[multi]\na = begin\\\nend\nb = begin \\\nend\nc = begin \\\n end\nd = 1\\\n2\\\n3\\\n4\ne = 1 \\ \n    2 \\ \n    3 \\  \n    4\nf = 1 ; \\\nhidden = because of the preceding backslash multi-lining the comment ;\nvisible = 1\ng = 1 #\\\nand now this comment is hidden too \\\nand this one too\nh = 1\nmulti \\\nline \\\nkey = 1\nmulti \\\nline \\\nkey = \\\nmulti \\\nline \\\nvalue ;\n# end of file\n",
+      "sourceSha256": "40ce95a98a81099f2c4db0bb371e0b33b1e4da55217b8f0d3fcf5e3f59cee054",
+      "expected": {
+        "blanks": {
+          "a": "1",
+          "b": "1",
+          "c": "1",
+          "d": "1",
+          "e": "1",
+          "f": "1",
+          "g": "1",
+          "h": "1",
+          "i": "1",
+          "j": "1",
+          "k": "1",
+          "l": "1",
+          "m": "1",
+          "n": "1",
+          "o": "1",
+          "p": "1",
+          "q": "1",
+          "r": "1",
+          "s": "1",
+          "t": "1"
+        },
+        "empty": {
+          "a": "",
+          "b": "",
+          "c": "''",
+          "d": "\"\"",
+          "e": "''",
+          "f": "\"\"",
+          "g": "",
+          "h": "",
+          "i": "",
+          "j": "",
+          "k": "",
+          "l": "",
+          "m": "",
+          "n": ""
+        },
+        "peculiar": {
+          "a": "'",
+          "b": "'",
+          "c": "'",
+          "d": "'",
+          "e": ";",
+          "f": "#",
+          "g": ";comment",
+          "h": "#comment",
+          "i": "",
+          "j": "",
+          "k": "",
+          "l": ""
+        },
+        "quotes": {
+          "s1": "",
+          "s2": "",
+          "s3": "'",
+          "s4": "''",
+          "d1": "\"",
+          "d2": "",
+          "d3": "\"\"\"",
+          "d4": "\"\"\"\"",
+          "m1": "\"",
+          "m2": "'",
+          "h1": "hello'world",
+          "h2": "'hello'world",
+          "h3": "hello'world",
+          "h4": "hello\"world",
+          "h5": "\"hello\"world",
+          "h6": "\"hello\"world\""
+        },
+        "a": {},
+        "b": {},
+        "c": {},
+        "d": {},
+        "begin    end": {},
+        "open[": {},
+        "multi": {
+          "4": true,
+          "a": "begin\\",
+          "end": true,
+          "b": "begin \\",
+          "c": "begin \\",
+          "d": "1\\",
+          "2\\": true,
+          "3\\": true,
+          "e": "1 \\",
+          "2 \\": true,
+          "3 \\": true,
+          "f": "1",
+          "hidden": "because of the preceding backslash multi-lining the comment",
+          "visible": "1",
+          "g": "1",
+          "and now this comment is hidden too \\": true,
+          "and this one too": true,
+          "h": "1",
+          "multi \\": true,
+          "line \\": true,
+          "key": "\\",
+          "value": true
+        }
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "iniparser/test/ressources/bad_ini/ends_well.ini",
+      "upstream": "iniparser",
+      "upstreamUrl": "https://github.com/ndevilla/iniparser",
+      "upstreamSha": "4bef811283e0ec1658c60e09950bd5a1ddc92e4b",
+      "kind": "invalid",
+      "source": "#\n# This dict contains an error but ends up with a correct entry\n#\n[section]\nerror is here\na = b\n",
+      "sourceSha256": "4df0b16f451b9ab3634876159bdfd214ddbe2c571b840773f93370c93fba849a",
+      "expected": null,
+      "oracleAccepts": true,
+      "label": "shipped in iniparser's bad_ini/ directory; line 5 \"error is here\" has no separator"
+    },
+    {
+      "name": "iniparser/test/ressources/bad_ini/twisted-errors.ini",
+      "upstream": "iniparser",
+      "upstreamUrl": "https://github.com/ndevilla/iniparser",
+      "upstreamSha": "4bef811283e0ec1658c60e09950bd5a1ddc92e4b",
+      "kind": "invalid",
+      "source": "#\n# All of these should trigger syntax errors\n#\n[section]\nhello\nworld\nhello \\\nworld\na + b ;\n",
+      "sourceSha256": "568c3356bdb8d18a9222dbdbf72c31e07f65a7347b4a89552ea9c33a68276fbf",
+      "expected": null,
+      "oracleAccepts": true,
+      "label": "shipped in iniparser's bad_ini/ directory; its own comment: \"All of these should trigger syntax errors\""
+    },
+    {
+      "name": "iniparser/test/ressources/bad_ini/twisted-ofkey.ini",
+      "upstream": "iniparser",
+      "upstreamUrl": "https://github.com/ndevilla/iniparser",
+      "upstreamSha": "4bef811283e0ec1658c60e09950bd5a1ddc92e4b",
+      "kind": "valid",
+      "source": "# Stress testing buffers for overflows\n[long]\n# Shitload key size\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\\naaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa=1\n\n",
+      "sourceSha256": "fb202371e750fe06a804d515d78d46d0c5a52d67d025a4f53c7f6c093a4f6366",
+      "expected": {
+        "long": {
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\": true,
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": "1"
+        }
+      },
+      "oracleAccepts": true,
+      "label": "in bad_ini/ for buffer-overflow reasons (a ~10KB key), not syntax; a parser accepting it is not wrong"
+    },
+    {
+      "name": "iniparser/test/ressources/bad_ini/twisted-ofval.ini",
+      "upstream": "iniparser",
+      "upstreamUrl": "https://github.com/ndevilla/iniparser",
+      "upstreamSha": "4bef811283e0ec1658c60e09950bd5a1ddc92e4b",
+      "kind": "valid",
+      "source": "# Shitload data size\n[long]\na=\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\\n1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890;\n\n",
+      "sourceSha256": "6b0649d317354fac8eb00d651ae15cd51033e565d4a025fb32211fcc081f8cf3",
+      "expected": {
+        "long": {
+          "a": "\\",
+          "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890\\": true,
+          "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890": true
+        }
+      },
+      "oracleAccepts": true,
+      "label": "in bad_ini/ for buffer-overflow reasons (a ~10KB value), not syntax; a parser accepting it is not wrong"
+    },
+    {
+      "name": "iniparser/test/ressources/good_ini/empty.ini",
+      "upstream": "iniparser",
+      "upstreamUrl": "https://github.com/ndevilla/iniparser",
+      "upstreamSha": "4bef811283e0ec1658c60e09950bd5a1ddc92e4b",
+      "kind": "valid",
+      "source": "",
+      "sourceSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "expected": {},
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "iniparser/test/ressources/good_ini/spaced.ini",
+      "upstream": "iniparser",
+      "upstreamUrl": "https://github.com/ndevilla/iniparser",
+      "upstreamSha": "4bef811283e0ec1658c60e09950bd5a1ddc92e4b",
+      "kind": "valid",
+      "source": "         \n\n        \n\n\n\n\t\t\n\n\n\n\n\n\n\t\t\n\n\n",
+      "sourceSha256": "180b0316f49d783f4d7fe79c448daa22e072147e3e815fa44465344b8e2cb9d9",
+      "expected": {},
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "iniparser/test/ressources/good_ini/spaced2.ini",
+      "upstream": "iniparser",
+      "upstreamUrl": "https://github.com/ndevilla/iniparser",
+      "upstreamSha": "4bef811283e0ec1658c60e09950bd5a1ddc92e4b",
+      "kind": "valid",
+      "source": "                                        \n# spaced2.ini\n\n[blanks]\t\t\n\t\t\t\t\t\t\t\t\t\t\t\t\n\n\n\n\n\n\n\n\n\n\na=1\nb=1;\nc=1; comment\nd=1# comment\n                          \t\t",
+      "sourceSha256": "753c89d272d98baf8f74dd90b08070e4908dffb117048e1c3cb55f9b8be310bf",
+      "expected": {
+        "blanks": {
+          "a": "1",
+          "b": "1",
+          "c": "1",
+          "d": "1"
+        }
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "iniparser/test/ressources/gruezi.ini",
+      "upstream": "iniparser",
+      "upstreamUrl": "https://github.com/ndevilla/iniparser",
+      "upstreamSha": "4bef811283e0ec1658c60e09950bd5a1ddc92e4b",
+      "kind": "valid",
+      "source": "#\n# Das isch en Biispiel INI Datei\n#\n\n[Chuchichäschtli]\n\n10.123=example\nGruss=Grüzi\n",
+      "sourceSha256": "2a4c6c0a37d807c6077985096b585fdf1aceae1c80aed360bfe221345b1a7f11",
+      "expected": {
+        "Chuchichäschtli": {
+          "10.123": "example",
+          "Gruss": "Grüzi"
+        }
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "iniparser/test/ressources/old.ini",
+      "upstream": "iniparser",
+      "upstreamUrl": "https://github.com/ndevilla/iniparser",
+      "upstreamSha": "4bef811283e0ec1658c60e09950bd5a1ddc92e4b",
+      "kind": "valid",
+      "source": "[section]\nkey_01 = hello world ;test ini\n \nkey1 = 321abc\n",
+      "sourceSha256": "41f26a39ee65096d56d8197a090c18999ed47109dc97c0ff5f9f5f942c342e46",
+      "expected": {
+        "section": {
+          "key_01": "hello world",
+          "key1": "321abc"
+        }
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "iniparser/test/ressources/quotes.ini",
+      "upstream": "iniparser",
+      "upstreamUrl": "https://github.com/ndevilla/iniparser",
+      "upstreamSha": "4bef811283e0ec1658c60e09950bd5a1ddc92e4b",
+      "kind": "valid",
+      "source": "[quotes]\nstring0=\"str\\\"ing\"\nstring1=\"str;ing\"\nstring2=\"str#ing\"\nstring3=str\"ing\nstring4=str;ing\nstring5=str#ing\nstr\"ing=\"str\\\"ing\"\n\"str;ing\"=\"str;ing\"\n\"str#ing\"=\"str#ing\"\nstr:ing=\"str\\\"ing\"\n",
+      "sourceSha256": "5e3c6310e2590c19fd2eb52f745924751187827bb5667563f7c0b6f29e437328",
+      "expected": {
+        "quotes": {
+          "string0": "str\"ing",
+          "string1": "str;ing",
+          "string2": "str#ing",
+          "string3": "str\"ing",
+          "string4": "str",
+          "string5": "str",
+          "str\"ing": "str\"ing",
+          "str;ing": "str;ing",
+          "str#ing": "str#ing",
+          "str:ing": "str\"ing"
+        }
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "iniparser/test/ressources/utf8.ini",
+      "upstream": "iniparser",
+      "upstreamUrl": "https://github.com/ndevilla/iniparser",
+      "upstreamSha": "4bef811283e0ec1658c60e09950bd5a1ddc92e4b",
+      "kind": "valid",
+      "source": "#\n# これはiniファイルの例です。\n#\n\n[拉麺]\n\n叉焼      = no ;\n味噌      = TRUE ;\n海苔      = 0 ;\nメンマ    = そうだね ;\n",
+      "sourceSha256": "e64ca5dbe9d14227fc035df169228e84bf7775d17b1c3ee07c6f6fc6ce873983",
+      "expected": {
+        "拉麺": {
+          "叉焼": "no",
+          "味噌": "TRUE",
+          "海苔": "0",
+          "メンマ": "そうだね"
+        }
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "npm-ini/test/fixtures/duplicate.ini",
+      "upstream": "npm-ini",
+      "upstreamUrl": "https://github.com/npm/ini",
+      "upstreamSha": "3c96c74fd42584bd655e17a4e63e2ef0a3b406ee",
+      "kind": "valid",
+      "source": "zr[] = deedee\nzr=123\nar[] = one\nar[] = three\nstr = 3\nbrr = 1\nbrr = 2\nbrr = 3\nbrr = 3\n",
+      "sourceSha256": "46f9d2c7ae77910aa7b377f13dfbb3db01ba588dcb129aaa7142efebf7861e60",
+      "expected": {
+        "zr": [
+          "deedee",
+          "123"
+        ],
+        "ar": [
+          "one",
+          "three"
+        ],
+        "str": "3",
+        "brr": "3"
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    },
+    {
+      "name": "npm-ini/test/fixtures/foo.ini",
+      "upstream": "npm-ini",
+      "upstreamUrl": "https://github.com/npm/ini",
+      "upstreamSha": "3c96c74fd42584bd655e17a4e63e2ef0a3b406ee",
+      "kind": "valid",
+      "source": "o = p\n\n   a with spaces   =     b  c\n\n; wrap in quotes to JSON-decode and preserve spaces\n\" xa  n          p \" = \"\\\"\\r\\nyoyoyo\\r\\r\\n\"\n\n; wrap in quotes to get a key with a bracket, not a section.\n\"[disturbing]\" = hey you never know\n\n; Test single quotes\ns = 'something'\n   \n; Test mixing quotes\n\ns1 = \"something'\n\n; Test double quotes\ns2 = \"something else\"\n\n; Test blank value\ns3 =\n\n; Test value with only spaces\ns4 =        \n\n; Test quoted value with only spaces\ns5 = '   '\n\n; Test quoted value with leading and trailing spaces\ns6 = ' a '\n\n; Test no equal sign\ns7\n\n; Test bool(true)\ntrue = true\n\n; Test bool(false)\nfalse = false\n\n; Test null\nnull = null\n\n; Test undefined\nundefined = undefined\n\n; Test arrays\nzr[] = deedee\nar[] = one\nar[] = three\n; This should be included in the array\nar   = this is included\n\n; Test resetting of a value (and not turn it into an array)\nbr = cold\nbr = warm\n\neq = \"eq=eq\"\n\n; a section\n[a]\nav = a val\ne = { o: p, a: { av: a val, b: { c: { e: \"this [value]\" } } } }\nj = \"{ o: \"p\", a: { av: \"a val\", b: { c: { e: \"this [value]\" } } } }\"\n\"[]\" = a square?\n\n; Nested array\ncr[] = four\ncr[] = eight\n\n; b section with a space after its title\n[b] \n\n; nested child without middle parent\n; should create otherwise-empty a.b\n[a.b.c]\ne = 1\nj = 2\n\n; dots in the section name should be literally interpreted\n[x\\.y\\.z]\nx.y.z = xyz\n\n[x\\.y\\.z.a\\.b\\.c]\na.b.c = abc\n\n; this next one is not a comment!  it's escaped!\nnocomment = this\\; this is not a comment\n\n# Support the use of the number sign (#) as an alternative to the semicolon for indicating comments.\n# http://en.wikipedia.org/wiki/INI_file#Comments\n\n# this next one is not a comment!  it's escaped!\nnoHashComment = this\\# this is not a comment\n",
+      "sourceSha256": "b21e972be156f17fd759b678547b6035bcb579ff6fb39093f20e4a63753444c4",
+      "expected": {
+        "o": "p",
+        "a with spaces": "b  c",
+        " xa  n          p ": "\"\r\nyoyoyo\r\r\n",
+        "[disturbing]": "hey you never know",
+        "s": "something",
+        "s1": "\"something'",
+        "s2": "something else",
+        "s3": "",
+        "s4": "",
+        "s5": "   ",
+        "s6": " a ",
+        "s7": true,
+        "true": true,
+        "false": false,
+        "null": null,
+        "undefined": "undefined",
+        "zr": [
+          "deedee"
+        ],
+        "ar": [
+          "one",
+          "three",
+          "this is included"
+        ],
+        "br": "warm",
+        "eq": "eq=eq",
+        "a": {
+          "av": "a val",
+          "e": "{ o: p, a: { av: a val, b: { c: { e: \"this [value]\" } } } }",
+          "j": "\"{ o: \"p\", a: { av: \"a val\", b: { c: { e: \"this [value]\" } } } }\"",
+          "[]": "a square?",
+          "cr": [
+            "four",
+            "eight"
+          ],
+          "b": {
+            "c": {
+              "e": "1",
+              "j": "2"
+            }
+          }
+        },
+        "b": {},
+        "x.y.z": {
+          "x.y.z": "xyz",
+          "a.b.c": {
+            "a.b.c": "abc",
+            "nocomment": "this; this is not a comment",
+            "noHashComment": "this# this is not a comment"
+          }
+        }
+      },
+      "oracleAccepts": true,
+      "label": "not labelled a syntax error upstream"
+    }
+  ]
+}

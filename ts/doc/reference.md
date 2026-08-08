@@ -135,6 +135,8 @@ key = value
 - The key runs up to the first `=`, a newline, or end of input, then is
   trimmed. The value runs to the end of the line, then is trimmed.
 - A bare key with no `=` is a **boolean key**: it is set to `true`.
+  This holds anywhere a pair may appear, including as the first line of
+  the document or of a section (`[s]\nmykey` ⇒ `{ s: { mykey: true } }`).
 - A later `key = value` overwrites an earlier one (`br = cold` then
   `br = warm` ⇒ `{ br: 'warm' }`), unless the key uses array syntax.
 
@@ -146,9 +148,12 @@ key = value
 ```
 
 - A header opens a section; following keys nest under it.
+- A header lives on ONE line. An unterminated header (`[a` with no `]`)
+  is a parse error — it never runs on into the following lines.
 - Dots split the header into a nested path: `[a.b.c]` ⇒
   `{ a: { b: { c: {} } } }`. Escape a literal dot with `\.`
-  (`[x\.y]` ⇒ key `x.y`).
+  (`[x\.y]` ⇒ key `x.y`), and `\]` for a literal bracket. Any other
+  backslash is kept as written, so `[C:\path]` ⇒ key `C:\path`.
 - Top-level pairs before any header sit at the root.
 - Repeated headers are governed by [`section.duplicate`](#sectionduplicate).
 
@@ -166,7 +171,9 @@ key[] = second
 
 ### Values
 
-A value is resolved in this order:
+The value is the rest of the line, trimmed. It is then resolved in this
+order — and every rule below applies to the WHOLE value, never to a
+prefix of it:
 
 1. **Single-quoted** (`'…'`) — JSON-decoded if valid (`'{"y":{"z":6}}'`
    ⇒ `{ y: { z: 6 } }`); otherwise the inner text.
@@ -175,6 +182,17 @@ A value is resolved in this order:
 3. **`true` / `false` / `null`** (unquoted) — the JS boolean / `null`.
 4. **Everything else** — a string, trimmed, including numeric-looking
    text (`42` ⇒ `'42'`) unless number lexing is enabled.
+
+Because 1–3 must match the whole value:
+
+- `k = "a b"` is the string `a b`, but `k = "a"b` is the literal text
+  `"a"b` — quotes only count when they wrap the value (an inline comment
+  may follow, when [`comment.inline`](#commentinline) is active). An
+  unterminated quote is literal too: `k = "abc` ⇒ `"abc`.
+- `k = true` is the boolean, but `k = true, false` is the string
+  `true, false`.
+- A value may start with any character, including `[`, `]`, `=`, `.`,
+  `;` and `#` (`k = ;x` ⇒ `;x` with inline comments off).
 
 ### Comments
 
@@ -185,8 +203,11 @@ A value is resolved in this order:
 
 - A `;` or `#` at the start of a line is a comment for the whole line —
   always, independent of options.
-- Mid-value `;`/`#` are literal unless [`comment.inline`](#commentinline)
-  is active.
+- A `;`/`#` inside a value is literal unless
+  [`comment.inline`](#commentinline) is active — including one at the
+  very start of the value (`k = ; x` ⇒ `; x`). With inline comments
+  active the same input yields an empty value and the comment is
+  discarded; either way the NEXT line is a fresh pair.
 
 ### Keys with special characters
 

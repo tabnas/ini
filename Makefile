@@ -19,7 +19,11 @@ clean: clean-ts clean-go
 build-ts:
 	cd ts && npm run build
 
-test-ts:
+# Depends on build-ts: `npm test` only runs the already-compiled
+# dist-test/, so without this a newly added test or fixture silently
+# does not run (and a test deleted from test/ keeps running from its
+# stale dist-test/ output). tsc --build is incremental, so this is cheap.
+test-ts: build-ts
 	cd ts && npm test
 
 clean-ts:

@@ -190,6 +190,7 @@ const grammarText = `
     { s: '#OS' p: table b: 1 }
     { s: ['#HK #ST #VL' '#EQ'] p: table b: 2 }
     { s: ['#HV' '#OS'] p: table b: 2 }
+    { s: ['#HK #ST #VL'] p: table b: 1 }
     { s: '#ZZ' }
   ]
 
@@ -197,6 +198,7 @@ const grammarText = `
     { s: '#OS' p: dive }
     { s: ['#HK #ST #VL' '#EQ'] p: map b: 2 }
     { s: ['#HV' '#OS'] p: map b: 2 }
+    { s: ['#HK #ST #VL'] p: map b: 1 }
     { s: '#CS' p: map }
     { s: '#ZZ' }
   ]
@@ -228,7 +230,7 @@ const grammarText = `
 
   rule: pair: open: [
     { s: ['#HK #ST #VL' '#EQ'] c: '@is-table-grandparent' p: val a: '@pair-key-eq' }
-    { s: '#HK' c: '@is-table-grandparent' a: '@pair-key-bool' }
+    { s: ['#HK #ST #VL'] c: '@is-table-grandparent' a: '@pair-key-bool' }
   ]
   rule: pair: close: [
     { s: ['#HK #ST #VL' '#CL'] c: '@is-table-grandparent' e: '@pair-close-err' }
@@ -340,12 +342,20 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 					},
 				},
 				End: hoover.EndSpec{
-					Fixed:   []string{"]", "."},
+					// A section header lives on one line: newline terminates
+					// the path segment so an unterminated header (`[a` with
+					// no `]`) is a parse error instead of a section name that
+					// silently swallows following lines up to the next `]`.
+					Fixed:   []string{"]", ".", "\n", "\r\n"},
 					Consume: false,
 				},
 				EscapeChar:         "\\",
 				Escape:             map[string]string{"]": "]", ".": ".", "\\": "\\"},
 				AllowUnknownEscape: &bTrue,
+				// Same rule as the value block: an escape that is not one of
+				// the three above keeps both characters, so `[C:\path]` stays
+				// `C:\path` rather than losing the backslash.
+				PreserveEscapeChar: true,
 				Trim:               true,
 			},
 		},
@@ -358,6 +368,8 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 	ST := j.Token("#ST")
 	OS := j.Token("#OS")
 	CS := j.Token("#CS")
+	EQ := j.Token("#EQ")
+	DOT := j.Token("#DOT")
 	HV := j.Token("#HV")
 	ZZ := j.Token("#ZZ")
 
@@ -714,6 +726,105 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		return nil
 	}
 
+	// Comment check: a comment marker is only a comment when it starts a
+	// LINE. Inside a value (`k = ;x`) the comment matcher would otherwise
+	// beat Hoover's endofline block and eat the rest of the line, after
+	// which the value rule silently swallowed the NEXT line's pair.
+	// Declining here lets the value lexers see the marker: with inline
+	// comments off it becomes a literal, and with them on Hoover terminates
+	// the value at the marker and the comment is lexed normally once the
+	// value rule has closed. Mirrors the TS 'ini-comment-check' config
+	// modifier.
+	// Is the lexer inside the value of a `key = value` pair? Both checks
+	// below only apply there. Mirrors the TS inValue() helper.
+	inValue := func(lex *jsonic.Lex) bool {
+		if lex.Ctx == nil || lex.Ctx.Rule == nil {
+			return false
+		}
+		rule := lex.Ctx.Rule
+		return rule.Name == "val" && rule.State == "o" && rule.Parent != nil &&
+			(rule.Parent.Name == "pair" || rule.Parent.Name == "elem")
+	}
+
+	cfg.CommentCheck = func(lex *jsonic.Lex) *jsonic.LexCheckResult {
+		if inValue(lex) {
+			return &jsonic.LexCheckResult{Done: true, Token: nil}
+		}
+		return nil
+	}
+
+	// Text check: a value keyword is only a keyword when it is the WHOLE
+	// value: `k = true` is the boolean, `k = true, false` is the string
+	// `true, false`. The text matcher runs before Hoover and emits a #VL
+	// for a keyword that merely *starts* the value, so `k = true, false`
+	// silently became `true` and `k = null x` even grew a spurious `x`
+	// key. Declining in value position hands the whole line to Hoover,
+	// which does the same keyword lookup on the complete, trimmed value.
+	// Mirrors the TS 'ini-text-check' config modifier.
+	cfg.TextCheck = func(lex *jsonic.Lex) *jsonic.LexCheckResult {
+		if inValue(lex) {
+			return &jsonic.LexCheckResult{Done: true, Token: nil}
+		}
+		return nil
+	}
+
+	// String check: a quoted value only counts as quoted when the quotes
+	// wrap the WHOLE value: `k = "a b"` is the string `a b`, but `k = "a"b`
+	// is the literal text `"a"b`. Without this the string matcher consumed
+	// just `"a"`, Hoover then lexed the trailing `b` as a fresh key, and the
+	// document silently gained a property that was never written. An
+	// unterminated quote is left to the string matcher, which abandons it
+	// and lets Hoover take the raw line. Mirrors the TS 'ini-string-check'
+	// config modifier.
+	cfg.StringCheck = func(lex *jsonic.Lex) *jsonic.LexCheckResult {
+		if !inValue(lex) {
+			return nil
+		}
+		src := lex.Src
+		sI := lex.Cursor().SI
+		if sI >= len(src) {
+			return nil
+		}
+		quote := rune(src[sI])
+		if !cfg.StringChars[quote] {
+			return nil
+		}
+
+		// Find the closing quote on this line.
+		esc := byte(cfg.EscapeChar)
+		eI := sI + 1
+		for ; eI < len(src); eI++ {
+			if src[eI] == esc {
+				eI++
+				continue
+			}
+			if src[eI] == byte(quote) || src[eI] == '\n' {
+				break
+			}
+		}
+		if eI >= len(src) || src[eI] != byte(quote) {
+			return nil
+		}
+
+		// Only whitespace (and, when enabled, an inline comment) may
+		// follow the closing quote.
+		tI := eI + 1
+		for tI < len(src) && (src[tI] == ' ' || src[tI] == '\t') {
+			tI++
+		}
+		atLineEnd := tI >= len(src) || src[tI] == '\n' ||
+			(src[tI] == '\r' && tI+1 < len(src) && src[tI+1] == '\n')
+		atInlineComment := opts.inlineActive &&
+			tI < len(src) && opts.inlineChars[rune(src[tI])] &&
+			(!opts.escWhitespace || tI > eI+1)
+
+		if atLineEnd || atInlineComment {
+			return nil
+		}
+		// Trailing text after the closing quote: not a quoted value.
+		return &jsonic.LexCheckResult{Done: true, Token: nil}
+	}
+
 	// ---- val rule ----
 	// Mirrors TS: rs.fnref(refs).open([...], { custom: filter })
 	// Prepends INI-specific alts, filters out json/list group alts,
@@ -743,9 +854,12 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 
 		// Prepend INI-specific alts before existing (hoover) alts.
 		iniAlts := []*jsonic.AltSpec{
-			// Bracket chars at start of value: concat with next value.
-			// OS and CS are alternatives for the same slot (matching TS ['#OS #CS']).
-			{S: [][]jsonic.Tin{{OS, CS}}, R: "val",
+			// Since OS,CS,EQ,DOT are fixed tokens, they are lexed before
+			// Hoover gets to run, so a value that *starts* with one of them
+			// never reaches the endofline block. Concat the fixed token
+			// source with the rest of the value instead. All four are
+			// alternatives for the same slot (matching TS ['#OS #CS #EQ #DOT']).
+			{S: [][]jsonic.Tin{{OS, CS, EQ, DOT}}, R: "val",
 				U: map[string]any{"ini_prev": true}},
 			// End of input: empty value.
 			{S: [][]jsonic.Tin{{ZZ}},
@@ -766,6 +880,18 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 				}
 			}
 
+			// A #HV is Hoover's raw end-of-line span, so the value keywords
+			// (true/false/null) are resolved here, on the WHOLE trimmed
+			// value. The text matcher used to do it, but it matched a
+			// keyword that merely started the value; it is declined in
+			// value position now (see cfg.TextCheck). The custom multiline
+			// matcher already resolves its own #HV via resolveValue.
+			if r.O0 != nil && !r.O0.IsNoToken() && r.O0.Tin == HV {
+				if s, ok := r.Node.(string); ok {
+					r.Node = resolveValue(s)
+				}
+			}
+
 			// Handle single-quoted JSON parsing.
 			if r.O0 != nil && r.O0.Tin == ST && len(r.O0.Src) > 0 && r.O0.Src[0] == '\'' {
 				if s, ok := r.Node.(string); ok {
@@ -773,18 +899,25 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 				}
 			}
 
-			// Handle ini_prev concatenation.
-			if r.Prev != nil && r.Prev != jsonic.NoRule {
-				if _, ok := r.Prev.U["ini_prev"]; ok {
-					valStr := fmt.Sprintf("%v", r.Node)
-					r.Node = r.Prev.O0.Src + valStr
-					r.Prev.Node = r.Node
-					return
+			// Handle ini_prev concatenation. A value can start with more
+			// than one fixed token (`a = ==x`), and each one replaced the
+			// val rule with a fresh one. Only the LAST val in that chain
+			// runs this ac, so walk the whole chain: every link contributes
+			// its token source, and every link's node is updated —
+			// including the first, which is the node the pair rule reads.
+			// Stopping at the first link left that node unset.
+			for p := r.Prev; p != nil && p != jsonic.NoRule; p = p.Prev {
+				if _, ok := p.U["ini_prev"]; !ok {
+					break
 				}
+				r.Node = p.O0.Src + fmt.Sprintf("%v", r.Node)
+				p.Node = r.Node
 			}
 
-			// Handle array push. The parent (map/pair) node is a
-			// *jsonic.OrderedMap now, so write through nodeSet.
+			// Handle array push. Deliberately NOT an else-of the block
+			// above: an array entry whose value starts with a fixed token
+			// (`k[] = [x`) needs both the concatenation and the push, or
+			// the entry is silently dropped.
 			if r.Parent != nil && r.Parent != jsonic.NoRule {
 				if arr, ok := r.Parent.EnsureU()["ini_array"].([]any); ok {
 					arr = append(arr, r.Node)
