@@ -16,7 +16,7 @@ go get github.com/tabnas/ini/go@latest
 import tabnasini "github.com/tabnas/ini/go"
 ```
 
-`Version` is a package constant.
+`VERSION` is a package constant.
 
 ## Functions
 
