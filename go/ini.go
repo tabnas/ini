@@ -12,7 +12,7 @@ import (
 	jsonic "github.com/tabnas/jsonic/go"
 )
 
-const Version = "0.4.2"
+const Version = "0.4.3"
 
 // IniOptions configures the INI parser.
 type IniOptions struct {
