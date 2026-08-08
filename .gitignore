@@ -142,3 +142,7 @@ dist-test
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Conformance corpus: the assembled manifest (test/corpus/ini-corpus.json)
+# is checked in; the pinned upstream checkouts it was built from are not.
+test/corpus/upstream/

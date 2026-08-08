@@ -157,6 +157,15 @@ func tsvUnescape(s string) string {
 	return s
 }
 
+// The text after `ERROR:` in an expected cell is a symbolic rejection
+// code. A code listed here also pins the message the parser must produce;
+// any other code asserts rejection only (engine-generated error wording
+// differs between the two runtimes). Keep in sync with ERROR_CODES in
+// ts/test/ini-tsv.test.ts.
+var tsvErrorCodes = map[string]string{
+	"duplicate_section": "Duplicate section",
+}
+
 func runIniTSV(t *testing.T, file string, opts ...IniOptions) {
 	t.Helper()
 	path := filepath.Join(tsvSpecDir(), file)
@@ -173,15 +182,31 @@ func runIniTSV(t *testing.T, file string, opts ...IniOptions) {
 		expectedStr := row.cols[1]
 
 		if strings.HasPrefix(expectedStr, "ERROR:") {
+			code := strings.TrimSpace(strings.TrimPrefix(expectedStr, "ERROR:"))
 			func() {
 				// The tabnas engine recovers state-action panics and returns
 				// them as a parse error; accept either a panic or a non-nil err.
+				var msg string
+				rejected := false
 				defer func() {
-					_ = recover()
+					if r := recover(); r != nil {
+						rejected = true
+						msg = fmt.Sprintf("%v", r)
+					}
+					if !rejected {
+						// Returned cleanly and did not panic: rejection missing.
+						t.Errorf("line %d: expected error %s for input %q",
+							row.lineNo, code, row.cols[0])
+						return
+					}
+					if pat, ok := tsvErrorCodes[code]; ok && !strings.Contains(msg, pat) {
+						t.Errorf("line %d: error %s for input %q: message %q does not contain %q",
+							row.lineNo, code, row.cols[0], msg, pat)
+					}
 				}()
-				if _, perr := Parse(input, opts...); perr == nil {
-					// Returned cleanly and did not panic: rejection missing.
-					t.Errorf("line %d: expected panic or error for input %q", row.lineNo, row.cols[0])
+				if _, perr := Parse(input, opts...); perr != nil {
+					rejected = true
+					msg = perr.Error()
 				}
 			}()
 			continue
@@ -328,6 +353,26 @@ func TestTSVSectionsEscapedDots(t *testing.T) {
 	runIniTSV(t, "sections-escaped-dots.tsv")
 }
 
+func TestTSVSectionsUnterminated(t *testing.T) {
+	runIniTSV(t, "sections-unterminated.tsv")
+}
+
+func TestTSVValueFixedTokenStart(t *testing.T) {
+	runIniTSV(t, "value-fixed-token-start.tsv")
+}
+
+func TestTSVValueCommentCharStart(t *testing.T) {
+	runIniTSV(t, "value-comment-char-start.tsv")
+}
+
+func TestTSVValueCommentCharStartInline(t *testing.T) {
+	runIniTSV(t, "value-comment-char-start-inline.tsv", IniOptions{
+		Comment: &CommentOptions{
+			Inline: &InlineCommentOptions{Active: boolPtr(true)},
+		},
+	})
+}
+
 func TestTSVSectionsDuplicateMerge(t *testing.T) {
 	runIniTSV(t, "sections-duplicate-merge.tsv")
 }
@@ -395,6 +440,10 @@ func TestTSVMultilineNoInline(t *testing.T) {
 	runIniTSV(t, "multiline-no-inline.tsv", IniOptions{
 		Multiline: &MultilineOptions{},
 	})
+}
+
+func TestTSVValueKeywords(t *testing.T) {
+	runIniTSV(t, "value-keywords.tsv")
 }
 
 func TestTSVNumbersAreStrings(t *testing.T) {

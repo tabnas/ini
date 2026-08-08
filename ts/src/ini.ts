@@ -69,6 +69,7 @@ const grammarText = `
     { s: '#OS' p: table b: 1 }
     { s: ['#HK #ST #VL' '#EQ'] p: table b: 2 }
     { s: ['#HV' '#OS'] p: table b: 2 }
+    { s: ['#HK #ST #VL'] p: table b: 1 }
     { s: '#ZZ' }
   ]
 
@@ -76,6 +77,7 @@ const grammarText = `
     { s: '#OS' p: dive }
     { s: ['#HK #ST #VL' '#EQ'] p: map b: 2 }
     { s: ['#HV' '#OS'] p: map b: 2 }
+    { s: ['#HK #ST #VL'] p: map b: 1 }
     { s: '#CS' p: map }
     { s: '#ZZ' }
   ]
@@ -107,7 +109,7 @@ const grammarText = `
 
   rule: pair: open: [
     { s: ['#HK #ST #VL' '#EQ'] c: '@is-table-grandparent' p: val a: '@pair-key-eq' }
-    { s: '#HK' c: '@is-table-grandparent' a: '@pair-key-bool' }
+    { s: ['#HK #ST #VL'] c: '@is-table-grandparent' a: '@pair-key-bool' }
   ]
   rule: pair: close: [
     { s: ['#HK #ST #VL' '#CL'] c: '@is-table-grandparent' e: '@pair-close-err' }
@@ -119,23 +121,8 @@ const grammarText = `
 // --- END EMBEDDED ini-grammar.jsonic ---
 
 function Ini(tn: Tabnas, _options: IniOptions) {
-  // Human descriptions for INI tokens, surfaced in railroad diagram legends
-  // (read off the live config by @tabnas/railroad).
-  tn.options({
-    config: {
-      modify: {
-        'ini-tokendesc': (cfg: any) => {
-          cfg.tokenDesc = Object.assign(cfg.tokenDesc || {}, {
-            '#DK': 'section-header path segment, as in [a.b.c]',
-            '#HK': 'property key (left of key = value)',
-            '#HV': 'property value (right of key = value)',
-          })
-        },
-      },
-    },
-  })
-
-  // Resolve inline comment options.
+  // Resolve inline comment options. Needed before the config modifiers
+  // below, which close over them.
   const inlineComment = {
     active: _options.comment?.inline?.active ?? false,
     chars: _options.comment?.inline?.chars ?? ['#', ';'],
@@ -144,6 +131,121 @@ function Ini(tn: Tabnas, _options: IniOptions) {
       whitespace: _options.comment?.inline?.escape?.whitespace ?? false,
     },
   }
+
+  // Is `rule` the value rule of a `key = value` pair, in its open state?
+  // The two lex checks below only apply inside a value.
+  const inValue = (lex: Lex) => {
+    const rule = (lex as any).ctx?.rule
+    return (
+      null != rule &&
+      'val' === rule.name &&
+      'o' === rule.state &&
+      ('pair' === rule.parent?.name || 'elem' === rule.parent?.name)
+    )
+  }
+
+  tn.options({
+    config: {
+      modify: {
+        // Human descriptions for INI tokens, surfaced in railroad diagram
+        // legends (read off the live config by @tabnas/railroad).
+        'ini-tokendesc': (cfg: any) => {
+          cfg.tokenDesc = Object.assign(cfg.tokenDesc || {}, {
+            '#DK': 'section-header path segment, as in [a.b.c]',
+            '#HK': 'property key (left of key = value)',
+            '#HV': 'property value (right of key = value)',
+          })
+        },
+
+        // A comment marker is only a comment when it starts a LINE. Inside
+        // a value (`k = ;x`) the comment matcher (order 6e6) would otherwise
+        // beat Hoover's endofline block (8.5e6) and eat the rest of the
+        // line, after which the value rule silently swallowed the NEXT
+        // line's pair. Declining here lets the value lexers see the marker:
+        // with inline comments off it becomes a literal, and with them on
+        // Hoover terminates the value at the marker and the comment is
+        // lexed normally once the value rule has closed.
+        //
+        // The parser has no options.comment.check pass-through (unlike
+        // options.line.check), so the hook is installed directly on the
+        // built config, which configure() does before buildLexDispatch().
+        'ini-comment-check': (cfg: any) => {
+          cfg.comment.check = (lex: Lex) =>
+            inValue(lex) ? { done: true, token: undefined } : undefined
+        },
+
+        // A value keyword is only a keyword when it is the WHOLE value:
+        // `k = true` is the boolean, `k = true, false` is the string
+        // `true, false`. The text matcher (order 8e6) runs before Hoover
+        // (8.5e6) and emits a #VL for a keyword that merely *starts* the
+        // value, so `k = true, false` silently became `true` and
+        // `k = null x` even grew a spurious `x` key. Declining in value
+        // position hands the whole line to Hoover, which does the same
+        // keyword lookup (cfg.value.def) on the complete, trimmed value.
+        'ini-text-check': (cfg: any) => {
+          cfg.text.check = (lex: Lex) =>
+            inValue(lex) ? { done: true, token: undefined } : undefined
+        },
+
+        // A quoted value only counts as quoted when the quotes wrap the
+        // WHOLE value: `k = "a b"` is the string `a b`, but `k = "a"b` is
+        // the literal text `"a"b`. Without this the string matcher (order
+        // 5e6) consumed just `"a"`, Hoover then lexed the trailing `b` as
+        // a fresh key, and the document silently gained a property that
+        // was never written. An unterminated quote is left to the string
+        // matcher, which abandons it and lets Hoover take the raw line.
+        'ini-string-check': (cfg: any) => {
+          cfg.string.check = (lex: Lex) => {
+            if (!inValue(lex)) {
+              return undefined
+            }
+
+            const src = lex.src
+            const sI = lex.pnt.sI
+            const quote = src[sI]
+            if (!cfg.string.quoteMap[quote]) {
+              return undefined
+            }
+
+            // Find the closing quote on this line.
+            const esc = cfg.string.escChar ?? '\\'
+            let eI = sI + 1
+            for (; eI < src.length; eI++) {
+              if (esc === src[eI]) {
+                eI++
+                continue
+              }
+              if (quote === src[eI] || '\n' === src[eI]) {
+                break
+              }
+            }
+            if (eI >= src.length || quote !== src[eI]) {
+              return undefined
+            }
+
+            // Only whitespace (and, when enabled, an inline comment) may
+            // follow the closing quote.
+            let tI = eI + 1
+            while (' ' === src[tI] || '\t' === src[tI]) {
+              tI++
+            }
+            const atLineEnd =
+              tI >= src.length ||
+              '\n' === src[tI] ||
+              ('\r' === src[tI] && '\n' === src[tI + 1])
+            const atInlineComment =
+              inlineComment.active &&
+              inlineComment.chars.includes(src[tI]) &&
+              (!inlineComment.escape.whitespace || tI > eI + 1)
+
+            return atLineEnd || atInlineComment
+              ? undefined
+              : { done: true, token: undefined }
+          }
+        },
+      },
+    },
+  })
 
   // Build Hoover end.fixed arrays based on inline comment config.
   // When active without whitespace mode, include comment chars as terminators.
@@ -227,7 +329,11 @@ function Ini(tn: Tabnas, _options: IniOptions) {
           },
         },
         end: {
-          fixed: [']', '.'],
+          // A section header lives on one line: newline terminates the
+          // path segment so an unterminated header (`[a` with no `]`)
+          // is a parse error instead of a section name that silently
+          // swallows following lines up to the next `]`.
+          fixed: [']', '.', '\n', '\r\n'],
           consume: false,
         },
         escapeChar: '\\',
@@ -237,6 +343,10 @@ function Ini(tn: Tabnas, _options: IniOptions) {
           '\\': '\\',
         },
         allowUnknownEscape: true,
+        // Same rule as the value block: an escape that is not one of the
+        // three above keeps both characters, so `[C:\path]` stays
+        // `C:\path` rather than losing the backslash.
+        preserveEscapeChar: true,
         trim: true,
       },
     ],
@@ -300,8 +410,24 @@ function Ini(tn: Tabnas, _options: IniOptions) {
       }
 
       if (null != r.prev.u.ini_prev) {
-        r.prev.node = r.node = r.prev.o0.src + r.node
-      } else if (r.parent.u.ini_array) {
+        // A value can start with more than one fixed token (`a = ==x`),
+        // and each one replaced the val rule with a fresh one. Only the
+        // LAST val in that chain runs this ac, so walk the whole chain:
+        // every link contributes its token source, and every link's node
+        // is updated — including the first, which is the rule the pair
+        // rule reads its child node from. Stopping at the first link
+        // instead left that node unset, and the pair then took the
+        // parent map as its value, producing a circular result.
+        for (let p = r.prev; null != p && null != p.u.ini_prev; p = p.prev) {
+          r.node = p.o0.src + r.node
+          p.node = r.node
+        }
+      }
+
+      // Not an `else`: an array entry whose value starts with a fixed
+      // token (`k[] = [x`) needs both the concatenation above AND the
+      // push, or the entry is silently dropped.
+      if (r.parent.u.ini_array) {
         r.parent.u.ini_array.push(r.node)
       }
     },
@@ -384,7 +510,7 @@ function Ini(tn: Tabnas, _options: IniOptions) {
           multiline: {
             // Lower order than Hoover (8.5e6) so this runs first.
             order: 8.4e6,
-            make: () => {
+            make: (cfg: any) => {
               return function multilineMatcher(lex: Lex): Token | undefined {
                 // Only match in value context during rule open state
                 // (same as Hoover endofline block, which defaults to state 'o').
@@ -497,7 +623,14 @@ function Ini(tn: Tabnas, _options: IniOptions) {
                   sI++; cI++
                 }
 
-                let val: string | undefined = chars.join('').trim()
+                let val: any = chars.join('').trim()
+
+                // Resolve value keywords (true/false/null) on the WHOLE
+                // trimmed value, exactly as Hoover's endofline block does
+                // for the values it lexes itself.
+                if (cfg.value.lex && undefined !== cfg.value.def[val]) {
+                  val = cfg.value.def[val].val
+                }
 
                 let pnt = makePoint(lex.pnt.len, sI, rI, cI)
                 let tkn = lex.token(
@@ -524,9 +657,11 @@ function Ini(tn: Tabnas, _options: IniOptions) {
     rs.fnref(refs)
       .open(
         [
-          // Since OS,CS are fixed tokens, concat them with string value
-          // if they appear as first char in a RHS value.
-          { s: ['#OS #CS'], r: 'val', u: { ini_prev: true } },
+          // Since OS,CS,EQ,DOT are fixed tokens, they are lexed before
+          // Hoover gets to run, so a value that *starts* with one of them
+          // never reaches the endofline block. Concat the fixed token
+          // source with the rest of the value instead.
+          { s: ['#OS #CS #EQ #DOT'], r: 'val', u: { ini_prev: true } },
           { s: '#ZZ', a: '@val-empty' },
         ],
         {

@@ -16,23 +16,30 @@ Tab-separated, one case per line, with a header row naming the columns
 
 ### What the loaders actually do — mind these
 
-The two loaders are **not** symmetric, and the format is looser than it
-looks. Until that is fixed, write fixtures to the intersection:
+The two loaders are **not** fully symmetric, and the format is looser than
+it looks. Write fixtures to the intersection:
 
 - **Escapes.** `\n`, `\r`, `\r\n` and `\t` are decoded. A literal `\\` is
-  **not** — there is no way to write a single backslash. TypeScript decodes
+  **not** — there is no way to write a single backslash, but a backslash
+  before any OTHER character survives verbatim in the `input` column, which
+  is how `sections-escaped-dots.tsv` writes `[C:\path]`. TypeScript decodes
   *every* column, Go decodes only `input`, so a `\n` in an `expected` cell
   means different things in the two runtimes. Keep escapes out of `expected`.
-- **`ERROR:` is a rejection marker, not a checked code.** Neither runner
-  verifies the text after the colon: Go accepts any error or panic, and
-  TypeScript matches `/Duplicate section/` whatever the cell says. Treat the
-  suffix as a comment for the reader.
+- **`ERROR:` takes a symbolic rejection code.** Both runners now read the
+  text after the colon. A code listed in the runner's code table
+  (`ERROR_CODES` in `ts/test/ini-tsv.test.ts`, `tsvErrorCodes` in
+  `go/ini_tsv_test.go` — currently just `duplicate_section`) additionally
+  pins the message the parser must produce. Any other code asserts
+  rejection only, because engine-generated error wording differs between
+  the two runtimes. Adding a code to one table means adding it to the
+  other.
 - **A line with no tab is dropped by Go and breaks TypeScript**, which then
   calls `.startsWith` on an undefined column. Every line must be blank or
   contain a tab — including `#`-leading ones, which are *not* comments here.
 
-Fixing any of the three means changing both loaders together; the docs
-should follow the code, not lead it.
+The remaining two asymmetries (the escape set, and the
+no-tab line) still need both loaders changed together; the docs should
+follow the code, not lead it.
 
 ## Who runs what
 

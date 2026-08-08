@@ -22,6 +22,7 @@
     "test": "node --enable-source-maps --test \"dist-test/*.test.js\"",
     "test-some": "node --enable-source-maps --test-name-pattern=\"$npm_config_pattern\" --test \"dist-test/*.test.js\"",
     "embed": "node embed-grammar.js",
+    "docs:grammar": "node gen-railroad.js",
     "watch": "tsc --build src test -w",
     "build": "node embed-grammar.js && tsc -p node_modules/@tabnas/hoover/src/tsconfig.json && tsc --build src test",
     "clean": "rm -rf dist dist-test node_modules yarn.lock package-lock.json",

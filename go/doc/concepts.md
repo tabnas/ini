@@ -113,9 +113,9 @@ resolves it:
 
 Pinned by the test suite (`ini_test.go`):
 
-- **Bare key ⇒ `true`** once the map exists: `a=1\nmykey` ⇒
-  `{"a": "1", "mykey": true}`. A bare key as the very first token of the
-  root or a section is rejected.
+- **Bare key ⇒ `true`** anywhere a pair may appear: `a=1\nmykey` ⇒
+  `{"a": "1", "mykey": true}`, and equally as the first token of the
+  root or of a section (`[s]\nmykey` ⇒ `{"s": {"mykey": true}}`).
 - **`=` in a value is literal**: only the first `=` splits the pair, so
   `u = v = 5` ⇒ `{"u": "v = 5"}`.
 - **Empty value ⇒ `""`**: `a=\nb=` ⇒ `{"a": "", "b": ""}`.

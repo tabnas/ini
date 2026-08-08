@@ -59,8 +59,8 @@ text stays a `string`.
 
 ## Use boolean keys
 
-A key with no `=` is set to `true` — but only after at least one
-`key = value` pair has opened the surrounding map:
+A key with no `=` is set to `true`, anywhere a pair may appear —
+including as the first line of a section:
 
 ```go
 result, _ := tabnasini.Parse("[features]\nname = app\ndebug\nverbose")

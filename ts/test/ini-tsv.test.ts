@@ -36,12 +36,28 @@ function makeIni(opts?: IniOptions) {
 }
 
 
+// The text after `ERROR:` in an expected cell is a symbolic rejection
+// code. A code listed here also pins the message the parser must produce;
+// any other code asserts rejection only (which is all the Go runner can
+// check for engine-generated errors, whose wording differs by runtime).
+const ERROR_CODES: Record<string, RegExp> = {
+  duplicate_section: /Duplicate section/,
+}
+
+
 function runTSV(name: string, j: ReturnType<typeof makeIni>) {
   const entries = loadTSV(name)
   for (const { cols: [input, expected], row } of entries) {
     if (expected.startsWith('ERROR:')) {
-      throws(() => j.parse(input), /Duplicate section/,
-        `${name}.tsv row ${row}: expected error for input=${JSON.stringify(input)}`)
+      const code = expected.slice('ERROR:'.length).trim()
+      const pattern = ERROR_CODES[code]
+      throws(
+        () => j.parse(input),
+        (err: any) =>
+          err instanceof Error &&
+          (undefined === pattern || pattern.test(String(err.message))),
+        `${name}.tsv row ${row}: expected error ${code} for ` +
+        `input=${JSON.stringify(input)}`)
     } else {
       try {
         deepEqual(j.parse(input), JSON.parse(expected))
@@ -147,6 +163,24 @@ describe('ini-tsv', () => {
     runTSV('sections-escaped-dots', makeIni())
   })
 
+  test('sections-unterminated', () => {
+    runTSV('sections-unterminated', makeIni())
+  })
+
+  test('value-fixed-token-start', () => {
+    runTSV('value-fixed-token-start', makeIni())
+  })
+
+  test('value-comment-char-start', () => {
+    runTSV('value-comment-char-start', makeIni())
+  })
+
+  test('value-comment-char-start-inline', () => {
+    runTSV('value-comment-char-start-inline', makeIni({
+      comment: { inline: { active: true } },
+    }))
+  })
+
   test('sections-duplicate-merge', () => {
     runTSV('sections-duplicate-merge', makeIni())
   })
@@ -195,6 +229,10 @@ describe('ini-tsv', () => {
 
   test('multiline-no-inline', () => {
     runTSV('multiline-no-inline', makeIni({ multiline: true }))
+  })
+
+  test('value-keywords', () => {
+    runTSV('value-keywords', makeIni())
   })
 
   test('numbers-are-strings', () => {

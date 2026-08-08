@@ -21,6 +21,7 @@
     { s: '#OS' p: table b: 1 }
     { s: ['#HK #ST #VL' '#EQ'] p: table b: 2 }
     { s: ['#HV' '#OS'] p: table b: 2 }
+    { s: ['#HK #ST #VL'] p: table b: 1 }
     { s: '#ZZ' }
   ]
 
@@ -28,6 +29,7 @@
     { s: '#OS' p: dive }
     { s: ['#HK #ST #VL' '#EQ'] p: map b: 2 }
     { s: ['#HV' '#OS'] p: map b: 2 }
+    { s: ['#HK #ST #VL'] p: map b: 1 }
     { s: '#CS' p: map }
     { s: '#ZZ' }
   ]
@@ -59,7 +61,7 @@
 
   rule: pair: open: [
     { s: ['#HK #ST #VL' '#EQ'] c: '@is-table-grandparent' p: val a: '@pair-key-eq' }
-    { s: '#HK' c: '@is-table-grandparent' a: '@pair-key-bool' }
+    { s: ['#HK #ST #VL'] c: '@is-table-grandparent' a: '@pair-key-bool' }
   ]
   rule: pair: close: [
     { s: ['#HK #ST #VL' '#CL'] c: '@is-table-grandparent' e: '@pair-close-err' }

@@ -157,8 +157,9 @@ key = value
 
 - The key runs up to the first `=`, a newline, or end of input, then is
   trimmed; the value runs to the end of the line, then is trimmed.
-- A bare key with no `=` is a **boolean key** set to `true`, but only
-  once the surrounding map exists (a prior `key = value` pair opens it).
+- A bare key with no `=` is a **boolean key** set to `true`, anywhere a
+  pair may appear — including as the first line of the document or of a
+  section (`[s]\nmykey` ⇒ `{"s": {"mykey": true}}`).
 - A later `key = value` overwrites an earlier one, unless the key uses
   array syntax.
 
@@ -170,8 +171,11 @@ key = value
 ```
 
 - A header opens a section; following keys nest under it.
+- A header lives on ONE line. An unterminated header (`[a` with no `]`)
+  is a parse error — it never runs on into the following lines.
 - Dots split the header into a nested path (`[a.b.c]` ⇒
-  `{a: {b: {c: {}}}}`). Escape a literal dot with `\.`.
+  `{a: {b: {c: {}}}}`). Escape a literal dot with `\.`, and `\]` for a
+  literal bracket; any other backslash is kept as written.
 - Top-level pairs before any header sit at the root.
 - Repeated headers are governed by [`Section.Duplicate`](#sectionduplicate).
 
@@ -187,13 +191,30 @@ after array entries appends to the same array.
 
 ### Values
 
-Resolved in order: single-quoted (JSON-decoded if valid, else the inner
-text) → double-quoted (decoded string, spaces/escapes preserved) →
+The value is the rest of the line, trimmed, then resolved in order:
+single-quoted (JSON-decoded if valid, else the inner text) →
+double-quoted (decoded string, spaces/escapes preserved) →
 `true`/`false`/`null` keywords → otherwise a trimmed string (numeric
 text stays a string unless number lexing is enabled).
+
+Each of those rules matches the WHOLE value, never a prefix: `k = "a"b`
+is the literal text `"a"b`, and `k = true, false` is the string
+`true, false`. A value may start with any character, including `[`,
+`]`, `=`, `.`, `;` and `#`.
+
+There are no known Go/TypeScript divergences: `conformanceGoParityGap`
+in [`go/ini_conformance_test.go`](../ini_conformance_test.go) is empty,
+and the conformance suite asserts every listed gap is still real, so a
+stale entry turns the suite red rather than lingering. The two gaps that
+used to be listed there — a leading byte-order mark surviving into a key,
+and a NUL byte in the source truncating a value — were both rooted in
+`github.com/tabnas/hoover/go` and are fixed.
 
 ### Comments
 
 A `;` or `#` at the start of a line is a whole-line comment, always.
-Mid-value `;`/`#` are literal unless [`Comment.Inline`](#commentinline)
-is active.
+A `;`/`#` inside a value is literal unless
+[`Comment.Inline`](#commentinline) is active — including one at the very
+start of the value (`k = ; x` ⇒ `; x`). With inline comments active the
+same input yields an empty value; either way the NEXT line is a fresh
+pair.

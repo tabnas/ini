@@ -112,10 +112,13 @@ After a value's raw text is read, the `val` rule resolves it (see
 1. A single-quoted value is `JSON.parse`d when valid — this is how
    `'{"y":{"z":6}}'` becomes a real object and `'[]'` becomes `[]`. If
    the JSON is invalid the inner text is kept.
-2. A leading bracket character (`[` or `]`) that the fixed-token lexer
-   split off is re-concatenated with the rest of the value, so
-   `j0 = ]3,4[` stays the string `']3,4['`.
-3. The bare keywords `true`, `false`, `null` resolve to their JS types.
+2. A leading fixed-token character (`[`, `]`, `=` or `.`) that the
+   fixed-token lexer split off is re-concatenated with the rest of the
+   value, so `j0 = ]3,4[` stays the string `']3,4['` and `v = .5` stays
+   `'.5'`. The chain repeats, so `v = ==x` is `'==x'`.
+3. The bare keywords `true`, `false`, `null` resolve to their JS types —
+   but only when the keyword is the WHOLE value, so `v = true, false`
+   is the string `'true, false'`.
 4. Everything else is a trimmed string. Numbers are strings too
    (`a=1` ⇒ `'1'`) because the number matcher is off; turn it back on
    with `number.lex` if you want real numbers.
@@ -128,11 +131,10 @@ spaces survive and brackets inside are literal — that is why
 
 These follow from the model above and are pinned by the test suite:
 
-- **Bare key ⇒ `true`.** A key with no `=` sets `key: true` — but only
-  once the surrounding `map` exists, which a prior `key = value` pair
-  establishes. So `a=1\nmykey` ⇒ `{ a: '1', mykey: true }`, while a
-  bare key as the *first* token of the root or a section (`mykey`,
-  `[s]\nmykey`) is rejected with an `unexpected` error.
+- **Bare key ⇒ `true`.** A key with no `=` sets `key: true`, anywhere a
+  pair may appear: `a=1\nmykey` ⇒ `{ a: '1', mykey: true }`, and equally
+  as the first token of the root or of a section (`mykey` ⇒
+  `{ mykey: true }`, `[s]\nmykey` ⇒ `{ s: { mykey: true } }`).
 - **`=` in a value is literal.** Only the first `=` splits key from
   value; `u = v = 5` ⇒ `{ u: 'v = 5' }`.
 - **Empty value ⇒ `''`.** `a =` and `a` at end-of-input both resolve to
