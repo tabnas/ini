@@ -1,7 +1,7 @@
 /* Copyright (c) 2021-2025 Richard Rodger and other contributors, MIT License */
 
 import { test, describe } from 'node:test'
-import { deepEqual, throws } from 'node:assert'
+import { deepEqual, throws, ok } from 'node:assert'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
@@ -24,10 +24,27 @@ function unescape(str: string): string {
 function loadTSV(name: string): { cols: string[]; row: number }[] {
   const specPath = join(__dirname, '..', '..', 'test', 'spec', name + '.tsv')
   const lines = readFileSync(specPath, 'utf8').split(/\r?\n/).filter(Boolean)
-  return lines.slice(1).map((line, i) => {
+  const entries = lines.slice(1).map((line, i) => {
     const cols = line.split('\t').map(unescape)
     return { cols, row: i + 2 }
   })
+
+  // A fixture that loads zero rows passed green: the loop over its rows
+  // simply never ran. An emptied, renamed or header-only .tsv proves
+  // nothing and must be a failure. Keep in sync with the Go half.
+  ok(entries.length > 0,
+    `${name}.tsv: loaded 0 cases. An empty or header-only fixture proves ` +
+    `nothing and must not pass.`)
+
+  // A line with no tab was silently dropped by Go and crashed TypeScript on
+  // `undefined.startsWith`. Reject it by name, in both runtimes.
+  for (const e of entries) {
+    ok(e.cols.length >= 2,
+      `${name}.tsv row ${e.row}: expected 2 tab-separated columns, got ` +
+      `${e.cols.length}: ${JSON.stringify(e.cols[0])}`)
+  }
+
+  return entries
 }
 
 

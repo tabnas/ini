@@ -174,12 +174,28 @@ func runIniTSV(t *testing.T, file string, opts ...IniOptions) {
 		t.Fatalf("failed to load %s: %v", file, err)
 	}
 
+	// A fixture that loads zero rows passed green: the loop below simply
+	// never ran. An emptied, renamed or header-only .tsv proves nothing and
+	// must be a failure. Keep in sync with loadTSV in ts/test/ini-tsv.test.ts.
+	if len(rows) == 0 {
+		t.Fatalf("%s: loaded 0 cases. An empty or header-only fixture proves "+
+			"nothing and must not pass.", file)
+	}
+
 	for _, row := range rows {
+		// A line with no tab was silently dropped here (and crashed the
+		// TypeScript loader on `undefined.startsWith`). Both runtimes now
+		// reject it by name.
 		if len(row.cols) < 2 {
+			t.Errorf("%s line %d: expected 2 tab-separated columns, got %d: %q",
+				file, row.lineNo, len(row.cols), row.cols[0])
 			continue
 		}
+		// TypeScript decodes escapes in EVERY column; Go decoded only
+		// `input`, so a `\n` in an `expected` cell meant two different things
+		// in the two runtimes. TypeScript is canonical: decode both.
 		input := tsvUnescape(row.cols[0])
-		expectedStr := row.cols[1]
+		expectedStr := tsvUnescape(row.cols[1])
 
 		if strings.HasPrefix(expectedStr, "ERROR:") {
 			code := strings.TrimSpace(strings.TrimPrefix(expectedStr, "ERROR:"))

@@ -115,7 +115,13 @@ function importsToRequire(code) {
 }
 
 // Rewrite `<expr>  // => <expected>` lines into __eq(expr, expected) calls.
-const ARROW = /\/\/\s*=>(.*)$/
+//
+// The `m` flag matters for the block-level gate below (`ARROW.test(joined)`),
+// which tests the whole block as one string: without it, `(.*)$` can only
+// match when the `// =>` is on the block's LAST line, so a block with a
+// trailing line after its assertions would be silently skipped. It changes
+// nothing for the per-line use in rewriteAssertions.
+const ARROW = /\/\/\s*=>(.*)$/m
 function rewriteAssertions(code) {
   let count = 0
   const out = code.split('\n').map((line) => {
@@ -186,7 +192,21 @@ describe('doc-examples', () => {
   }
 
   it('found at least one tested example (sanity)', () => {
-    // Not a hard failure if a repo has no `// =>` examples yet.
-    assert.ok(testable >= 0, `tested ${testable} doc example block(s)`)
+    // This used to assert `testable >= 0`, which is true of every possible
+    // value: if extraction broke and zero examples ran, the suite still
+    // reported green. This repo's README and ts/doc/*.md do carry `// =>`
+    // examples, so zero means the harness stopped working, not that there
+    // is nothing to test.
+    assert.ok(
+      files.length > 0,
+      `found no markdown docs to scan (looked in ${DOC_GLOBS.join(', ')})`,
+    )
+    assert.ok(
+      testable > 0,
+      `tested ${testable} doc example block(s) across ${files.length} doc ` +
+        `file(s): the extractor found no \`// =>\` assertions at all. Either ` +
+        `the docs lost their examples or doc-examples.test.ts is broken; ` +
+        `both are failures.`,
+    )
   })
 })
