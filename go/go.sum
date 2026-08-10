@@ -1,7 +1,7 @@
 github.com/tabnas/debug/go v0.3.0 h1:2JDbvzMjC4vIa2+R7u7fZ0jt1OoP6x8qg/L8ZQbcn2c=
 github.com/tabnas/debug/go v0.3.0/go.mod h1:v4x9MmwEx2madQQXF38KlRmwHbYq1Tdt3mw/lLeHVN0=
-github.com/tabnas/hoover/go v0.3.0 h1:sNW/Qg+DUoy1B3mwT6wSu0+uCMNg8Ey5fbmNLzicZgA=
-github.com/tabnas/hoover/go v0.3.0/go.mod h1:4+TLC1R/ykJxam7n2WYZjHzkp43tdsyhlfwlEumZznY=
+github.com/tabnas/hoover/go v0.3.1 h1:xDhTLuhdopDPrnRQTaMfftTuiV7c88HVxIbSjEYi4O4=
+github.com/tabnas/hoover/go v0.3.1/go.mod h1:RHRSfBJko/D+sJ6wmae4n6xuu8EAeacDXBKsao8jlP0=
 github.com/tabnas/json/go v0.5.0 h1:xLBvt8KcNA3URQBrpRgkjK+I/n7F4pRa50tkiWves88=
 github.com/tabnas/json/go v0.5.0/go.mod h1:1rtv5Gt8VqvfsRUhMw3DhHa79cZ67VnwjjIOoYiWcSE=
 github.com/tabnas/jsonic/go v0.6.0 h1:FT0qJvh3NmqFYb/rRcsTC2rh2zGt8lt2vc2gITgCQ4U=
