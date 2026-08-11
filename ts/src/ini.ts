@@ -686,7 +686,7 @@ function Ini(tn: Tabnas, _options: IniOptions) {
 // VERSION is this package's version. It MUST equal package.json "version":
 // the release orchestrator rewrites both, and the version test fails the
 // build if they drift. Mirrors `const VERSION` in go/ini.go.
-const VERSION = '0.5.1'
+const VERSION = '0.5.2'
 
 export { VERSION, Ini }
 
