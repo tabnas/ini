@@ -5,6 +5,7 @@ go 1.24.7
 require (
 	github.com/tabnas/hoover/go v0.3.2
 	github.com/tabnas/jsonic/go v0.6.2
+	github.com/tabnas/support/go v0.3.0
 )
 
 require (

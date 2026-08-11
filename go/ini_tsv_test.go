@@ -1,347 +1,67 @@
-/* Copyright (c) 2021-2025 Richard Rodger, MIT License */
-
 package tabnasini
 
+// ini_tsv_test.go — cross-runtime conformance, driven by the shared
+// `test/spec/*.tsv` fixtures at the repo root (see ../test/AGENTS.md).
+//
+// The fixture loader, the escape codec, the ERROR: contract and the row
+// loop all come from github.com/tabnas/support/go, whose TypeScript half
+// ts/test/ini-tsv.test.ts uses to run the SAME files — so the two
+// implementations cannot drift without one of them going red, and neither
+// can the two loaders. (They had: this repo's loader decoded escapes in
+// EVERY column, including the JSON `expected` one.)
+//
+// What is left here is only what is specific to ini: which options each
+// fixture is parsed with, and the messages a rejection must carry.
+
 import (
-	"bufio"
-	"encoding/json"
 	"fmt"
-	"math"
-	"os"
-	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
+
+	support "github.com/tabnas/support/go"
 )
 
-type tsvRow struct {
-	cols   []string
-	lineNo int
-}
-
-func loadTSV(path string) ([]tsvRow, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	var rows []tsvRow
-	scanner := bufio.NewScanner(f)
-	lineNo := 0
-	for scanner.Scan() {
-		lineNo++
-		if lineNo == 1 {
-			continue
-		}
-		line := scanner.Text()
-		if line == "" {
-			continue
-		}
-		cols := strings.Split(line, "\t")
-		rows = append(rows, tsvRow{cols: cols, lineNo: lineNo})
-	}
-	return rows, scanner.Err()
-}
-
-func parseExpected(s string) (any, error) {
-	if s == "" {
-		return nil, nil
-	}
-	var val any
-	err := json.Unmarshal([]byte(s), &val)
-	if err != nil {
-		return nil, err
-	}
-	return val, nil
-}
-
-func formatValue(v any) string {
-	if v == nil {
-		return "nil"
-	}
-	b, err := json.Marshal(v)
-	if err != nil {
-		return fmt.Sprintf("%v", v)
-	}
-	return string(b)
-}
-
-func normalizeValue(v any) any {
-	switch val := v.(type) {
-	case map[string]any:
-		result := make(map[string]any)
-		for k, v := range val {
-			result[k] = normalizeValue(v)
-		}
-		return result
-	case []any:
-		result := make([]any, len(val))
-		for i, v := range val {
-			result[i] = normalizeValue(v)
-		}
-		return result
-	case float64:
-		if val == 0 {
-			return float64(0)
-		}
-		return val
-	default:
-		return v
-	}
-}
-
-func valuesEqual(got, expected any) bool {
-	return deepCompare(normalizeValue(got), normalizeValue(expected))
-}
-
-func deepCompare(a, b any) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	switch av := a.(type) {
-	case map[string]any:
-		bv, ok := b.(map[string]any)
-		if !ok || len(av) != len(bv) {
-			return false
-		}
-		for k, v := range av {
-			if !deepCompare(v, bv[k]) {
-				return false
-			}
-		}
-		return true
-	case []any:
-		bv, ok := b.([]any)
-		if !ok || len(av) != len(bv) {
-			return false
-		}
-		for i := range av {
-			if !deepCompare(av[i], bv[i]) {
-				return false
-			}
-		}
-		return true
-	case float64:
-		bv, ok := b.(float64)
-		if !ok {
-			return false
-		}
-		if math.IsNaN(av) && math.IsNaN(bv) {
-			return true
-		}
-		return av == bv
-	case string:
-		bv, ok := b.(string)
-		return ok && av == bv
-	case bool:
-		bv, ok := b.(bool)
-		return ok && av == bv
-	default:
-		return reflect.DeepEqual(a, b)
-	}
-}
-
-func tsvSpecDir() string {
-	return filepath.Join("..", "test", "spec")
-}
-
-func tsvUnescape(s string) string {
-	s = strings.ReplaceAll(s, "\\r\\n", "\r\n")
-	s = strings.ReplaceAll(s, "\\n", "\n")
-	s = strings.ReplaceAll(s, "\\r", "\r")
-	s = strings.ReplaceAll(s, "\\t", "\t")
-	return s
-}
-
-// The text after `ERROR:` in an expected cell is a symbolic rejection
-// code. A code listed here also pins the message the parser must produce;
-// any other code asserts rejection only (engine-generated error wording
-// differs between the two runtimes). Keep in sync with ERROR_CODES in
-// ts/test/ini-tsv.test.ts.
-var tsvErrorCodes = map[string]string{
-	"duplicate_section": "Duplicate section",
-}
-
-func runIniTSV(t *testing.T, file string, opts ...IniOptions) {
-	t.Helper()
-	path := filepath.Join(tsvSpecDir(), file)
-	rows, err := loadTSV(path)
-	if err != nil {
-		t.Fatalf("failed to load %s: %v", file, err)
-	}
-
-	// A fixture that loads zero rows passed green: the loop below simply
-	// never ran. An emptied, renamed or header-only .tsv proves nothing and
-	// must be a failure. Keep in sync with loadTSV in ts/test/ini-tsv.test.ts.
-	if len(rows) == 0 {
-		t.Fatalf("%s: loaded 0 cases. An empty or header-only fixture proves "+
-			"nothing and must not pass.", file)
-	}
-
-	for _, row := range rows {
-		// A line with no tab was silently dropped here (and crashed the
-		// TypeScript loader on `undefined.startsWith`). Both runtimes now
-		// reject it by name.
-		if len(row.cols) < 2 {
-			t.Errorf("%s line %d: expected 2 tab-separated columns, got %d: %q",
-				file, row.lineNo, len(row.cols), row.cols[0])
-			continue
-		}
-		// TypeScript decodes escapes in EVERY column; Go decoded only
-		// `input`, so a `\n` in an `expected` cell meant two different things
-		// in the two runtimes. TypeScript is canonical: decode both.
-		input := tsvUnescape(row.cols[0])
-		expectedStr := tsvUnescape(row.cols[1])
-
-		if strings.HasPrefix(expectedStr, "ERROR:") {
-			code := strings.TrimSpace(strings.TrimPrefix(expectedStr, "ERROR:"))
-			func() {
-				// The tabnas engine recovers state-action panics and returns
-				// them as a parse error; accept either a panic or a non-nil err.
-				var msg string
-				rejected := false
-				defer func() {
-					if r := recover(); r != nil {
-						rejected = true
-						msg = fmt.Sprintf("%v", r)
-					}
-					if !rejected {
-						// Returned cleanly and did not panic: rejection missing.
-						t.Errorf("line %d: expected error %s for input %q",
-							row.lineNo, code, row.cols[0])
-						return
-					}
-					if pat, ok := tsvErrorCodes[code]; ok && !strings.Contains(msg, pat) {
-						t.Errorf("line %d: error %s for input %q: message %q does not contain %q",
-							row.lineNo, code, row.cols[0], msg, pat)
-					}
-				}()
-				if _, perr := Parse(input, opts...); perr != nil {
-					rejected = true
-					msg = perr.Error()
-				}
-			}()
-			continue
-		}
-
-		expected, err := parseExpected(expectedStr)
-		if err != nil {
-			t.Errorf("line %d: failed to parse expected %q: %v", row.lineNo, expectedStr, err)
-			continue
-		}
-
-		got, parseErr := Parse(input, opts...)
-		if parseErr != nil {
-			t.Errorf("line %d: Parse(%q) error: %v", row.lineNo, row.cols[0], parseErr)
-			continue
-		}
-
-		// Normalize: Parse returns map[string]any, compare against JSON-parsed expected.
-		var gotAny any = got
-		if !valuesEqual(gotAny, expected) {
-			t.Errorf("line %d: Parse(%q)\n  got:      %s\n  expected: %s",
-				row.lineNo, row.cols[0], formatValue(gotAny), formatValue(expected))
-		}
-	}
-}
-
-// --- TSV Test Functions ---
-
-func TestTSVHappy(t *testing.T) {
-	runIniTSV(t, "happy.tsv")
-}
-
-func TestTSVBasicValues(t *testing.T) {
-	runIniTSV(t, "basic-values.tsv")
-}
-
-func TestTSVQuotedValues(t *testing.T) {
-	runIniTSV(t, "quoted-values.tsv")
-}
-
-func TestTSVBareKey(t *testing.T) {
-	runIniTSV(t, "bare-key.tsv")
-}
-
-func TestTSVKeyOverwrite(t *testing.T) {
-	runIniTSV(t, "key-overwrite.tsv")
-}
-
-func TestTSVArrays(t *testing.T) {
-	runIniTSV(t, "arrays.tsv")
-}
-
-func TestTSVEmptyInput(t *testing.T) {
-	runIniTSV(t, "empty-input.tsv")
-}
-
-func TestTSVLineComments(t *testing.T) {
-	runIniTSV(t, "line-comments.tsv")
-}
-
-func TestTSVInlineCommentsOff(t *testing.T) {
-	runIniTSV(t, "inline-comments-off.tsv")
-}
-
-func TestTSVInlineCommentsActive(t *testing.T) {
-	runIniTSV(t, "inline-comments-active.tsv", IniOptions{
-		Comment: &CommentOptions{
+// ini's fixtures carry no `opts` column: a whole file is parsed with one
+// option set, named here. A fixture with no entry gets the defaults, so
+// adding one runs it in both runtimes without editing a list.
+//
+// Keep in sync with OPTIONS in ts/test/ini-tsv.test.ts.
+func tsvOptions() map[string]IniOptions {
+	inlineActive := func() *CommentOptions {
+		return &CommentOptions{
 			Inline: &InlineCommentOptions{Active: boolPtr(true)},
-		},
-	})
-}
+		}
+	}
+	noContinuation := ""
+	backslash := "\\"
 
-func TestTSVInlineCommentsCustomChars(t *testing.T) {
-	runIniTSV(t, "inline-comments-custom-chars.tsv", IniOptions{
-		Comment: &CommentOptions{
+	return map[string]IniOptions{
+		"inline-comments-active": {Comment: inlineActive()},
+		"inline-comments-custom-chars": {Comment: &CommentOptions{
 			Inline: &InlineCommentOptions{
 				Active: boolPtr(true),
 				Chars:  []string{";"},
 			},
-		},
-	})
-}
-
-func TestTSVInlineCommentsBackslash(t *testing.T) {
-	runIniTSV(t, "inline-comments-backslash.tsv", IniOptions{
-		Comment: &CommentOptions{
+		}},
+		"inline-comments-backslash": {Comment: &CommentOptions{
 			Inline: &InlineCommentOptions{
 				Active: boolPtr(true),
 				Escape: &InlineEscapeOptions{Backslash: boolPtr(true)},
 			},
-		},
-	})
-}
-
-func TestTSVInlineCommentsBackslashDisabled(t *testing.T) {
-	runIniTSV(t, "inline-comments-backslash-disabled.tsv", IniOptions{
-		Comment: &CommentOptions{
+		}},
+		"inline-comments-backslash-disabled": {Comment: &CommentOptions{
 			Inline: &InlineCommentOptions{
 				Active: boolPtr(true),
 				Escape: &InlineEscapeOptions{Backslash: boolPtr(false)},
 			},
-		},
-	})
-}
-
-func TestTSVInlineCommentsWhitespace(t *testing.T) {
-	runIniTSV(t, "inline-comments-whitespace.tsv", IniOptions{
-		Comment: &CommentOptions{
+		}},
+		"inline-comments-whitespace": {Comment: &CommentOptions{
 			Inline: &InlineCommentOptions{
 				Active: boolPtr(true),
 				Escape: &InlineEscapeOptions{Whitespace: boolPtr(true)},
 			},
-		},
-	})
-}
-
-func TestTSVInlineCommentsWhitespaceBackslash(t *testing.T) {
-	runIniTSV(t, "inline-comments-whitespace-backslash.tsv", IniOptions{
-		Comment: &CommentOptions{
+		}},
+		"inline-comments-whitespace-backslash": {Comment: &CommentOptions{
 			Inline: &InlineCommentOptions{
 				Active: boolPtr(true),
 				Escape: &InlineEscapeOptions{
@@ -349,119 +69,104 @@ func TestTSVInlineCommentsWhitespaceBackslash(t *testing.T) {
 					Backslash:  boolPtr(true),
 				},
 			},
-		},
-	})
-}
-
-func TestTSVInlineCommentsWithSections(t *testing.T) {
-	runIniTSV(t, "inline-comments-with-sections.tsv", IniOptions{
-		Comment: &CommentOptions{
-			Inline: &InlineCommentOptions{Active: boolPtr(true)},
-		},
-	})
-}
-
-func TestTSVSections(t *testing.T) {
-	runIniTSV(t, "sections.tsv")
-}
-
-func TestTSVSectionsEscapedDots(t *testing.T) {
-	runIniTSV(t, "sections-escaped-dots.tsv")
-}
-
-func TestTSVSectionsUnterminated(t *testing.T) {
-	runIniTSV(t, "sections-unterminated.tsv")
-}
-
-func TestTSVValueFixedTokenStart(t *testing.T) {
-	runIniTSV(t, "value-fixed-token-start.tsv")
-}
-
-func TestTSVValueCommentCharStart(t *testing.T) {
-	runIniTSV(t, "value-comment-char-start.tsv")
-}
-
-func TestTSVValueCommentCharStartInline(t *testing.T) {
-	runIniTSV(t, "value-comment-char-start-inline.tsv", IniOptions{
-		Comment: &CommentOptions{
-			Inline: &InlineCommentOptions{Active: boolPtr(true)},
-		},
-	})
-}
-
-func TestTSVSectionsDuplicateMerge(t *testing.T) {
-	runIniTSV(t, "sections-duplicate-merge.tsv")
-}
-
-func TestTSVSectionsDuplicateOverride(t *testing.T) {
-	runIniTSV(t, "sections-duplicate-override.tsv", IniOptions{
-		Section: &SectionOptions{Duplicate: "override"},
-	})
-}
-
-func TestTSVSectionsDuplicateError(t *testing.T) {
-	runIniTSV(t, "sections-duplicate-error.tsv", IniOptions{
-		Section: &SectionOptions{Duplicate: "error"},
-	})
-}
-
-func TestTSVMultilineBackslash(t *testing.T) {
-	runIniTSV(t, "multiline-backslash.tsv", IniOptions{
-		Multiline: &MultilineOptions{},
-	})
-}
-
-func TestTSVMultilineIndent(t *testing.T) {
-	noBackslash := ""
-	runIniTSV(t, "multiline-indent.tsv", IniOptions{
-		Multiline: &MultilineOptions{
+		}},
+		"inline-comments-with-sections":   {Comment: inlineActive()},
+		"value-comment-char-start-inline": {Comment: inlineActive()},
+		"sections-duplicate-override":     {Section: &SectionOptions{Duplicate: "override"}},
+		"sections-duplicate-error":        {Section: &SectionOptions{Duplicate: "error"}},
+		"multiline-backslash":             {Multiline: &MultilineOptions{}},
+		"multiline-no-inline":             {Multiline: &MultilineOptions{}},
+		"multiline-indent": {Multiline: &MultilineOptions{
 			Indent:       boolPtr(true),
-			Continuation: &noBackslash,
-		},
-	})
-}
-
-func TestTSVMultilineBoth(t *testing.T) {
-	bs := "\\"
-	runIniTSV(t, "multiline-both.tsv", IniOptions{
-		Multiline: &MultilineOptions{
-			Continuation: &bs,
+			Continuation: &noContinuation,
+		}},
+		"multiline-both": {Multiline: &MultilineOptions{
+			Continuation: &backslash,
 			Indent:       boolPtr(true),
+		}},
+		"multiline-with-inline": {
+			Multiline: &MultilineOptions{},
+			Comment:   inlineActive(),
 		},
-	})
-}
-
-func TestTSVMultilineWithInline(t *testing.T) {
-	runIniTSV(t, "multiline-with-inline.tsv", IniOptions{
-		Multiline: &MultilineOptions{},
-		Comment: &CommentOptions{
-			Inline: &InlineCommentOptions{Active: boolPtr(true)},
-		},
-	})
-}
-
-func TestTSVMultilineEscapes(t *testing.T) {
-	runIniTSV(t, "multiline-escapes.tsv", IniOptions{
-		Multiline: &MultilineOptions{},
-		Comment: &CommentOptions{
-			Inline: &InlineCommentOptions{
-				Active: boolPtr(true),
-				Escape: &InlineEscapeOptions{Backslash: boolPtr(true)},
+		"multiline-escapes": {
+			Multiline: &MultilineOptions{},
+			Comment: &CommentOptions{
+				Inline: &InlineCommentOptions{
+					Active: boolPtr(true),
+					Escape: &InlineEscapeOptions{Backslash: boolPtr(true)},
+				},
 			},
 		},
-	})
+	}
 }
 
-func TestTSVMultilineNoInline(t *testing.T) {
-	runIniTSV(t, "multiline-no-inline.tsv", IniOptions{
-		Multiline: &MultilineOptions{},
-	})
+// ini's `ERROR:<code>` cells are SYMBOLIC — they name the rejection this
+// repo means, not the code the engine answers, which for most of them is a
+// generic one. A code listed here additionally pins the MESSAGE the parser
+// must produce; one that is not asserts rejection only, because
+// engine-generated wording differs between the two runtimes.
+//
+// This is why the runner gets a MatchError hook rather than using its
+// default code comparison.
+//
+// Keep in sync with ERROR_MESSAGES in ts/test/ini-tsv.test.ts.
+var tsvErrorMessages = map[string]string{
+	"duplicate_section": "Duplicate section",
 }
 
-func TestTSVValueKeywords(t *testing.T) {
-	runIniTSV(t, "value-keywords.tsv")
+// TestSpec runs every fixture in the spec directory, each with its own
+// options. LoadSpecDir rejects an empty directory and the runner rejects an
+// empty fixture, so neither can pass by running nothing.
+func TestSpec(t *testing.T) {
+	dir, err := support.FindSpecDir("")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// MinCols 2 keeps a guard this repo already had: a line with no tab is
+	// a failure, named by file and line, not a row silently dropped. (A
+	// #-leading line with no tab is a comment to the shared loader and is
+	// skipped before that check — there are none in these fixtures.)
+	specs, err := support.LoadSpecDir(dir, &support.Options{MinCols: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	options := tsvOptions()
+
+	for _, spec := range specs {
+		name := strings.TrimSuffix(spec.Name, ".tsv")
+		opts, hasOpts := options[name]
+
+		support.Runner{
+			Parse: func(input string) (any, error) {
+				if hasOpts {
+					return parseRecovering(input, opts)
+				}
+				return parseRecovering(input)
+			},
+
+			MatchError: func(err error, want string, _ *support.Row) bool {
+				pattern, pinned := tsvErrorMessages[want]
+				if !pinned {
+					// Symbolic: rejection is all that is asserted.
+					return true
+				}
+				return strings.Contains(err.Error(), pattern)
+			},
+		}.Spec(t, spec)
+	}
 }
 
-func TestTSVNumbersAreStrings(t *testing.T) {
-	runIniTSV(t, "numbers-are-strings.tsv")
+// parseRecovering turns a recovered state-action panic into an error. The
+// tabnas engine recovers most of them itself, but not all, and a panic
+// escaping the parse hook would take down the whole run rather than fail
+// the row that caused it.
+func parseRecovering(input string, opts ...IniOptions) (got any, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			got, err = nil, fmt.Errorf("%v", r)
+		}
+	}()
+	return Parse(input, opts...)
 }
