@@ -16,15 +16,21 @@ Tab-separated, one case per line, with a header row naming the columns
 
 ### What the loaders actually do — mind these
 
-- **Escapes.** `\n`, `\r`, `\r\n` and `\t` are decoded. A literal `\\` is
-  **not** — there is no way to write a single backslash, but a backslash
-  before any OTHER character survives verbatim, which is how
-  `sections-escaped-dots.tsv` writes `[C:\path]`. Both runtimes decode
-  *every* column; Go used to decode only `input`, so a `\n` in an
-  `expected` cell meant two different things in the two runtimes.
+- **Escapes are the shared codec's**, from `@tabnas/support`: `\n`, `\r`,
+  `\t` and `\\` are decoded, and every other backslash sequence survives
+  verbatim — which is how `sections-escaped-dots.tsv` writes `[C:\path]`.
+  Only the `input` column is decoded. The `expected` column is raw JSON,
+  which carries its own escape rules and must not be decoded twice.
+
+  Both of those changed when this repo moved onto the shared loader. Its
+  own loader decoded *every* column, and did not treat `\\` as an escaped
+  backslash — so `\\n` meant a backslash followed by a newline. To say
+  that now, write `\\\n`: the 14 cells that relied on the old reading
+  were re-encoded, by decoding them the old way and re-encoding them with
+  the shared codec, so every one still means exactly what it meant.
 - **`ERROR:` takes a symbolic rejection code.** Both runners read the
   text after the colon. A code listed in the runner's code table
-  (`ERROR_CODES` in `ts/test/ini-tsv.test.ts`, `tsvErrorCodes` in
+  (`ERROR_MESSAGES` in `ts/test/ini-tsv.test.ts`, `tsvErrorMessages` in
   `go/ini_tsv_test.go` — currently just `duplicate_section`) additionally
   pins the message the parser must produce. Any other code asserts
   rejection only, because engine-generated error wording differs between
@@ -32,8 +38,12 @@ Tab-separated, one case per line, with a header row naming the columns
   other.
 - **A line with no tab is a failure in both runtimes**, named by file and
   line. It used to be silently dropped by Go and to crash TypeScript on
-  `undefined.startsWith`. Every line must be blank or contain a tab —
-  including `#`-leading ones, which are *not* comments here.
+  `undefined.startsWith`. Both runners ask the shared loader for
+  `minCols: 2`, which is what keeps that true. The one softening: a
+  `#`-leading line with no tab is a comment to the shared loader and is
+  skipped before the check rather than rejected. There are none in these
+  fixtures, and a `#`-leading line WITH a tab is still data — which is
+  what `line-comments.tsv` needs.
 - **A fixture that loads zero cases fails.** An emptied, renamed or
   header-only `.tsv` used to pass green in both runtimes, because the loop
   over its rows simply never ran.
@@ -60,11 +70,19 @@ and do not prove.
 
 ## Who runs what
 
-- TypeScript: `ts/test/ini-tsv.test.ts` (`loadTSV`).
-- Go: `go/ini_tsv_test.go` (`loadTSV` / `runIniTSV`).
+- TypeScript: `ts/test/ini-tsv.test.ts` — a `makeRunner(...)` per fixture.
+- Go: `go/ini_tsv_test.go` — a `support.Runner{...}` per fixture.
 
-Both name the same files. A fixture only one runtime runs proves nothing, so
-wire a new file into both.
+Both hold only what is specific to ini: the per-file option table and the
+message table above. Everything else — finding `test/spec`, reading the
+file, decoding escapes, the comparison, the `<file>:<line>` in a failure
+message — comes from [`@tabnas/support`](https://github.com/tabnas/support)
+and its Go half, so the two loaders cannot drift from each other either.
+
+Fixtures are discovered by **listing the directory**, not by being named in
+a test. A new `.tsv` therefore runs in both runtimes at once, with the
+default options; add an entry to the option table only if it needs
+something else.
 
 ## Rules
 
