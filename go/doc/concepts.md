@@ -158,11 +158,11 @@ types, and a few mechanics.
 
 ### Error handling
 
-- **Duplicate section under `error`.** TS throws synchronously
-  (`Error: Duplicate section: [..]`). Go raises it inside a state-action
-  `panic`, which the engine recovers and surfaces as a non-`nil`
-  `error` from `Parse` (older engine builds may surface a raw panic).
-  The test helper accepts either; in your code, check `err`.
+- **Duplicate section under `error`.** Both runtimes raise the declared
+  code `duplicate_section` through the same grammar alternate — TS throws
+  it, Go returns it as a non-`nil` `error` from `Parse`. Neither panics.
+  Match on the code, not the message: the code is the cross-runtime
+  contract and the wording is not.
 - **Parse failures generally.** TS `parse` throws; Go `Parse` returns
   an `error` and does not panic for ordinary syntax errors.
 

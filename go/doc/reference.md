@@ -104,7 +104,7 @@ How a repeated `[section]` header is handled.
 |---|---|
 | `"merge"` (default, also the value when `Section` is `nil`) | Keys from all occurrences are combined; a duplicate key takes the last value. |
 | `"override"` | The later occurrence replaces the earlier section map entirely (subsections included). |
-| `"error"` | A repeated header is rejected; `Parse` returns a non-`nil` `error` whose message contains `Duplicate section: [<path>]`. |
+| `"error"` | A repeated header is rejected; `Parse` returns a non-`nil` `error` with code `duplicate_section`, naming the repeated path. |
 
 A header counts as "declared" only if written explicitly; intermediate
 path segments created by a deeper header are not declared, so `[a.b]`

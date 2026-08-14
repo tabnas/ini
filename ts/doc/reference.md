@@ -101,7 +101,7 @@ How a repeated `[section]` header is handled.
 |---|---|
 | `'merge'` (default) | Keys from all occurrences are combined into one section object; a duplicate key takes the last value. |
 | `'override'` | The later occurrence replaces the earlier section object entirely (subsections included). |
-| `'error'` | A repeated header throws `Error: Duplicate section: [<path>]`. |
+| `'error'` | A repeated header throws an error with code `duplicate_section`, naming the repeated path. |
 
 A header only counts as "declared" if it is written explicitly.
 Intermediate path segments created by a deeper header are **not**

@@ -182,6 +182,14 @@ const grammarText = `
   options: number: { lex: false }
   options: string: { lex: true chars: QUOTE_CHARS abandon: true }
   options: text: { lex: false }
+  # Declared error codes. The CODE is the cross-runtime contract; the message
+  # text is not (see AGENTS.md). Both runtimes read this one block, so the two
+  # catalogues cannot drift. Keys stay alphabetical: admin's descriptor
+  # generator compares the TS and Go extractions and sorts only one side.
+  options: error: {
+    duplicate_section: 'duplicate section header: [{section}]'
+    unterminated_section: 'unterminated section header: [{src}'
+  }
   options: comment: def: {
     hash: { eatline: true }
     slash: null
@@ -198,6 +206,13 @@ const grammarText = `
   ]
 
   rule: table: open: [
+    # Raised when the table's own before-open handler saw a section path it
+    # had already declared and section.duplicate is 'error'. It flags the
+    # rule rather than raising there, because a state action cannot raise a
+    # coded error in both runtimes: TS can return a bad token from bo, Go
+    # discards the return value, and a ctx error set in bo is overwritten by
+    # alternate matching. An error ALTERNATE is the path both runtimes share.
+    { c: '@is-duplicate-section' e: '@duplicate-section' }
     { s: '#OS' p: dive }
     { s: ['#HK #ST #VL' '#EQ'] p: map b: 2 }
     { s: ['#HV' '#OS'] p: map b: 2 }
@@ -217,6 +232,12 @@ const grammarText = `
   ]
   rule: dive: close: [
     { s: '#CS' b: 1 }
+    # A section header lives on one line, so anything other than the closing
+    # bracket here means the header was never closed. Unconditional (no s
+    # key), so it matches only after the '#CS' alternate above has been
+    # tried, and raises unterminated_section rather than the engine's
+    # generic 'unexpected'.
+    { e: '@dive-unterminated' }
   ]
 
   rule: map: open: {
@@ -349,7 +370,16 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 					// the path segment so an unterminated header (`[a` with
 					// no `]`) is a parse error instead of a section name that
 					// silently swallows following lines up to the next `]`.
-					Fixed:   []string{"]", ".", "\n", "\r\n"},
+					//
+					// "" is hoover's end-of-input delimiter. Without it a
+					// header that runs to EOF leaves the block committed but
+					// unterminated, which hoover reports as a generic
+					// invalid_text bad token — raised by the lexer before any
+					// alternate is consulted, so the grammar never gets to
+					// say what actually went wrong. Ending at EOF emits the
+					// segment token instead and lets the dive rule's close
+					// state raise unterminated_section, the real diagnosis.
+					Fixed:   []string{"]", ".", "\n", "\r\n", ""},
 					Consume: false,
 				},
 				EscapeChar:         "\\",
@@ -550,7 +580,16 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 					isDuplicate := declaredSections[sectionKey]
 
 					if isDuplicate && opts.dupSection == "error" {
-						panic(fmt.Sprintf("Duplicate section: [%s]", strings.Join(dive, ".")))
+						// Flag the rule and let this rule's error ALTERNATE
+						// raise the coded error (see the grammar's
+						// table:open). Raising here is not portable: Go
+						// discards a state action's return value, and an
+						// error published on the context from bo is
+						// overwritten when the alternates are matched. The
+						// old panic became code "internal", which said
+						// nothing about what the document did wrong.
+						r.EnsureU()["dupsec"] = strings.Join(dive, ".")
+						return
 					}
 
 					node, _ := nodeMap(r.Node)
@@ -663,6 +702,41 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		"@pair-close-err": jsonic.AltError(func(r *jsonic.Rule, ctx *jsonic.Context) *jsonic.Token {
 			// Not used in Go (CL token is disabled).
 			return nil
+		}),
+
+		// Did this table's before-open handler flag a duplicate section?
+		"@is-duplicate-section": jsonic.AltCond(func(r *jsonic.Rule, ctx *jsonic.Context) bool {
+			if r.U == nil {
+				return false
+			}
+			_, flagged := r.U["dupsec"]
+			return flagged
+		}),
+
+		// The duplicate itself. The dotted path is not any single token's
+		// src, so it rides along as the {section} detail the message
+		// template reads.
+		"@duplicate-section": jsonic.AltError(func(r *jsonic.Rule, ctx *jsonic.Context) *jsonic.Token {
+			tkn := altErrToken(r, ctx)
+			if tkn == nil {
+				return nil
+			}
+			section, _ := r.U["dupsec"].(string)
+			// Bad returns the token to mark: it is copy-on-write against the
+			// NoToken sentinel, so the RESULT must be used, not the receiver.
+			return tkn.Bad("duplicate_section", map[string]any{"section": section})
+		}),
+
+		// The section header ran out before its closing bracket — at a
+		// newline, or at end of input. The dive rule opened on the #DK
+		// segment token, so that token carries both the text for the
+		// message and the position to point at.
+		"@dive-unterminated": jsonic.AltError(func(r *jsonic.Rule, ctx *jsonic.Context) *jsonic.Token {
+			tkn := altErrToken(r, ctx)
+			if tkn == nil {
+				return nil
+			}
+			return tkn.Bad("unterminated_section")
 		}),
 
 		"@val-empty": jsonic.AltAction(func(r *jsonic.Rule, ctx *jsonic.Context) {
@@ -1049,6 +1123,25 @@ func resolveTokenVal(t *jsonic.Token) any {
 		return t.Val
 	}
 	return t.Src
+}
+
+// altErrToken picks the token an error alternate should mark. An alternate
+// with no token sequence matches zero tokens, so the rule's open slot holds
+// the NoToken sentinel rather than anything from the source; the lookahead
+// token is then the one that actually stopped the parse, and the only one
+// carrying a usable position. Returns nil when neither is available, which
+// tells the caller to raise nothing.
+func altErrToken(r *jsonic.Rule, ctx *jsonic.Context) *jsonic.Token {
+	if r.ON > 0 && r.O0 != nil && !r.O0.IsNoToken() {
+		return r.O0
+	}
+	if ctx.T0 != nil {
+		return ctx.T0
+	}
+	if r.O0 != nil {
+		return r.O0
+	}
+	return nil
 }
 
 // nodeMap returns the underlying string-keyed map for a parse node,

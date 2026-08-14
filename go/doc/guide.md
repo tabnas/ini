@@ -187,16 +187,18 @@ result, _ := tabnasini.Parse("[a]\nx=1\ny=2\n[a]\nz=3", tabnasini.IniOptions{
 // map[string]any{"a": map[string]any{"z": "3"}}
 ```
 
-`"error"` rejects a repeated header. The engine surfaces the rejection
-as a non-`nil` `error` (or, on some engine builds, a recovered panic),
-so check `err`:
+`"error"` rejects a repeated header, returning a non-`nil` `error` whose
+code is `duplicate_section`:
 
 ```go
 _, err := tabnasini.Parse("[a]\nx=1\n[a]\ny=2", tabnasini.IniOptions{
 	Section: &tabnasini.SectionOptions{Duplicate: "error"},
 })
-// err != nil  — message contains "Duplicate section: [a]"
+// err != nil  — code "duplicate_section", naming the path [a]
 ```
+
+Match on the code rather than the message: the code is the contract both
+runtimes hold to, and the wording is not.
 
 ## Keep spaces and bracket keys with quotes
 

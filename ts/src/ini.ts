@@ -58,6 +58,14 @@ const grammarText = `
   options: number: { lex: false }
   options: string: { lex: true chars: QUOTE_CHARS abandon: true }
   options: text: { lex: false }
+  # Declared error codes. The CODE is the cross-runtime contract; the message
+  # text is not (see AGENTS.md). Both runtimes read this one block, so the two
+  # catalogues cannot drift. Keys stay alphabetical: admin's descriptor
+  # generator compares the TS and Go extractions and sorts only one side.
+  options: error: {
+    duplicate_section: 'duplicate section header: [{section}]'
+    unterminated_section: 'unterminated section header: [{src}'
+  }
   options: comment: def: {
     hash: { eatline: true }
     slash: null
@@ -74,6 +82,13 @@ const grammarText = `
   ]
 
   rule: table: open: [
+    # Raised when the table's own before-open handler saw a section path it
+    # had already declared and section.duplicate is 'error'. It flags the
+    # rule rather than raising there, because a state action cannot raise a
+    # coded error in both runtimes: TS can return a bad token from bo, Go
+    # discards the return value, and a ctx error set in bo is overwritten by
+    # alternate matching. An error ALTERNATE is the path both runtimes share.
+    { c: '@is-duplicate-section' e: '@duplicate-section' }
     { s: '#OS' p: dive }
     { s: ['#HK #ST #VL' '#EQ'] p: map b: 2 }
     { s: ['#HV' '#OS'] p: map b: 2 }
@@ -93,6 +108,12 @@ const grammarText = `
   ]
   rule: dive: close: [
     { s: '#CS' b: 1 }
+    # A section header lives on one line, so anything other than the closing
+    # bracket here means the header was never closed. Unconditional (no s
+    # key), so it matches only after the '#CS' alternate above has been
+    # tried, and raises unterminated_section rather than the engine's
+    # generic 'unexpected'.
+    { e: '@dive-unterminated' }
   ]
 
   rule: map: open: {
@@ -119,6 +140,20 @@ const grammarText = `
 }
 `
 // --- END EMBEDDED ini-grammar.jsonic ---
+
+// Picks the token an error alternate should mark. An alternate with no
+// token sequence matches zero tokens, so the rule's open slot holds the
+// engine's NOTOKEN sentinel rather than anything from the source — marking
+// that would both lose the position and scribble on a shared object. The
+// lookahead token is then the one that actually stopped the parse.
+// Returns undefined when neither is available, which tells the caller to
+// raise nothing.
+function altErrToken(r: any, ctx: any): any {
+  if (0 < r.oN && null != r.o0) {
+    return r.o0
+  }
+  return ctx?.t0 ?? undefined
+}
 
 function Ini(tn: Tabnas, _options: IniOptions) {
   // Resolve inline comment options. Needed before the config modifiers
@@ -333,7 +368,15 @@ function Ini(tn: Tabnas, _options: IniOptions) {
           // path segment so an unterminated header (`[a` with no `]`)
           // is a parse error instead of a section name that silently
           // swallows following lines up to the next `]`.
-          fixed: [']', '.', '\n', '\r\n'],
+          //
+          // '' is hoover's end-of-input delimiter. Without it a header that
+          // runs to EOF leaves the block committed but unterminated, which
+          // hoover reports as a generic `invalid_text` bad token — raised by
+          // the lexer before any alternate is consulted, so the grammar
+          // never gets to say what actually went wrong. Ending at EOF emits
+          // the segment token instead and lets the dive rule's close state
+          // raise `unterminated_section`, which is the real diagnosis.
+          fixed: [']', '.', '\n', '\r\n', ''],
           consume: false,
         },
         escapeChar: '\\',
@@ -378,9 +421,13 @@ function Ini(tn: Tabnas, _options: IniOptions) {
         let isDuplicate = declaredSections.has(sectionKey)
 
         if (isDuplicate && dupSection === 'error') {
-          throw new Error(
-            'Duplicate section: [' + dive.join('.') + ']'
-          )
+          // Flag the rule and let this rule's error ALTERNATE raise the
+          // coded error (see the grammar's table:open). Raising here is not
+          // portable: Go discards a state action's return value, and an
+          // error published on the context from bo is overwritten when the
+          // alternates are matched.
+          r.u.dupsec = dive.join('.')
+          return
         }
 
         for (let dI = 0; dI < dive.length; dI++) {
@@ -470,6 +517,34 @@ function Ini(tn: Tabnas, _options: IniOptions) {
 
     // Error handlers.
     '@pair-close-err': (r: any) => r.c1,
+
+    // Did this table's before-open handler flag a duplicate section?
+    '@is-duplicate-section': (r: any) => null != r.u.dupsec,
+
+    // The duplicate itself. The dotted path is not any single token's src,
+    // so it rides along as the {section} detail the message template reads.
+    '@duplicate-section': (r: any, ctx: any) => {
+      const tkn: any = altErrToken(r, ctx)
+      if (null == tkn) {
+        return undefined
+      }
+      tkn.err = 'duplicate_section'
+      tkn.use = Object.assign(tkn.use || {}, { section: r.u.dupsec })
+      return tkn
+    },
+
+    // The section header ran out before its closing bracket — at a newline,
+    // or at end of input. The dive rule opened on the #DK segment token, so
+    // that token carries both the text for the message and the position to
+    // point at.
+    '@dive-unterminated': (r: any, ctx: any) => {
+      const tkn: any = altErrToken(r, ctx)
+      if (null == tkn) {
+        return undefined
+      }
+      tkn.err = 'unterminated_section'
+      return tkn
+    },
 
     // Options callbacks.
     '@line-check': (lex: Lex) => {
