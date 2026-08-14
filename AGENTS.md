@@ -288,32 +288,50 @@ What "correct" means here, in order of authority:
 
 ## Error codes
 
-This package declares **no error codes of its own** — there is no
-`error`/`hint` extension in `ini-grammar.jsonic`, `ts/src/ini.ts`, or
-`go/ini.go`. Parse failures surface through the engine's base codes, or —
-for duplicate sections — through a plain thrown error with a prose message.
+This package declares **two** error codes, in the `options: error:` block
+of [`ini-grammar.jsonic`](ini-grammar.jsonic). The grammar is embedded
+verbatim into both runtimes by `ts/embed-grammar.js`, so there is one
+catalogue, not two that must be kept in step:
 
-### Known defect: fixtures pin codes that nothing declares
+| Code | Raised when |
+| --- | --- |
+| `duplicate_section` | a section header repeats a path already declared, and `section.duplicate` is `'error'` |
+| `unterminated_section` | a section header reaches a newline or end of input without its closing `]` |
 
-Two shared fixtures pin `ERROR:<code>` cells whose codes are declared
-**nowhere** — not in this repo and not in the engine's base set:
+**The code is the contract; the message wording is not.** Two runtimes that
+reject the same input with different codes have agreed on nothing, so the
+shared fixtures pin `ERROR:<code>` and the runner compares the error's
+`code` field exactly. Message text may differ and may be reworded.
 
-- `duplicate_section` (`test/spec/sections-duplicate-error.tsv`) — the
-  parser raises a plain `Error`/panic reading `Duplicate section: [a]`, not
-  an engine-coded error. The fixture "code" resolves through a per-runtime
-  code→message-regex table kept in sync by hand (`ERROR_MESSAGES` in
-  `ts/test/ini-tsv.test.ts`, `tsvErrorMessages` in `go/ini_tsv_test.go`), so
-  the pinned contract is really the message wording.
-- `unterminated_section` (`test/spec/sections-unterminated.tsv`) — in
-  **neither** table; as [`test/AGENTS.md`](test/AGENTS.md) says, such a row
-  asserts rejection only. The name in the fixture documents intent but pins
-  nothing beyond "this input fails".
+Everything else surfaces through the engine's base codes — notably
+`unexpected` for a header that is malformed rather than unterminated
+(`[]`, `[a.]`, `[.a]`).
 
-Record-keeping, not a to-do: giving these rows real declared codes (an
-`options.error`/`options.hint` catalogue both runtimes share) is A3/A4 work,
-not something to bolt on here. Until then, do not add further pseudo-codes —
-a new rejection either gets a genuinely declared code or an honest bare
-`ERROR` row.
+Both codes are exercised by fixtures: `test/spec/sections-duplicate-error.tsv`
+and `test/spec/sections-unterminated.tsv`. Keep the list here, the grammar
+block, and `tabnas.plugin.json`'s `errorCodes` in step — admin's
+`make ax-descriptor` fails when the descriptor disagrees with the grammar,
+and cross-checks that the fixtures exercise nothing the catalogue omits.
+
+### How each is raised, and why not more directly
+
+Both go through an error **alternate** (`e:` in the grammar) rather than
+being thrown where they are detected. That is deliberate and worth knowing
+before moving either:
+
+- A state action cannot raise a coded error portably. TypeScript can return
+  a bad token from a before-open handler, but Go discards a state action's
+  return value, and an error published on the context from `bo` is
+  overwritten when the rule's alternates are matched. So `@table-bo` only
+  *flags* a duplicate (`r.u.dupsec`); the error alternate on `table: open`
+  raises it in both runtimes from the one shared grammar.
+- `unterminated_section` needs the lexer's cooperation. The `divekey`
+  Hoover block is committed once it starts, so a header running to end of
+  input used to leave it unterminated — reported as a generic `invalid_text`
+  bad token, raised by the lexer *before* any alternate is consulted. The
+  block's `end.fixed` therefore includes `''`, Hoover's end-of-input
+  delimiter, so the segment token is emitted and the `dive` rule's close
+  state gets to raise the code that actually describes the problem.
 
 ## Untrusted input
 

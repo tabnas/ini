@@ -1,0 +1,20 @@
+{
+  "$schema": "https://tabnas.dev/schema/plugin.schema.json",
+  "name": "@tabnas/ini",
+  "go": "github.com/tabnas/ini/go",
+  "description": "INI configuration-file parsing for the tabnas engine.",
+  "base": "@tabnas/jsonic",
+  "engine": "@tabnas/parser",
+  "grammar": "ini-grammar.jsonic",
+  "extensions": [
+    ".ini"
+  ],
+  "specDir": "test/spec",
+  "errorCodes": [
+    "duplicate_section",
+    "unterminated_section"
+  ],
+  "docs": "https://tabnas.dev/docs/packages",
+  "repository": "https://github.com/tabnas/ini",
+  "versionSource": "ts/package.json"
+}

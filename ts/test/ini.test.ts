@@ -407,13 +407,15 @@ describe('section-duplicate', () => {
     assert.deepEqual(je.parse('[a]\nx=1\n[b]\ny=2'),
       { a: { x: '1' }, b: { y: '2' } })
 
-    // Duplicate section: throws
+    // Duplicate section: throws. The CODE is what this asserts — it is the
+    // cross-runtime contract, where the message wording deliberately is not.
     assert.throws(() => je.parse('[a]\nx=1\n[a]\ny=2'),
-      /Duplicate section/)
+      (err: any) => 'duplicate_section' === err.code)
 
-    // Duplicate nested section: throws
+    // Duplicate nested section: throws, and names the full dotted path.
     assert.throws(() => je.parse('[a.b]\nx=1\n[a.b]\ny=2'),
-      /Duplicate section/)
+      (err: any) =>
+        'duplicate_section' === err.code && String(err.message).includes('[a.b]'))
 
     // Intermediate path is NOT a declared section
     // [a.b] creates intermediate [a] but does not declare it

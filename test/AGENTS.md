@@ -28,14 +28,17 @@ Tab-separated, one case per line, with a header row naming the columns
   that now, write `\\\n`: the 14 cells that relied on the old reading
   were re-encoded, by decoding them the old way and re-encoding them with
   the shared codec, so every one still means exactly what it meant.
-- **`ERROR:` takes a symbolic rejection code.** Both runners read the
-  text after the colon. A code listed in the runner's code table
-  (`ERROR_MESSAGES` in `ts/test/ini-tsv.test.ts`, `tsvErrorMessages` in
-  `go/ini_tsv_test.go` — currently just `duplicate_section`) additionally
-  pins the message the parser must produce. Any other code asserts
-  rejection only, because engine-generated error wording differs between
-  the two runtimes. Adding a code to one table means adding it to the
-  other.
+- **`ERROR:<code>` pins the error's `code`, exactly.** Both runners read
+  the text after the colon and compare it against the code the parser
+  answers with — the shared runner's default behaviour, with no
+  per-runtime hook in between. The two codes the fixtures use,
+  `duplicate_section` and `unterminated_section`, are declared in
+  `ini-grammar.jsonic` and raised by both runtimes. Message wording is
+  deliberately **not** pinned: it is not a cross-runtime contract, and it
+  may be reworded. A new rejection therefore needs a genuinely declared
+  code, not a symbolic name resolved through message matching — which is
+  what the two runners used to do, via hand-synced regex tables that have
+  since been deleted.
 - **A line with no tab is a failure in both runtimes**, named by file and
   line. It used to be silently dropped by Go and to crash TypeScript on
   `undefined.startsWith`. Both runners ask the shared loader for

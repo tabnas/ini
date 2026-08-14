@@ -233,7 +233,8 @@ const j = new Tabnas().use(jsonic).use(Ini, {
 try {
   j.parse('[a]\nx=1\n[a]\ny=2')
 } catch (err) {
-  err.message   // includes: Duplicate section: [a]
+  err.code      // 'duplicate_section' — the contract; match on this
+  err.message   // names the repeated path [a]; wording is not a contract
 }
 ```
 

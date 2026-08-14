@@ -61,23 +61,6 @@ const OPTIONS: Record<string, IniOptions> = {
 }
 
 
-// ini's `ERROR:<code>` cells are SYMBOLIC — they name the rejection this
-// repo means, not the code the engine answers, which for most of them is a
-// generic `invalid_text`. A code listed here additionally pins the MESSAGE
-// the parser must produce; one that is not asserts rejection only, because
-// engine-generated wording differs between the two runtimes.
-//
-// This is why the runner gets a `matchError` hook rather than using its
-// default code comparison. Giving these rows real codes would pin more,
-// and is worth doing — but it is a change to what the fixtures assert, not
-// to who reads them, so it is not this commit's business.
-//
-// Keep in sync with tsvErrorMessages in go/ini_tsv_test.go.
-const ERROR_MESSAGES: Record<string, RegExp> = {
-  duplicate_section: /Duplicate section/,
-}
-
-
 // One runner per fixture file, because the options are per file. The
 // directory listing is the source of truth for which fixtures exist —
 // `loadSpecDir` rejects an empty directory, and the runner rejects an
@@ -89,15 +72,14 @@ const ERROR_MESSAGES: Record<string, RegExp> = {
 for (const spec of loadSpecDir(findSpecDir(__dirname), { minCols: 2 })) {
   const name = spec.file.replace(/\.tsv$/, '')
 
+  // No matchError hook: an `ERROR:<code>` cell is compared against the
+  // error's `code` by the shared runner's default, which is the contract
+  // this package wants. Both codes the fixtures pin — duplicate_section and
+  // unterminated_section — are declared in ini-grammar.jsonic and raised by
+  // both runtimes, so nothing has to be resolved through message wording
+  // (which is deliberately not a cross-runtime contract).
   makeRunner({
     parse: (input) =>
       new Tabnas().use(jsonic).use(Ini, OPTIONS[name] || {}).parse(input),
-
-    matchError: (err: any, want) => {
-      const pattern = ERROR_MESSAGES[want]
-      return undefined === pattern
-        ? err instanceof Error
-        : pattern.test(String(err?.message))
-    },
   }).spec(spec)
 }

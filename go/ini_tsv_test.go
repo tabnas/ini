@@ -100,20 +100,6 @@ func tsvOptions() map[string]IniOptions {
 	}
 }
 
-// ini's `ERROR:<code>` cells are SYMBOLIC — they name the rejection this
-// repo means, not the code the engine answers, which for most of them is a
-// generic one. A code listed here additionally pins the MESSAGE the parser
-// must produce; one that is not asserts rejection only, because
-// engine-generated wording differs between the two runtimes.
-//
-// This is why the runner gets a MatchError hook rather than using its
-// default code comparison.
-//
-// Keep in sync with ERROR_MESSAGES in ts/test/ini-tsv.test.ts.
-var tsvErrorMessages = map[string]string{
-	"duplicate_section": "Duplicate section",
-}
-
 // TestSpec runs every fixture in the spec directory, each with its own
 // options. LoadSpecDir rejects an empty directory and the runner rejects an
 // empty fixture, so neither can pass by running nothing.
@@ -138,6 +124,13 @@ func TestSpec(t *testing.T) {
 		name := strings.TrimSuffix(spec.Name, ".tsv")
 		opts, hasOpts := options[name]
 
+		// No MatchError hook: an ERROR:<code> cell is compared against the
+		// error's Code by the shared runner's default, which is the contract
+		// this package wants. Both codes the fixtures pin —
+		// duplicate_section and unterminated_section — are declared in
+		// ini-grammar.jsonic and raised by both runtimes, so nothing has to
+		// be resolved through message wording (which is deliberately not a
+		// cross-runtime contract).
 		support.Runner{
 			Parse: func(input string) (any, error) {
 				if hasOpts {
@@ -145,26 +138,26 @@ func TestSpec(t *testing.T) {
 				}
 				return parseRecovering(input)
 			},
-
-			MatchError: func(err error, want string, _ *support.Row) bool {
-				pattern, pinned := tsvErrorMessages[want]
-				if !pinned {
-					// Symbolic: rejection is all that is asserted.
-					return true
-				}
-				return strings.Contains(err.Error(), pattern)
-			},
 		}.Spec(t, spec)
 	}
 }
 
-// parseRecovering turns a recovered state-action panic into an error. The
-// tabnas engine recovers most of them itself, but not all, and a panic
-// escaping the parse hook would take down the whole run rather than fail
-// the row that caused it.
+// parseRecovering turns a recovered panic into an error. No parse path
+// panics deliberately any more — the duplicate-section raise site now
+// publishes a coded bad token — but the engine recovers only what runs
+// inside its own parse loop, and a panic escaping here would take down the
+// whole run rather than fail the row that caused it.
+//
+// A recovered value that is already an error is passed through unchanged:
+// wrapping it in fmt.Errorf would strip a *TabnasError down to a plain
+// error, and with it the Code the runner compares against ERROR:<code>.
 func parseRecovering(input string, opts ...IniOptions) (got any, err error) {
 	defer func() {
 		if r := recover(); r != nil {
+			if e, ok := r.(error); ok {
+				got, err = nil, e
+				return
+			}
 			got, err = nil, fmt.Errorf("%v", r)
 		}
 	}()

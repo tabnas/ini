@@ -10,6 +10,14 @@
   options: number: { lex: false }
   options: string: { lex: true chars: QUOTE_CHARS abandon: true }
   options: text: { lex: false }
+  # Declared error codes. The CODE is the cross-runtime contract; the message
+  # text is not (see AGENTS.md). Both runtimes read this one block, so the two
+  # catalogues cannot drift. Keys stay alphabetical: admin's descriptor
+  # generator compares the TS and Go extractions and sorts only one side.
+  options: error: {
+    duplicate_section: 'duplicate section header: [{section}]'
+    unterminated_section: 'unterminated section header: [{src}'
+  }
   options: comment: def: {
     hash: { eatline: true }
     slash: null
@@ -26,6 +34,13 @@
   ]
 
   rule: table: open: [
+    # Raised when the table's own before-open handler saw a section path it
+    # had already declared and section.duplicate is 'error'. It flags the
+    # rule rather than raising there, because a state action cannot raise a
+    # coded error in both runtimes: TS can return a bad token from bo, Go
+    # discards the return value, and a ctx error set in bo is overwritten by
+    # alternate matching. An error ALTERNATE is the path both runtimes share.
+    { c: '@is-duplicate-section' e: '@duplicate-section' }
     { s: '#OS' p: dive }
     { s: ['#HK #ST #VL' '#EQ'] p: map b: 2 }
     { s: ['#HV' '#OS'] p: map b: 2 }
@@ -45,6 +60,12 @@
   ]
   rule: dive: close: [
     { s: '#CS' b: 1 }
+    # A section header lives on one line, so anything other than the closing
+    # bracket here means the header was never closed. Unconditional (no s
+    # key), so it matches only after the '#CS' alternate above has been
+    # tried, and raises unterminated_section rather than the engine's
+    # generic 'unexpected'.
+    { e: '@dive-unterminated' }
   ]
 
   rule: map: open: {
