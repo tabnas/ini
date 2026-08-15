@@ -69,7 +69,7 @@ does this for you (see below).
 **TypeScript is canonical. Go is a port of it.** When you change
 behaviour:
 
-1. Change `ts/src/ini.ts` first (or `ts/ini-grammar.jsonic` for grammar
+1. Change `ts/src/ini.ts` first (or `ini-grammar.jsonic` for grammar
    changes — see the embed section below).
 2. Port the same change to `go/ini.go`.
 3. Add/extend the shared fixture(s) in `test/spec/*.tsv` so both runtimes
@@ -84,7 +84,7 @@ behaviour:
 
 ## The grammar is embedded — never hand-edit the embedded block
 
-`ts/ini-grammar.jsonic` is embedded verbatim into **both** `ts/src/ini.ts`
+`ini-grammar.jsonic` is embedded verbatim into **both** `ts/src/ini.ts`
 and `go/ini.go`, between these markers:
 
 ```
@@ -93,7 +93,7 @@ and `go/ini.go`, between these markers:
 // --- END EMBEDDED ini-grammar.jsonic ---
 ```
 
-Edit `ts/ini-grammar.jsonic`, then run the embed step. Never edit the text
+Edit `ini-grammar.jsonic`, then run the embed step. Never edit the text
 between the markers by hand — it will be overwritten. (The grammar may not
 contain backticks; `embed-grammar.js` aborts if it does, since the Go side
 embeds it as a raw string.)
