@@ -1,0 +1,11 @@
+# pkg-config for libtabnasini (tabnas-clib-template: v1)
+# Install alongside the built library; substitute @PREFIX@ at install.
+prefix=@PREFIX@
+libdir=${prefix}/lib
+includedir=${prefix}/include
+
+Name: libtabnasini
+Description: ini parser (libtabnasini) — uniform tabnas C ABI (ADR-12)
+Version: @VERSION@
+Libs: -L${libdir} -ltabnasini
+Cflags: -I${includedir}
