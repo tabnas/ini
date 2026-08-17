@@ -221,9 +221,9 @@ const grammarText = `
     { s: '#ZZ' }
   ]
   rule: table: close: [
-    { s: '#OS' r: table b: 1 }
-    { s: '#CS' r: table a: '@table-close-dive' }
-    { s: '#ZZ' }
+    { s: '#OS' r: table b: 1 g: end }
+    { s: '#CS' r: table a: '@table-close-dive' g: close }
+    { s: '#ZZ' g: end }
   ]
 
   rule: dive: open: [
@@ -231,7 +231,7 @@ const grammarText = `
     { s: '#DK' a: '@dive-push' }
   ]
   rule: dive: close: [
-    { s: '#CS' b: 1 }
+    { s: '#CS' b: 1 g: close }
     # A section header lives on one line, so anything other than the closing
     # bracket here means the header was never closed. Unconditional (no s
     # key), so it matches only after the '#CS' alternate above has been
@@ -248,8 +248,8 @@ const grammarText = `
     inject: { append: true }
   }
   rule: map: close: [
-    { s: '#OS' b: 1 }
-    { s: '#ZZ' }
+    { s: '#OS' b: 1 g: end }
+    { s: '#ZZ' g: end }
   ]
 
   rule: pair: open: [
@@ -258,8 +258,8 @@ const grammarText = `
   ]
   rule: pair: close: [
     { s: ['#HK #ST #VL' '#CL'] c: '@is-table-grandparent' e: '@pair-close-err' }
-    { s: ['#HK #ST #VL'] b: 1 r: pair }
-    { s: '#OS' b: 1 }
+    { s: ['#HK #ST #VL'] b: 1 r: pair g: comma }
+    { s: '#OS' b: 1 g: end }
   ]
 }
 `
