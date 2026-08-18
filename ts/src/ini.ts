@@ -155,6 +155,19 @@ function altErrToken(r: any, ctx: any): any {
   return ctx?.t0 ?? undefined
 }
 
+// INI allocates its own root and section nodes, so it must follow the core's
+// convention: nodes carry no prototype ("no prototype, like JSON" -
+// @tabnas/parser builtins).
+//
+// With a plain `{}` literal a section named __proto__ is not an ordinary key.
+// `node['__proto__']` reads back Object.prototype, which is truthy, so the
+// `|| {}` reuse guard below hands that back as the section node and every
+// key in that section is written onto Object.prototype - polluting every
+// object in the process from a single parsed file. Allocating without a
+// prototype makes __proto__ an ordinary own key, as jsonic and json5 do.
+const node = () => Object.create(null)
+
+
 function Ini(tn: Tabnas, _options: IniOptions) {
   // Resolve inline comment options. Needed before the config modifiers
   // below, which close over them.
@@ -407,7 +420,7 @@ function Ini(tn: Tabnas, _options: IniOptions) {
   const refs: Record<string, Function> = {
     // State actions (used by rule bo/bc/ac handlers).
     '@ini-bo': (r: any) => {
-      r.node = {}
+      r.node = node()
       declaredSections.clear()
     },
 
@@ -433,9 +446,9 @@ function Ini(tn: Tabnas, _options: IniOptions) {
         for (let dI = 0; dI < dive.length; dI++) {
           if (dI === dive.length - 1 && isDuplicate && dupSection === 'override') {
             // Override: replace the section object entirely.
-            r.node = r.node[dive[dI]] = {}
+            r.node = r.node[dive[dI]] = node()
           } else {
-            r.node = r.node[dive[dI]] = r.node[dive[dI]] || {}
+            r.node = r.node[dive[dI]] = r.node[dive[dI]] || node()
           }
         }
 
