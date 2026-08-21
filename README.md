@@ -12,6 +12,8 @@ A [jsonic](https://github.com/tabnas/jsonic) syntax plugin that parses
 — with sections, dot-nested keys, `[]` arrays, multiline values, and
 inline comments. Available for both TypeScript and Go.
 
+Docs, guides, the error reference and the playground: **[tabnas.dev](https://tabnas.dev)**.
+
 It is a plugin on the [tabnas](https://github.com/tabnas/parser) engine:
 the grammar is declarative data, the same for both language ports.
 
