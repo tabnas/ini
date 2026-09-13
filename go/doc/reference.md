@@ -27,7 +27,7 @@ func Parse(src string, opts ...IniOptions) (map[string]any, error)
 ```
 
 Parses an INI string and returns a `map[string]any`. Convenience
-function — it builds a parser internally. With no `opts` it reuses a
+function; it builds a parser internally. With no `opts` it reuses a
 single cached default instance (safe for concurrent use); each
 option-taking call builds a fresh instance. Empty input (`""`) returns
 an empty map. On a malformed parse it returns a non-`nil` `error`.
@@ -40,7 +40,7 @@ func MakeJsonic(opts ...IniOptions) *tabnasjsonic.Jsonic
 
 Returns a reusable `*tabnasjsonic.Jsonic` instance configured for INI
 parsing. Use it to parse many strings with the same options, or to
-apply further jsonic configuration with `SetOptions` (e.g. enabling
+apply further jsonic configuration with `SetOptions` (for example enabling
 number lexing). Its `Parse` method returns `(any, error)`; type-assert
 the result to `map[string]any`.
 
@@ -112,7 +112,7 @@ followed by `[a]` is not a duplicate.
 
 ### `Comment.Inline`
 
-Inline (mid-value) comment handling. Off by default — `;` and `#`
+Inline (mid-value) comment handling. Off by default: `;` and `#`
 inside a value are literal text. (Line-leading `;`/`#` comments always
 work, regardless of this option.)
 
@@ -120,7 +120,7 @@ work, regardless of this option.)
 |---|---|---|---|
 | `Active` | `*bool` | `false` | Master switch. When `true`, a comment character ends the value. |
 | `Chars` | `[]string` | `["#", ";"]` | The characters that start an inline comment. |
-| `Escape.Backslash` | `*bool` | `true` | A backslash before a comment char produces the literal char (e.g. `\;` → `;`); the char does not terminate. |
+| `Escape.Backslash` | `*bool` | `true` | A backslash before a comment char produces the literal char (for example `\;` → `;`); the char does not terminate. |
 | `Escape.Whitespace` | `*bool` | `false` | A comment char only starts a comment when preceded by whitespace; otherwise it is literal. |
 
 ## Return types
@@ -158,7 +158,7 @@ key = value
 - The key runs up to the first `=`, a newline, or end of input, then is
   trimmed; the value runs to the end of the line, then is trimmed.
 - A bare key with no `=` is a **boolean key** set to `true`, anywhere a
-  pair may appear — including as the first line of the document or of a
+  pair may appear, including as the first line of the document or of a
   section (`[s]\nmykey` ⇒ `{"s": {"mykey": true}}`).
 - A later `key = value` overwrites an earlier one, unless the key uses
   array syntax.
@@ -172,7 +172,7 @@ key = value
 
 - A header opens a section; following keys nest under it.
 - A header lives on ONE line. An unterminated header (`[a` with no `]`)
-  is a parse error — it never runs on into the following lines.
+  is a parse error; it never runs on into the following lines.
 - Dots split the header into a nested path (`[a.b.c]` ⇒
   `{a: {b: {c: {}}}}`). Escape a literal dot with `\.`, and `\]` for a
   literal bracket; any other backslash is kept as written.
@@ -206,15 +206,15 @@ There are no known Go/TypeScript divergences: `conformanceGoParityGap`
 in [`go/ini_conformance_test.go`](../ini_conformance_test.go) is empty,
 and the conformance suite asserts every listed gap is still real, so a
 stale entry turns the suite red rather than lingering. The two gaps that
-used to be listed there — a leading byte-order mark surviving into a key,
-and a NUL byte in the source truncating a value — were both rooted in
+used to be listed there (a leading byte-order mark surviving into a key,
+and a NUL byte in the source truncating a value) were both rooted in
 `github.com/tabnas/hoover/go` and are fixed.
 
 ### Comments
 
 A `;` or `#` at the start of a line is a whole-line comment, always.
 A `;`/`#` inside a value is literal unless
-[`Comment.Inline`](#commentinline) is active — including one at the very
+[`Comment.Inline`](#commentinline) is active, including one at the very
 start of the value (`k = ; x` ⇒ `; x`). With inline comments active the
 same input yields an empty value; either way the NEXT line is a fresh
 pair.

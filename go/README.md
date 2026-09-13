@@ -2,7 +2,7 @@
 
 A Go port of [@tabnas/ini](https://github.com/tabnas/ini), a
 [jsonic](https://github.com/tabnas/jsonic) syntax plugin that parses
-[INI](https://en.wikipedia.org/wiki/INI_file) files into Go maps — with
+[INI](https://en.wikipedia.org/wiki/INI_file) files into Go maps, with
 sections, dot-nested keys, `[]` arrays, multiline values, and inline
 comments.
 
@@ -43,13 +43,13 @@ as `float64`.
 
 ## Documentation
 
-- [Tutorial](doc/tutorial.md) — a guided first parse: pairs, sections,
+- [Tutorial](doc/tutorial.md). A guided first parse: pairs, sections,
   arrays, a configured instance.
-- [How-to guide](doc/guide.md) — task recipes (numbers, multiline,
+- [How-to guide](doc/guide.md). Task recipes (numbers, multiline,
   comments, duplicate sections, errors).
-- [Reference](doc/reference.md) — `Parse`, `MakeJsonic`, every option
+- [Reference](doc/reference.md): `Parse`, `MakeJsonic`, every option
   with its default, return types, and the accepted syntax.
-- [Concepts](doc/concepts.md) — how the package is built, plus
+- [Concepts](doc/concepts.md). How the package is built, plus
   [differences from the TS version](doc/concepts.md#differences-from-the-ts-version).
 
 ## Grammar

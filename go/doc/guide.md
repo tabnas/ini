@@ -13,7 +13,7 @@ func boolp(b bool) *bool { return &b }
 
 ## Parse once vs reuse an instance
 
-`tabnasini.Parse` builds a fresh parser each call — convenient for one-offs:
+`tabnasini.Parse` builds a fresh parser each call, which is convenient for one-offs:
 
 ```go
 result, err := tabnasini.Parse("x = 0\n[s]\na = 1\nb = 2")
@@ -59,7 +59,7 @@ text stays a `string`.
 
 ## Use boolean keys
 
-A key with no `=` is set to `true`, anywhere a pair may appear —
+A key with no `=` is set to `true`, anywhere a pair may appear,
 including as the first line of a section:
 
 ```go
@@ -194,7 +194,7 @@ code is `duplicate_section`:
 _, err := tabnasini.Parse("[a]\nx=1\n[a]\ny=2", tabnasini.IniOptions{
 	Section: &tabnasini.SectionOptions{Duplicate: "error"},
 })
-// err != nil  — code "duplicate_section", naming the path [a]
+// err != nil, code "duplicate_section", naming the path [a]
 ```
 
 Match on the code rather than the message: the code is the contract both

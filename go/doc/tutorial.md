@@ -1,4 +1,4 @@
-# Tutorial — your first INI parse (Go)
+# Tutorial: your first INI parse (Go)
 
 This walks you from nothing to a working parse, then through sections,
 arrays, and one option. Follow it in order; each step builds on the
@@ -49,7 +49,7 @@ func main() {
 
 Run it with `go run .`. `tabnasini.Parse` is the zero-config convenience
 function: it returns a `map[string]any` and an `error`. The value
-`hello world` kept its internal space — values run to the end of the
+`hello world` kept its internal space: values run to the end of the
 line, no quotes needed. And `1` came back as the **string** `"1"`, not
 a number: by default every INI value is text.
 
@@ -80,7 +80,7 @@ result, _ := tabnasini.Parse("[server.production]\nhost = example.com")
 ```
 
 `[server.production]` became a two-level nested map. That dot-path
-nesting is the `dive` rule at work — see
+nesting is the `dive` rule at work; see
 [concepts](concepts.md#sections-and-the-dive-rule).
 
 ## 5. Collect repeated keys into an array
@@ -97,7 +97,7 @@ result, _ := tabnasini.Parse("tags[] = web\ntags[] = api\ntags[] = v2")
 
 `tabnasini.Parse` builds a fresh parser per call. To set options or reuse one
 instance across many parses, use `MakeJsonic` and call `Parse` on it.
-Options fields are pointers, so `nil` means "use the default" — a tiny
+Options fields are pointers, so `nil` means "use the default", and a tiny
 helper takes the address of a literal:
 
 ```go
@@ -123,9 +123,9 @@ you. Every option is documented in the [reference](reference.md#options).
 
 ## Where to go next
 
-- [How-to guide](guide.md) — focused recipes (numbers, multiline,
+- [How-to guide](guide.md). Focused recipes (numbers, multiline,
   duplicate sections, errors).
-- [Reference](reference.md) — the public API, every option, and the
+- [Reference](reference.md). The public API, every option, and the
   accepted syntax.
-- [Concepts](concepts.md) — how the package is built, and how it
+- [Concepts](concepts.md). How the package is built, and how it
   differs from the TypeScript version.

@@ -1,4 +1,4 @@
-# Tutorial — your first INI parse
+# Tutorial: your first INI parse
 
 This walks you from nothing to a working parse, then through sections,
 arrays, and one option. Follow it in order; each step builds on the
@@ -55,7 +55,7 @@ j.parse('a = 1\nb = hello world')   // => { a: '1', b: 'hello world' }
 ```
 
 Two things to notice. The value `hello world` keeps its internal space
-— values run to the end of the line, no quotes needed. And `1` came
+Values run to the end of the line, no quotes needed. And `1` came
 back as the **string** `'1'`, not the number `1`: by default every INI
 value is text. (Step 6 of the [how-to guide](guide.md#read-numbers-as-numbers)
 shows how to opt into numbers.)
@@ -80,7 +80,7 @@ j.parse('[server.production]\nhost = example.com')
 ```
 
 `[server.production]` became a nested object `{ server: { production:
-{ ... } } }`. That dot-path nesting is the `dive` rule at work — see
+{ ... } } }`. That dot-path nesting is the `dive` rule at work; see
 [concepts](concepts.md#sections-and-the-dive-rule).
 
 ## 5. Collect repeated keys into an array
@@ -125,9 +125,9 @@ the line. Every option is listed in the [reference](reference.md#options).
 
 ## Where to go next
 
-- [How-to guide](guide.md) — focused recipes (numbers, multiline,
+- [How-to guide](guide.md). Focused recipes (numbers, multiline,
   duplicate sections, errors).
-- [Reference](reference.md) — the public API, every option, and the
+- [Reference](reference.md). The public API, every option, and the
   full accepted syntax.
-- [Concepts](concepts.md) — how the plugin sits on the engine, the
+- [Concepts](concepts.md). How the plugin sits on the engine, the
   grammar model, and accepted-vs-rejected edge cases.

@@ -2,7 +2,7 @@
 
 Background on how `github.com/tabnas/ini/go` is built and why, plus how
 it differs from the TypeScript original. This is
-understanding-oriented reading — for steps see the
+understanding-oriented reading; for steps see the
 [tutorial](tutorial.md) and [how-to guide](guide.md), and for exact
 signatures and options see the [reference](reference.md).
 
@@ -14,11 +14,11 @@ The package does not contain a bespoke parser. It is a **plugin** for
 running on the [tabnas](https://github.com/tabnas/parser) engine. The
 stack is three layers:
 
-- **tabnas** — the engine: a rule-based parser over a configurable,
+- **tabnas**. The engine: a rule-based parser over a configurable,
   matcher-based lexer.
-- **jsonic** — the relaxed-JSON grammar and all the lexer matchers
+- **jsonic**. The relaxed-JSON grammar and all the lexer matchers
   (strings, numbers, comments, fixed tokens).
-- **ini** — this package, which reconfigures jsonic into an INI parser.
+- **ini**. This package, which reconfigures jsonic into an INI parser.
 
 `MakeJsonic` constructs a jsonic instance, then `iniPlugin` (in
 [`ini.go`](../ini.go)) edits it into an INI parser. `Parse` is a thin
@@ -49,8 +49,8 @@ result to `map[string]any`.
    (`#HV`), and section path segments (`#DK`).
 6. **Prunes unreachable rules.** INI has no array literal syntax, so
    jsonic's inherited `list` and `elem` rules are removed
-   (`j.Rule(name, nil)`), keeping the live grammar — and the railroad
-   diagram generated from it — limited to what INI uses.
+   (`j.Rule(name, nil)`), keeping the live grammar (and the railroad
+   diagram generated from it) limited to what INI uses.
 
 The grammar is **data** shared between the two ports: the same
 `ini-grammar.jsonic` is embedded into both `ts/src/ini.ts` and
@@ -62,17 +62,17 @@ The engine parses with named **rules**, each having an **open** and a
 **close** phase, each phase a list of **alternates**. An alternate
 matches a short token pattern (at most two tokens of lookahead) and may
 run an action, push a child rule, replace the current rule, or
-backtrack a token. There is no backtracking search — parsing is linear
+backtrack a token. There is no backtracking search, so parsing is linear
 and deterministic. INI's five rules:
 
-- **`ini`** — start rule; sets up the root map and dispatches to
+- **`ini`**. Start rule; sets up the root map and dispatches to
   `table`.
-- **`table`** — one section's content: an optional `[...]` header (via
+- **`table`**. One section's content: an optional `[...]` header (via
   `dive`) then a `map` of pairs; loops over successive sections.
-- **`dive`** — reads a `[a.b.c]` header into a path slice.
-- **`map`** — a run of `pair`s in the current section.
-- **`pair`** — one `key = value` (or a bare boolean key).
-- **`val`** — the right-hand side; scalars plus the occasional embedded
+- **`dive`**. Reads a `[a.b.c]` header into a path slice.
+- **`map`**. A run of `pair`s in the current section.
+- **`pair`**. One `key = value` (or a bare boolean key).
+- **`val`**. The right-hand side; scalars plus the occasional embedded
   map.
 
 ### Sections and the `dive` rule
@@ -81,7 +81,7 @@ For `[server.production]`, `dive` pushes `server` then `production`
 onto a `[]string` path; `table`'s state action walks that path from the
 root map, creating intermediate maps as needed, and points the
 section's `map` at the deepest one. A literal dot is escaped (`\.`) so
-it stays in one segment — `[x\.y\.z]` is the single key `x.y.z`.
+it stays in one segment: `[x\.y\.z]` is the single key `x.y.z`.
 
 ### Keys and values: the Hoover matchers
 
@@ -99,7 +99,7 @@ comment-termination before falling through to hoover.
 After a value's raw text is read, the `val` rule's after-close handler
 resolves it:
 
-1. A single-quoted value is JSON-decoded (`encoding/json`) when valid —
+1. A single-quoted value is JSON-decoded (`encoding/json`) when valid;
    `'{"y":{"z":6}}'` becomes a real `map[string]any` (with `z` as
    `float64(6)`). Invalid JSON keeps the inner text.
 2. A leading bracket character split off by the fixed-token lexer is
@@ -109,7 +109,7 @@ resolves it:
 4. Everything else is a trimmed `string`; numeric text stays a string
    unless number lexing is enabled.
 
-## Accepted vs rejected — edge cases
+## Accepted vs rejected: edge cases
 
 Pinned by the test suite (`ini_test.go`):
 
@@ -154,12 +154,12 @@ types, and a few mechanics.
 | `true` / `false` | `boolean` | `bool` |
 | `null` / empty result | `null` (and `{}` for `''`) | `nil` (and `map[string]any{}` for `''`) |
 | Number (lexing on) | JS `number` | `float64` |
-| Single-quoted JSON number (e.g. `'…6…'`) | JS `number` `6` | `float64(6)` |
+| Single-quoted JSON number (for example `'…6…'`) | JS `number` `6` | `float64(6)` |
 
 ### Error handling
 
 - **Duplicate section under `error`.** Both runtimes raise the declared
-  code `duplicate_section` through the same grammar alternate — TS throws
+  code `duplicate_section` through the same grammar alternate: TS throws
   it, Go returns it as a non-`nil` `error` from `Parse`. Neither panics.
   Match on the code, not the message: the code is the cross-runtime
   contract and the wording is not.
@@ -176,7 +176,7 @@ types, and a few mechanics.
   why the Go grammar wiring has one more handler than the TS one.
 - **The `#CL` (colon) close-error alternate.** The shared grammar file
   carries a `pair`-close error alternate keyed on `#CL`, and the grammar
-  disables the colon token (`'#CL': null`) in both ports — so that
+  disables the colon token (`'#CL': null`) in both ports, so that
   alternate (`@pair-close-err`) is never reached. The difference is only
   that the Go handler is written as an explicit no-op.
 
