@@ -9,7 +9,7 @@
 
 A [jsonic](https://github.com/tabnas/jsonic) syntax plugin that parses
 [INI](https://en.wikipedia.org/wiki/INI_file) files into objects / maps
-— with sections, dot-nested keys, `[]` arrays, multiline values, and
+with sections, dot-nested keys, `[]` arrays, multiline values, and
 inline comments. Available for both TypeScript and Go.
 
 Docs, guides, the error reference and the playground: **[tabnas.dev](https://tabnas.dev)**.
@@ -79,8 +79,8 @@ This repository contains:
 
 The grammar is defined once in the top-level
 [`ini-grammar.jsonic`](ini-grammar.jsonic) and embedded into both
-implementations — TypeScript ([`ts/src/ini.ts`](ts/src/ini.ts)) and Go
-([`go/ini.go`](go/ini.go)) — by [`ts/embed-grammar.js`](ts/embed-grammar.js)
+implementations, TypeScript ([`ts/src/ini.ts`](ts/src/ini.ts)) and Go
+([`go/ini.go`](go/ini.go)), by [`ts/embed-grammar.js`](ts/embed-grammar.js)
 (run as part of `npm run build`). Edit the `.jsonic` file, never the
 embedded copies.
 

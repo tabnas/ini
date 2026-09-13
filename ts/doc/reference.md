@@ -28,7 +28,7 @@ import { Ini } from '@tabnas/ini'
 import type { IniOptions, InlineCommentOptions } from '@tabnas/ini'
 ```
 
-## `Ini` — the plugin
+## `Ini`: the plugin
 
 `Ini` is a [tabnas/jsonic](https://github.com/tabnas/jsonic) plugin.
 There is no standalone `parse` function: you register `Ini` on an
@@ -39,7 +39,7 @@ const j = new Tabnas().use(jsonic).use(Ini, options?)
 const result = j.parse(src)   // => a plain object (map)
 ```
 
-- `jsonic` **must** be applied before `Ini` — `Ini` rewrites the
+- `jsonic` **must** be applied before `Ini`: `Ini` rewrites the
   jsonic grammar (it sets the start rule to `ini`, removes JSON
   structural tokens, and installs INI rules).
 - `options` is an optional [`IniOptions`](#options) object.
@@ -109,7 +109,7 @@ declared, so `[a.b]` followed by `[a]` is not a duplicate.
 
 ### `comment.inline`
 
-Inline (mid-value) comment handling. Off by default — `;` and `#`
+Inline (mid-value) comment handling. Off by default: `;` and `#`
 inside a value are literal text. (Line-leading `;` and `#` comments
 always work, regardless of this option.)
 
@@ -117,7 +117,7 @@ always work, regardless of this option.)
 |---|---|---|---|
 | `active` | `boolean` | `false` | Master switch. When `true`, a comment character ends the value. |
 | `chars` | `string[]` | `['#', ';']` | The characters that start an inline comment. |
-| `escape.backslash` | `boolean` | `true` | A backslash before a comment char produces the literal char (e.g. `\;` → `;`) and the char does not terminate. |
+| `escape.backslash` | `boolean` | `true` | A backslash before a comment char produces the literal char (for example `\;` → `;`) and the char does not terminate. |
 | `escape.whitespace` | `boolean` | `false` | A comment char only starts a comment when preceded by whitespace; otherwise it is literal. |
 
 ## Syntax
@@ -149,7 +149,7 @@ key = value
 
 - A header opens a section; following keys nest under it.
 - A header lives on ONE line. An unterminated header (`[a` with no `]`)
-  is a parse error — it never runs on into the following lines.
+  is a parse error; it never runs on into the following lines.
 - Dots split the header into a nested path: `[a.b.c]` ⇒
   `{ a: { b: { c: {} } } }`. Escape a literal dot with `\.`
   (`[x\.y]` ⇒ key `x.y`), and `\]` for a literal bracket. Any other
@@ -172,21 +172,21 @@ key[] = second
 ### Values
 
 The value is the rest of the line, trimmed. It is then resolved in this
-order — and every rule below applies to the WHOLE value, never to a
+order, and every rule below applies to the WHOLE value, never to a
 prefix of it:
 
-1. **Single-quoted** (`'…'`) — JSON-decoded if valid (`'{"y":{"z":6}}'`
+1. **Single-quoted** (`'…'`). JSON-decoded if valid (`'{"y":{"z":6}}'`
    ⇒ `{ y: { z: 6 } }`); otherwise the inner text.
-2. **Double-quoted** (`"…"`) — the JSON-decoded string, preserving
+2. **Double-quoted** (`"…"`). The JSON-decoded string, preserving
    spaces and escapes; brackets inside are literal.
-3. **`true` / `false` / `null`** (unquoted) — the JS boolean / `null`.
-4. **Everything else** — a string, trimmed, including numeric-looking
+3. **`true` / `false` / `null`** (unquoted). The JS boolean or `null`.
+4. **Everything else**. A string, trimmed, including numeric-looking
    text (`42` ⇒ `'42'`) unless number lexing is enabled.
 
 Because 1–3 must match the whole value:
 
 - `k = "a b"` is the string `a b`, but `k = "a"b` is the literal text
-  `"a"b` — quotes only count when they wrap the value (an inline comment
+  `"a"b`: quotes only count when they wrap the value (an inline comment
   may follow, when [`comment.inline`](#commentinline) is active). An
   unterminated quote is literal too: `k = "abc` ⇒ `"abc`.
 - `k = true` is the boolean, but `k = true, false` is the string
@@ -201,10 +201,10 @@ Because 1–3 must match the whole value:
 # line comment
 ```
 
-- A `;` or `#` at the start of a line is a comment for the whole line —
+- A `;` or `#` at the start of a line is a comment for the whole line,
   always, independent of options.
 - A `;`/`#` inside a value is literal unless
-  [`comment.inline`](#commentinline) is active — including one at the
+  [`comment.inline`](#commentinline) is active, including one at the
   very start of the value (`k = ; x` ⇒ `; x`). With inline comments
   active the same input yields an empty value and the comment is
   discarded; either way the NEXT line is a fresh pair.

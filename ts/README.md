@@ -2,7 +2,7 @@
 
 A [jsonic](https://github.com/tabnas/jsonic) syntax plugin that parses
 [INI](https://en.wikipedia.org/wiki/INI_file) files into JavaScript
-objects — with sections, dot-nested keys, `[]` arrays, multiline
+objects, with sections, dot-nested keys, `[]` arrays, multiline
 values, and inline comments.
 
 [![npm version](https://img.shields.io/npm/v/@tabnas/ini.svg)](https://npmjs.com/package/@tabnas/ini)
@@ -39,13 +39,13 @@ keywords `true`/`false`/`null` resolve to JS types. See the
 
 ## Documentation
 
-- [Tutorial](doc/tutorial.md) — a guided first parse: pairs, sections,
+- [Tutorial](doc/tutorial.md). A guided first parse: pairs, sections,
   arrays, one option.
-- [How-to guide](doc/guide.md) — task recipes (numbers, multiline,
+- [How-to guide](doc/guide.md). Task recipes (numbers, multiline,
   comments, duplicate sections, errors).
-- [Reference](doc/reference.md) — the `Ini` plugin, every option with
+- [Reference](doc/reference.md). The `Ini` plugin, every option with
   its default, and the accepted syntax.
-- [Concepts](doc/concepts.md) — how the plugin sits on the engine, the
+- [Concepts](doc/concepts.md). How the plugin sits on the engine, the
   grammar model, and edge cases.
 
 ## Grammar diagram

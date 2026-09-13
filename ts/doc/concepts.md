@@ -1,7 +1,7 @@
 # Concepts
 
 Background on how `@tabnas/ini` is built and why. This is
-understanding-oriented reading — for steps see the
+understanding-oriented reading; for steps see the
 [tutorial](tutorial.md) and [how-to guide](guide.md), and for exact
 signatures and options see the [reference](reference.md).
 
@@ -12,11 +12,11 @@ signatures and options see the [reference](reference.md).
 running on the [tabnas](https://github.com/tabnas/parser) engine. The
 stack is three layers:
 
-- **tabnas** — the engine: a rule-based parser over a configurable,
+- **tabnas**. The engine: a rule-based parser over a configurable,
   matcher-based lexer.
-- **jsonic** — the relaxed-JSON grammar applied to that engine, plus
+- **jsonic**. The relaxed-JSON grammar applied to that engine, plus
   all the lexer matchers (strings, numbers, comments, fixed tokens).
-- **Ini** — this plugin, which *reconfigures* jsonic into an INI
+- **Ini**. This plugin, which *reconfigures* jsonic into an INI
   parser.
 
 When you write `new Tabnas().use(jsonic).use(Ini)` you are stacking
@@ -50,8 +50,8 @@ of coordinated changes:
    (`#HV`), and section path segments (`#DK`).
 6. **Prunes unreachable rules.** INI has no array literal syntax, so
    jsonic's inherited `list` and `elem` rules can never be reached.
-   They are removed (`tn.rule(name, null)`) so the live grammar — and
-   the railroad diagram generated from it — contains only what INI
+   They are removed (`tn.rule(name, null)`) so the live grammar (and
+   the railroad diagram generated from it) contains only what INI
    uses. (This is why the diagram has no `list`/`elem`.)
 
 The grammar is **data**. Editing `ini-grammar.jsonic` and re-running
@@ -65,18 +65,18 @@ The engine parses with named **rules**, each having an **open** and a
 matches a short token pattern (at most two tokens of lookahead) and may
 run an action, push a child rule, replace the current rule, or
 backtrack a token. There is no search and no backtracking beyond that
-lookahead — parsing is linear and deterministic. INI's five rules:
+lookahead, so parsing is linear and deterministic. INI's five rules:
 
-- **`ini`** — the start rule. Sets up the root object and dispatches to
+- **`ini`**. The start rule. Sets up the root object and dispatches to
   `table`.
-- **`table`** — handles one section's worth of content: an optional
+- **`table`**. Handles one section's worth of content: an optional
   `[...]` header (via `dive`) followed by a `map` of pairs. It loops to
   consume successive sections.
-- **`dive`** — reads a `[a.b.c]` header into a path array, one `#DK`
+- **`dive`**. Reads a `[a.b.c]` header into a path array, one `#DK`
   segment per dot level.
-- **`map`** — a run of `pair`s belonging to the current section.
-- **`pair`** — one `key = value` (or a bare boolean key).
-- **`val`** — the right-hand side; reduced to scalars and the
+- **`map`**. A run of `pair`s belonging to the current section.
+- **`pair`**. One `key = value` (or a bare boolean key).
+- **`val`**. The right-hand side; reduced to scalars and the
   occasional embedded map.
 
 ### Sections and the `dive` rule
@@ -86,7 +86,7 @@ pushes `server` then `production` onto a path array; the `table` rule's
 state action then walks that path from the root object, creating
 intermediate objects as needed, and points the section's `map` at the
 deepest one. A literal dot is escaped (`\.`) so it stays inside a single
-segment — `[x\.y\.z]` is the single key `x.y.z`, not a three-level path.
+segment: `[x\.y\.z]` is the single key `x.y.z`, not a three-level path.
 
 ### Keys and values: the Hoover matchers
 
@@ -109,14 +109,14 @@ comment-termination logic before falling through.
 After a value's raw text is read, the `val` rule resolves it (see
 [reference §Values](reference.md#values)):
 
-1. A single-quoted value is `JSON.parse`d when valid — this is how
+1. A single-quoted value is `JSON.parse`d when valid; this is how
    `'{"y":{"z":6}}'` becomes a real object and `'[]'` becomes `[]`. If
    the JSON is invalid the inner text is kept.
 2. A leading fixed-token character (`[`, `]`, `=` or `.`) that the
    fixed-token lexer split off is re-concatenated with the rest of the
    value, so `j0 = ]3,4[` stays the string `']3,4['` and `v = .5` stays
    `'.5'`. The chain repeats, so `v = ==x` is `'==x'`.
-3. The bare keywords `true`, `false`, `null` resolve to their JS types —
+3. The bare keywords `true`, `false`, `null` resolve to their JS types,
    but only when the keyword is the WHOLE value, so `v = true, false`
    is the string `'true, false'`.
 4. Everything else is a trimmed string. Numbers are strings too
@@ -124,10 +124,10 @@ After a value's raw text is read, the `val` rule resolves it (see
    with `number.lex` if you want real numbers.
 
 Double-quoted values go through jsonic's string lexer, so escapes and
-spaces survive and brackets inside are literal — that is why
+spaces survive and brackets inside are literal, which is why
 `"[disturbing]"` is a key spelling, not a section.
 
-## Accepted vs rejected — edge cases
+## Accepted vs rejected: edge cases
 
 These follow from the model above and are pinned by the test suite:
 
@@ -158,7 +158,7 @@ JSON-decoding of single-quoted values, the keyword set) comes for free.
 The grammar stays declarative data in one `.jsonic` file shared by both
 language ports, so TS and Go cannot drift apart in structure. And the
 same engine introspection that produces jsonic's railroad diagrams
-produces this plugin's — the diagram you see is the grammar that
+produces this plugin's: the diagram you see is the grammar that
 actually runs.
 
 For how the Go port differs from this behavior, see

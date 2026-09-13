@@ -29,7 +29,7 @@ j.parse('x = 0\n[s]\na = 1\nb = 2')
 // => { x: '0', s: { a: '1', b: '2' } }
 ```
 
-The instance is reusable — build it once and parse many strings.
+The instance is reusable; build it once and parse many strings.
 
 ## Read numbers as numbers
 
@@ -219,7 +219,7 @@ const j = new Tabnas().use(jsonic).use(Ini, {
 j.parse('[a]\nx=1\ny=2\n[a]\nz=3')   // => { a: { z: '3' } }
 ```
 
-`'error'` throws on a repeated header — catch it like any parse error:
+`'error'` throws on a repeated header; catch it like any parse error:
 
 ```js ignore
 import { Tabnas } from '@tabnas/parser'
@@ -233,7 +233,7 @@ const j = new Tabnas().use(jsonic).use(Ini, {
 try {
   j.parse('[a]\nx=1\n[a]\ny=2')
 } catch (err) {
-  err.code      // 'duplicate_section' — the contract; match on this
+  err.code      // 'duplicate_section': the contract; match on this
   err.message   // names the repeated path [a]; wording is not a contract
 }
 ```
