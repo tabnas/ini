@@ -1,12 +1,17 @@
-.PHONY: all build test clean build-ts build-go test-ts test-go clean-ts clean-go publish-go tags-go tidy-go reset
+.PHONY: all build test clean embed build-ts build-go test-ts test-go clean-ts clean-go publish-go tags-go tidy-go reset build-rs test-rs clean-rs
 
 all: build test
 
-build: build-ts build-go
+build: build-ts build-go build-rs
 
-test: test-ts test-go
+test: test-ts test-go test-rs
 
-clean: clean-ts clean-go
+clean: clean-ts clean-go clean-rs
+
+# The embedded grammar: ini-grammar.jsonic into ts/src/ini.ts,
+# go/ini.go and rs/src/lib.rs.
+embed:
+	node embed-grammar.js
 
 # TypeScript
 build-ts:
@@ -27,6 +32,25 @@ test-go:
 
 clean-go:
 	cd ../go && go clean -cache
+
+# Rust (the crate in ../rs; the engine is a sibling checkout)
+#
+# `embed` first, as npm's own `build` script gives build-ts.
+# rs/src/lib.rs carries the grammar as GRAMMAR_TEXT, the same jsonic
+# text the other two embed, and the crate parses it at load; so without
+# this, a focused build after an edit to ini-grammar.jsonic compiles the
+# previous text and succeeds.
+build-rs: embed
+	cd ../rs && cargo build --all-targets
+
+# `--all-targets` does NOT include doctests, and the README's examples
+# ARE doctests of the crate, so both lines are needed.
+test-rs:
+	cd ../rs && cargo test --all-targets && cargo test --doc
+	cd ../rs && cargo clippy --all-targets --all-features -- -D warnings
+
+clean-rs:
+	cd ../rs && cargo clean
 
 # Publish Go module: make publish-go V=0.1.7
 publish-go: test-go

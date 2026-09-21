@@ -1,0 +1,47 @@
+# The Rust port of @tabnas/ini. ts/ is canonical; go/ and this crate
+# track it. `version` MUST equal ts/package.json "version", `VERSION` in
+# ts/src/ini.ts and `const VERSION` in go/ini.go: tests/version_test.rs
+# fails the build when they drift.
+
+[package]
+name = "tabnas-ini"
+version = "0.5.7"
+edition = "2021"
+rust-version = "1.85"
+authors = ["Richard Rodger <http://richardrodger.com>"]
+description = "INI syntax plugin for the tabnas parser engine."
+license = "MIT"
+repository = "https://github.com/tabnas/ini"
+readme = "README.md"
+keywords = ["ini", "parser", "grammar", "plugin", "config"]
+categories = ["parsing"]
+
+[lib]
+name = "tabnas_ini"
+path = "src/lib.rs"
+
+[dependencies]
+# The engine, the relaxed-JSON grammar this plugin layers on, and the
+# block hoovering plugin it lexes values with are all consumed as
+# SIBLING CHECKOUTS, the standard tabnas development model: clone
+# https://github.com/tabnas/parser, https://github.com/tabnas/jsonic and
+# https://github.com/tabnas/hoover next to this repo. None is published,
+# so there is no registry version to fall back on.
+#
+# Clone https://github.com/tabnas/json as well. It gets no entry here,
+# because it is tabnas-jsonic that depends on it, but cargo reads the
+# whole manifest graph before it compiles anything, so without that
+# checkout nothing here resolves.
+tabnas = { path = "../../parser/rs" }
+tabnas-jsonic = { path = "../../jsonic/rs" }
+# The default features: the three blocks are built as typed `Block`
+# values here, so hoover's `serde_json` reader of the shared data shape
+# is not needed and hoover keeps the engine as its only dependency.
+tabnas-hoover = { path = "../../hoover/rs" }
+indexmap = "2"
+serde_json = { version = "1.0", features = ["preserve_order"] }
+
+[dev-dependencies]
+# The shared fixture loader, runner and divergence register: one loader
+# in three languages, so the rows mean the same thing in every runtime.
+tabnas-support = { path = "../../support/rs", features = ["serde_json"] }

@@ -14,7 +14,9 @@
 [Ii]NI
 [Jj]sonic
 [Ll]exed
+[Ll]exes
 [Ll]exing
+[Ll]ockfile
 [Ll]ookahead
 [Mm]atchers
 [Mm]ultiline
