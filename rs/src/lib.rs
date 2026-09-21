@@ -334,6 +334,24 @@ impl Resolved {
     }
 }
 
+/// The single UTF-16 code unit an option string names, or `None` when
+/// the string is not exactly one.
+///
+/// Both places this is used compare one code unit of the SOURCE against
+/// each whole option string: the canonical continuation test is
+/// `c === continuation`, and the canonical comment test is
+/// `commentCharSet.has(c)`, with `c` a `src[i]`. A string of any other
+/// length can never be equal to one, so the feature it configures is
+/// simply off, and an astral character (two code units in JavaScript)
+/// is off with it. Taking the first character instead made
+/// `continuation: "~~"` continue a line ending in one `~`, and made
+/// `chars: ["##"]` cut a value at the first `#`.
+fn one_code_unit(text: &str) -> Option<char> {
+    let mut characters = text.chars();
+    let first = characters.next()?;
+    (characters.next().is_none() && first.len_utf16() == 1).then_some(first)
+}
+
 fn resolve(options: &IniOptions) -> Resolved {
     let mut resolved = Resolved {
         multiline: false,
@@ -351,16 +369,7 @@ fn resolve(options: &IniOptions) -> Resolved {
         resolved.multiline = true;
         resolved.continuation = match multiline.continuation.as_deref() {
             None => Some('\\'),
-            // The canonical scanner compares one UTF-16 code unit of the
-            // source against the whole option string, so a string that is
-            // not exactly one code unit can never match and the feature is
-            // off. Taking the first character instead made `continuation:
-            // "~~"` continue a line ending in a single `~`, which the
-            // canonical implementation does not.
-            Some(text) => text
-                .chars()
-                .next()
-                .filter(|_| text.encode_utf16().count() == 1),
+            Some(text) => one_code_unit(text),
         };
         resolved.indent = multiline.indent.unwrap_or(false);
     }
@@ -377,10 +386,22 @@ fn resolve(options: &IniOptions) -> Resolved {
         // absence alone, so `chars: []` leaves no inline comment
         // character at all and `a=x;y` keeps its semicolon.
         if let Some(chars) = inline.chars.as_ref() {
+            // The WHOLE string is what hoover's `end.fixed` and its
+            // escape map compare, exactly as the canonical
+            // `eolEndFixed.push(...inlineComment.chars)` does, so a
+            // marker of any length still terminates a hoovered span.
             resolved.inline_char_str = chars.clone();
+            // The custom value matcher and the string check compare ONE
+            // code unit instead (`commentCharSet.has(c)` and
+            // `inlineComment.chars.includes(src[tI])`, both against a
+            // `src[i]`), so an entry that is not exactly one UTF-16 code
+            // unit can never start a comment there. Taking the first
+            // character instead truncated `chars: ["##"]` to `#` and cut
+            // `a=x ## note` short, and promoted an astral marker the
+            // canonical set can never hold a single unit of.
             resolved.inline_chars = chars
                 .iter()
-                .filter_map(|text| text.chars().next())
+                .filter_map(|text| one_code_unit(text))
                 .collect();
         }
         if let Some(escape) = &inline.escape {
@@ -1871,6 +1892,90 @@ fn is_json_number(text: &str) -> bool {
     chars.next().is_none()
 }
 
+/// Rewrite every UNPAIRED surrogate escape in JSON source text to a
+/// `�` escape, or `None` when there is none to rewrite.
+///
+/// `JSON.parse` accepts a lone surrogate: a JavaScript string is UTF-16,
+/// so `"\ud800"` is a perfectly ordinary one-code-unit string. A Rust
+/// `String` is scalar values and cannot hold one at all, so `serde_json`
+/// refuses the document outright and the caller then kept the JSON
+/// SOURCE as the value: `a = '["\ud800"]'` stopped being an array.
+///
+/// Substituting the replacement character keeps the TYPE and the SHAPE
+/// of the value, which is the larger half of the canonical result, and
+/// is what Go's `encoding/json` does here, so the two ports that cannot
+/// hold a lone surrogate agree. The one character that differs is
+/// recorded in `../DIVERGENCE.md`.
+///
+/// Scanned as bytes, which is safe because every character this looks at
+/// (`"`, `\`, `u` and the hex digits) is ASCII, and because the only
+/// slices taken start and end on one of them. An escape other than
+/// `\uXXXX` takes the WHOLE next character with it, so a multi-byte one
+/// cannot leave the cursor inside a character.
+fn replace_lone_surrogates(text: &str) -> Option<String> {
+    /// The code unit a `\uXXXX` escape at `at` names.
+    fn escaped_unit(bytes: &[u8], at: usize) -> Option<u16> {
+        if bytes.get(at) != Some(&b'\\') || bytes.get(at + 1) != Some(&b'u') {
+            return None;
+        }
+        let digits = bytes.get(at + 2..at + 6)?;
+        digits.iter().try_fold(0u16, |unit, byte| {
+            let digit = (*byte as char).to_digit(16)?;
+            Some(unit * 16 + digit as u16)
+        })
+    }
+    const HIGH: std::ops::Range<u16> = 0xD800..0xDC00;
+    const LOW: std::ops::Range<u16> = 0xDC00..0xE000;
+
+    let bytes = text.as_bytes();
+    let mut repaired = String::new();
+    let mut copied = 0usize;
+    let mut index = 0usize;
+    let mut in_string = false;
+    let mut replaced = false;
+    while index < bytes.len() {
+        match bytes[index] {
+            b'"' => {
+                in_string = !in_string;
+                index += 1;
+            }
+            b'\\' if in_string => match escaped_unit(bytes, index) {
+                Some(unit)
+                    if HIGH.contains(&unit)
+                        && escaped_unit(bytes, index + 6)
+                            .is_some_and(|next| LOW.contains(&next)) =>
+                {
+                    index += 12;
+                }
+                Some(unit) if HIGH.contains(&unit) || LOW.contains(&unit) => {
+                    repaired.push_str(&text[copied..index]);
+                    repaired.push_str("\\ufffd");
+                    index += 6;
+                    copied = index;
+                    replaced = true;
+                }
+                Some(_) => index += 6,
+                // Any other escape, whose escaped character may be
+                // several bytes long.
+                None => {
+                    index += 1;
+                    index += text[index..]
+                        .chars()
+                        .next()
+                        .map_or(0, char::len_utf8)
+                        .max(1);
+                }
+            },
+            _ => index += 1,
+        }
+    }
+
+    replaced.then(|| {
+        repaired.push_str(&text[copied..]);
+        repaired
+    })
+}
+
 fn val_after_close(rule: &mut Rule, st: tabnas::Tin) {
     // A single-quoted value carries JSON: `k = '{"a":1}'` is the object.
     // An invalid document is kept as the string it already is.
@@ -1888,6 +1993,15 @@ fn val_after_close(rule: &mut Rule, st: tabnas::Tin) {
                 set_node(rule, Value::from_json(&parsed));
             } else if let Some(number) = overflowed_json_number(&text) {
                 set_node(rule, Value::Number(number));
+            } else if let Some(repaired) = replace_lone_surrogates(&text) {
+                // A lone surrogate is the other thing `JSON.parse`
+                // accepts and `serde_json` refuses. Re-read the repaired
+                // text rather than assuming it now parses: the document
+                // may be invalid for some further reason, and then the
+                // value stays the string it already is.
+                if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&repaired) {
+                    set_node(rule, Value::from_json(&parsed));
+                }
             }
         }
     }

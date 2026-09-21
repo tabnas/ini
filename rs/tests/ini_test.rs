@@ -893,6 +893,100 @@ fn an_explicitly_empty_inline_marker_list_leaves_no_marker() {
     assert_parse("a=x;y", &inline_chars(&[""]), json!({"a": "x;y"}));
 }
 
+/// An inline marker the canonical matcher can never match starts no
+/// comment there.
+///
+/// The value matcher asks `commentCharSet.has(c)` and the string check
+/// asks `inlineComment.chars.includes(src[tI])`, both with ONE UTF-16
+/// code unit of the source, so a marker of any other length is equal to
+/// nothing and starts no comment. Taking its first character instead cut
+/// `chars: ["##"]` down to `#`, and promoted an astral marker, which is
+/// two code units in JavaScript, to one the scanner could match.
+///
+/// hoover's `end.fixed` compares the WHOLE string, which is why the
+/// same `["##"]` still ends a value in the non-whitespace mode: the two
+/// halves are measured side by side below so the boundary is visible.
+#[test]
+fn an_inline_marker_that_is_not_one_code_unit_starts_no_comment() {
+    let marker = |chars: &[&str], whitespace: bool| IniOptions {
+        comment: Some(CommentOptions {
+            inline: Some(InlineCommentOptions {
+                active: Some(true),
+                chars: Some(chars.iter().map(|text| text.to_string()).collect()),
+                escape: Some(InlineEscapeOptions {
+                    backslash: Some(true),
+                    whitespace: Some(whitespace),
+                }),
+            }),
+        }),
+        ..Default::default()
+    };
+
+    // The whitespace mode, where the custom value matcher does the
+    // detection. Every row measured against ts/src/ini.ts.
+    assert_parse(
+        "a=x ## note",
+        &marker(&["##"], true),
+        json!({"a": "x ## note"}),
+    );
+    assert_parse(
+        "a=x # note",
+        &marker(&["##"], true),
+        json!({"a": "x # note"}),
+    );
+    assert_parse(
+        "a=x // note",
+        &marker(&["//"], true),
+        json!({"a": "x // note"}),
+    );
+    // Two code units in JavaScript, one `char` here.
+    assert_parse(
+        "a=x \u{1F600} note",
+        &marker(&["\u{1F600}"], true),
+        json!({"a": "x \u{1F600} note"}),
+    );
+    // One code unit, and not the one in the source.
+    assert_parse(
+        "a=x # note",
+        &marker(&["\u{e9}"], true),
+        json!({"a": "x # note"}),
+    );
+    // A list that names both still works through the one that matches.
+    assert_parse("a=x # note", &marker(&[";;", "#"], true), json!({"a": "x"}));
+
+    // The escape branch reads one code unit too, so a backslash before a
+    // marker the set cannot hold is an ordinary backslash.
+    assert_parse(
+        "a=x \\## note",
+        &marker(&["##"], true),
+        json!({"a": "x \\## note"}),
+    );
+
+    // The string check reads one code unit as well: with no marker the
+    // scanner can match, `## note` is trailing text, the quotes are not
+    // the value's own, and the whole line is the value.
+    assert_parse(
+        "a=\"x\" ## note",
+        &marker(&["##"], true),
+        json!({"a": "\"x\" ## note"}),
+    );
+
+    // Without the whitespace mode hoover's `end.fixed` holds the whole
+    // string, so the SAME marker does end a value, and a single `#` does
+    // not. This half was already right and is measured to keep it so.
+    assert_parse("a=x ## note", &marker(&["##"], false), json!({"a": "x"}));
+    assert_parse(
+        "a=x # note",
+        &marker(&["##"], false),
+        json!({"a": "x # note"}),
+    );
+    assert_parse(
+        "a=\"x\" ## note",
+        &marker(&["##"], false),
+        json!({"a": "\"x\""}),
+    );
+}
+
 /// A continuation string the canonical scanner can never match turns
 /// continuation off.
 ///
@@ -992,6 +1086,62 @@ fn a_single_quoted_number_too_large_for_a_double_is_infinity() {
 fn a_number_that_overflows_inside_a_composite_keeps_its_text() {
     assert_default("a = '[1e400]'", json!({"a": "[1e400]"}));
     assert_default(r#"a = '{"b":1e400}'"#, json!({"a": r#"{"b":1e400}"#}));
+}
+
+/// A recorded divergence: an escaped LONE SURROGATE in a single-quoted
+/// JSON value becomes the replacement character.
+///
+/// A JavaScript string is UTF-16, so `JSON.parse('"\ud800"')` is an
+/// ordinary one-code-unit string. A Rust `String` is scalar values and
+/// cannot hold one, so this port substitutes U+FFFD, which is what Go's
+/// `encoding/json` does. See `../../DIVERGENCE.md` for the measured
+/// table and the reason. It cannot be a shared fixture, because the two
+/// runtimes would be asked different questions and both would pass.
+#[test]
+fn a_lone_surrogate_in_a_single_quoted_value_becomes_the_replacement_character() {
+    // The value stays a STRING, an ARRAY and an OBJECT respectively,
+    // which is what keeping the JSON source text used to lose.
+    assert_default(r#"a = '"\\ud800"'"#, json!({"a": "\u{FFFD}"}));
+    assert_default(r#"a = '"\\udfff"'"#, json!({"a": "\u{FFFD}"}));
+    assert_default(r#"a = '"\\ud800x"'"#, json!({"a": "\u{FFFD}x"}));
+    assert_default(r#"a = '["\\ud800"]'"#, json!({"a": ["\u{FFFD}"]}));
+    assert_default(r#"a = '{"k":"\\ud800"}'"#, json!({"a": {"k": "\u{FFFD}"}}));
+
+    // A surrogate PAIR is one character in both runtimes and is left
+    // alone: the repair scanner must not touch it.
+    assert_default(r#"a = '"\\ud83d\\ude00"'"#, json!({"a": "\u{1F600}"}));
+
+    // A document the repair cannot rescue keeps its text, as before.
+    assert_default(r#"a = '["\\ud800",]'"#, json!({"a": r#"["\ud800",]"#}));
+}
+
+/// A recorded divergence: a single-quoted JSON value nested past 127
+/// levels keeps its source text.
+///
+/// `serde_json` refuses to recurse further, and `JSON.parse` has no such
+/// limit. The refusal is the cap this port wants on untrusted input, for
+/// the reason `nesting_past_the_depth_limit_is_refused` gives and at the
+/// same number. See `../../DIVERGENCE.md`.
+#[test]
+fn a_single_quoted_json_value_nested_past_the_depth_limit_keeps_its_text() {
+    let nest = |depth: usize| format!("a = '{}{}'", "[".repeat(depth), "]".repeat(depth));
+
+    // 127 is read as JSON, and is an array.
+    let value = parse(&nest(127)).expect("127 levels parse");
+    let json = value.to_json();
+    assert!(
+        json.get("a").is_some_and(serde_json::Value::is_array),
+        "127 levels should be an array, got {json}"
+    );
+
+    // 128 is not, and the value is the source text it arrived as.
+    let value = parse(&nest(128)).expect("128 levels parse");
+    let json = value.to_json();
+    assert_eq!(
+        json.get("a").and_then(serde_json::Value::as_str),
+        Some(format!("{}{}", "[".repeat(128), "]".repeat(128)).as_str()),
+        "128 levels should keep its text"
+    );
 }
 
 // --- the fixed-token concatenation --------------------------------------

@@ -121,6 +121,72 @@ Pinned by `a_number_that_overflows_inside_a_composite_keeps_its_text` in
 the case that IS reproduced. It cannot be a shared fixture: the row would
 have to be green in three runtimes, and two of them keep the text.
 
+### An escaped lone surrogate in a single-quoted value
+
+A single-quoted value is read as JSON, and `JSON.parse` accepts an
+escaped lone surrogate: a JavaScript string is UTF-16, so `"\ud800"` is
+an ordinary one-code-unit string. A Rust `String` is scalar values and
+cannot hold one, so `serde_json` refuses the whole document.
+
+The fallback then kept the JSON SOURCE as the value, which lost the TYPE
+along with the character: `a = '["\ud800"]'` stopped being an array at
+all. This port now rewrites every UNPAIRED surrogate escape to `�`
+and reads the repaired text, which is what Go's `encoding/json` does, so
+the shape of the value survives and one character differs. A surrogate
+PAIR is untouched and still decodes to its one character.
+
+| input | TypeScript | Go | Rust |
+|---|---|---|---|
+| `a = '"\\ud800"'` | one code unit, U+D800 | U+FFFD | U+FFFD |
+| `a = '"\\udfff"'` | one code unit, U+DFFF | U+FFFD | U+FFFD |
+| `a = '"\\ud800x"'` | U+D800 then `x` | U+FFFD then `x` | U+FFFD then `x` |
+| `a = '["\\ud800"]'` | an ARRAY of one such string | an ARRAY, U+FFFD | an ARRAY, U+FFFD |
+| `a = '{"k":"\\ud800"}'` | an OBJECT, `k` holds it | an OBJECT, U+FFFD | an OBJECT, U+FFFD |
+| `a = '"\\ud83d\\ude00"'` | one character, U+1F600 | same | same |
+
+The doubled backslash is the INI source: a single-quoted value decodes
+its escapes before the JSON reader sees it, so `a = '"\\ud800"'` hands
+the reader `"\ud800"`.
+
+Owner: this port. The repair is a JSON reader whose strings are UTF-16
+rather than scalar values, which is what a shared fixture would need as
+well: the expected column cannot ask both runtimes the same question,
+because each decodes the escape in its own string type and both would
+pass.
+
+Pinned by
+`a_lone_surrogate_in_a_single_quoted_value_becomes_the_replacement_character`
+in [`rs/tests/ini_test.rs`](rs/tests/ini_test.rs).
+
+### A single-quoted JSON value nested past 127 levels
+
+`serde_json` refuses to recurse further than 128 levels and reports
+`recursion limit exceeded`. `JSON.parse` has no limit, and neither does
+Go's `encoding/json`. The fallback keeps the source text, so a value
+that is an array in the other two runtimes is a string here.
+
+| input | TypeScript | Go | Rust |
+|---|---|---|---|
+| `a = '[[ ... ]]'` 127 deep | an array | an array | an array |
+| 128 deep | an array | an array | the source text |
+| 200 deep | an array | an array | the source text |
+
+The limit is wanted rather than merely met. `Value::from_json` builds the
+tree with the call stack, and `Value::to_json` and the default drop walk
+it back down the same way, so lifting the limit would move the crash out
+of this crate and into whoever converts or drops the result. 127 is the
+number the section-header limit above uses, and the number `tabnas-json`
+and `tabnas-jsonic` use, so every crate in the family bounds nesting
+alike.
+
+Owner: this port, jointly with the engine. The repair is an iterative
+`to_json` and `Drop` in the engine, after which `serde_json`'s
+`unbounded_depth` feature could be turned on here.
+
+Pinned by
+`a_single_quoted_json_value_nested_past_the_depth_limit_keeps_its_text`
+in [`rs/tests/ini_test.rs`](rs/tests/ini_test.rs).
+
 ## Inherited, and owned elsewhere
 
 These are not ini's behaviour. They are recorded because a reader of this
@@ -175,10 +241,10 @@ every shared fixture passes in all three runtimes. The gaps below sit
 outside both sets. Each was measured rather than inferred, and is
 recorded here rather than left as a surprise for whoever meets it.
 
-The last three were found while repairing the same three defects in the
-Rust port, where the canonical TypeScript was measured for each one. The
-Rust port now matches the canonical on all of them; the Go port does not
-yet, so none of the three may reach a shared fixture until it does.
+The last four were found while repairing the same defects in the Rust
+port, where the canonical TypeScript was measured for each one. The Rust
+port now matches the canonical on all of them; the Go port does not yet,
+so none of the four may reach a shared fixture until it does.
 
 ### A line holding nothing but a value keyword
 
@@ -265,3 +331,34 @@ recorded above, with the composite case it still shares.
 Owner: the Go port. Go can hold `math.Inf(1)`, so the repair is the one
 this port made: recognise a JSON number literal `encoding/json` refused
 and parse it with `strconv.ParseFloat`.
+
+### An inline comment marker of more than one byte
+
+`resolve` stores `rune(s[0])` for each marker, its first BYTE, and the
+value scanner and the string check then compare that against each byte of
+the value. The canonical matcher compares one UTF-16 code unit against
+each WHOLE option string (`commentCharSet.has(c)` and
+`inlineComment.chars.includes(src[tI])`), so a marker that is not exactly
+one code unit is equal to nothing and starts no comment.
+
+Measured with `comment.inline.active` true and `escape.whitespace` true,
+which is the mode the custom value matcher runs in. hoover's `end.fixed`
+compares the whole string in every runtime, so the other mode agrees.
+
+| input | options | TypeScript | Go | Rust |
+|---|---|---|---|---|
+| `a=x ## note` | `chars: ["##"]` | `{"a":"x ## note"}` | `{"a":"x"}` | `{"a":"x ## note"}` |
+| `a=x # note` | `chars: ["##"]` | `{"a":"x # note"}` | `{"a":"x"}` | `{"a":"x # note"}` |
+| `a=x \\## note` | `chars: ["##"]` | `{"a":"x \\## note"}` | `{"a":"x ## note"}` | `{"a":"x \\## note"}` |
+| `a=x 😀 note` | `chars: ["😀"]` | `{"a":"x 😀 note"}` | `{"a":"x","😀 note":true}` | `{"a":"x 😀 note"}` |
+| `a=x à note` | `chars: ["é"]` | `{"a":"x à note"}` | `{"a":"x","à note":true}` | `{"a":"x à note"}` |
+
+The last row is the byte comparison rather than the truncation, and is
+the wider half of the defect: every character in the Latin-1 supplement
+block starts with the byte `0xC3`, so one accented marker cuts a value at
+any of them.
+
+Owner: the Go port. The repair is to keep only a marker that is exactly
+one UTF-16 code unit, which is what `one_code_unit` does in
+[`rs/src/lib.rs`](rs/src/lib.rs), and to compare runes rather than bytes;
+plus a row in `inline-comments-custom-chars.tsv` once all three agree.

@@ -211,6 +211,13 @@ Any difference in what a document PARSES TO is recorded in
   code. Neither other runtime has a limit.
 - **Key order is document order**, because the result is built on an
   `IndexMap`.
+- **An escaped lone surrogate becomes U+FFFD.** A single-quoted value is
+  read as JSON, and `JSON.parse` keeps a lone surrogate because a
+  JavaScript string is UTF-16. A Rust `String` cannot hold one, so this
+  port substitutes the replacement character, as Go's `encoding/json`
+  does, which keeps the type and the shape of the value. A single-quoted
+  JSON value nested past 127 levels keeps its source text, for the reason
+  nesting is bounded above. Both are in `../DIVERGENCE.md`.
 - **Columns count Unicode scalar values.** An astral character advances
   the column by one, where TypeScript counts UTF-16 units and advances by
   two. That is the engine's unit, recorded in its own `DIVERGENCE.md`.
