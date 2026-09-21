@@ -39,6 +39,19 @@ fn inline_escape(backslash: Option<bool>, whitespace: Option<bool>) -> IniOption
     }
 }
 
+fn inline_chars(chars: &[&str]) -> IniOptions {
+    IniOptions {
+        comment: Some(CommentOptions {
+            inline: Some(InlineCommentOptions {
+                active: Some(true),
+                chars: Some(chars.iter().map(|text| text.to_string()).collect()),
+                escape: None,
+            }),
+        }),
+        ..Default::default()
+    }
+}
+
 fn multiline() -> IniOptions {
     IniOptions::default().with_multiline()
 }
@@ -822,7 +835,7 @@ fn the_option_table_is_exhaustive() {
     }
 }
 
-/// The one recorded divergence from the canonical TypeScript: a section
+/// A recorded divergence from the canonical TypeScript: a section
 /// header deeper than [`DEPTH_LIMIT`] is refused with the engine's
 /// `cancel` code, where TypeScript and Go accept it. See
 /// `../../DIVERGENCE.md` for the measured table and the reason. It
@@ -841,4 +854,178 @@ fn nesting_past_the_depth_limit_is_refused() {
         let error = parse(&header(segments)).expect_err("a header past the depth limit is refused");
         assert_eq!(error.code, "cancel", "at {segments} segments");
     }
+}
+
+// --- the option defaults ------------------------------------------------
+
+/// An EMPTY marker list is a choice, not an omission.
+///
+/// The canonical `_options.comment?.inline?.chars ?? ['#', ';']`
+/// defaults only when the caller said nothing, so `chars: []` leaves
+/// inline comments active with no character that starts one. Reading
+/// `Option<Vec<_>>` as "absent OR empty" put the `#` and `;` defaults
+/// back and truncated every value at the first one.
+#[test]
+fn an_explicitly_empty_inline_marker_list_leaves_no_marker() {
+    let empty = IniOptions {
+        comment: Some(CommentOptions {
+            inline: Some(InlineCommentOptions {
+                active: Some(true),
+                chars: Some(Vec::new()),
+                escape: None,
+            }),
+        }),
+        ..Default::default()
+    };
+
+    // Measured against ts/src/ini.ts: {"a":"x;y"} and {"a":"x#y"}.
+    assert_parse("a=x;y", &empty, json!({"a": "x;y"}));
+    assert_parse("a=x#y", &empty, json!({"a": "x#y"}));
+    assert_parse("a=x ;y", &empty, json!({"a": "x ;y"}));
+
+    // The default is still the default, and a list that names a marker
+    // still names it.
+    assert_parse("a=x;y", &inline_active(), json!({"a": "x"}));
+    assert_parse("a=x;y#z", &inline_chars(&[";"]), json!({"a": "x"}));
+
+    // A marker that is the empty STRING starts nothing either, because
+    // no source character equals it.
+    assert_parse("a=x;y", &inline_chars(&[""]), json!({"a": "x;y"}));
+}
+
+/// A continuation string the canonical scanner can never match turns
+/// continuation off.
+///
+/// The canonical test is `c === continuation` for one UTF-16 code unit
+/// `c` of the source, so a string of any other length matches nothing.
+/// Taking its first character instead made `continuation: "~~"` continue
+/// a line that ends in a single `~`, which the canonical implementation
+/// does not.
+#[test]
+fn a_continuation_string_that_is_not_one_code_unit_is_off() {
+    let cont = |text: &str| IniOptions {
+        multiline: Some(MultilineOptions {
+            continuation: Some(text.to_string()),
+            indent: None,
+        }),
+        ..Default::default()
+    };
+
+    // One code unit: the line continues. Measured: {"a":"one b = two"}.
+    assert_parse(
+        "a = one ~\nb = two",
+        &cont("~"),
+        json!({"a": "one b = two"}),
+    );
+
+    // Two: nothing continues, and the `~` is an ordinary character.
+    for text in ["~~", "ab", ""] {
+        assert_parse(
+            "a = one ~\nb = two",
+            &cont(text),
+            json!({"a": "one ~", "b": "two"}),
+        );
+    }
+}
+
+// --- a single-quoted value is JSON --------------------------------------
+
+/// `JSON.parse` rounds a number literal too large for a double to
+/// infinity; `serde_json` refuses it.
+///
+/// The canonical implementation reads `a = '1e400'` as the NUMBER
+/// `Infinity`. Leaving `serde_json`'s refusal to the fallback kept the
+/// source text instead, so the value was the string `"1e400"`. A literal
+/// too small to represent is not affected: both readers round `1e-400`
+/// to zero.
+#[test]
+fn a_single_quoted_number_too_large_for_a_double_is_infinity() {
+    // A literal with no exponent overflows the same way, so one is built
+    // rather than written out.
+    let spelt_out = format!("a = '1{}'", "0".repeat(400));
+    for (src, positive) in [
+        ("a = '1e400'", true),
+        ("a = '-1e400'", false),
+        // JSON whitespace around a top-level value is allowed.
+        ("a = ' 1e400 '", true),
+        (spelt_out.as_str(), true),
+    ] {
+        let value = parse(src).unwrap_or_else(|error| panic!("{src:?} did not parse: {error}"));
+        let tabnas::Value::Object(entries) = &value else {
+            panic!("{src:?} did not parse to an object: {value}")
+        };
+        match entries.get("a") {
+            Some(tabnas::Value::Number(number)) => {
+                assert!(number.is_infinite(), "{src:?} gave {number}");
+                assert_eq!(
+                    number.is_sign_positive(),
+                    positive,
+                    "{src:?} has the wrong sign"
+                );
+            }
+            other => panic!("{src:?} gave {other:?} rather than a number"),
+        }
+    }
+
+    // Unaffected neighbours, each measured against the canonical
+    // implementation.
+    assert_default("a = '1e-400'", json!({"a": 0}));
+    assert_default("a = '1'", json!({"a": 1}));
+    // Not JSON number syntax, so the text stands, as `JSON.parse` fails
+    // on all four.
+    for (src, text) in [
+        ("a = 'inf'", "inf"),
+        ("a = '+1'", "+1"),
+        ("a = '01'", "01"),
+        ("a = '1.'", "1."),
+    ] {
+        assert_default(src, json!({ "a": text }));
+    }
+}
+
+/// A recorded divergence: a number that overflows INSIDE a composite
+/// keeps its source text, where the canonical implementation reads the
+/// composite with an infinity in it. See `../../DIVERGENCE.md` for the
+/// measured table and the reason. It cannot be a shared fixture, because
+/// a fixture row has to be green in three runtimes.
+#[test]
+fn a_number_that_overflows_inside_a_composite_keeps_its_text() {
+    assert_default("a = '[1e400]'", json!({"a": "[1e400]"}));
+    assert_default(r#"a = '{"b":1e400}'"#, json!({"a": r#"{"b":1e400}"#}));
+}
+
+// --- the fixed-token concatenation --------------------------------------
+
+/// A value that starts with a fixed token concatenates that token with
+/// the JavaScript `String()` of the rest, and a composite coerces the
+/// way ECMA-262 says rather than as JSON.
+///
+/// An array joins its elements with a comma and flattens, a null or
+/// undefined ELEMENT contributes nothing, and an object is
+/// `[object Object]`. Rendering the value as JSON instead produced
+/// `=[1.0,2.0]` and `={"b":1.0}`, neither of which the canonical
+/// implementation can produce for any input.
+#[test]
+fn a_fixed_token_value_coerces_a_composite_as_javascript_does() {
+    // Every row measured against ts/src/ini.ts.
+    for (src, want) in [
+        ("a = ='[1,2]'", "=1,2"),
+        ("a = ='[]'", "="),
+        ("a = ='[1,[2,3]]'", "=1,2,3"),
+        ("a = ='[[1],[2]]'", "=1,2"),
+        ("a = ='[null,true]'", "=,true"),
+        (r#"a = ='[1.5,"x"]'"#, "=1.5,x"),
+        (r#"a = ='{"b":1}'"#, "=[object Object]"),
+        ("a = =='[1,2]'", "==1,2"),
+        // The number goes through the ECMA-262 formatter, which
+        // switches to exponent form where Rust's does not.
+        ("a = ='[1e21,1e-7]'", "=1e+21,1e-7"),
+        ("a = ='1e400'", "=Infinity"),
+    ] {
+        assert_default(src, json!({ "a": want }));
+    }
+
+    // Without a leading fixed token the value stays the parsed
+    // composite, so the coercion is not reached at all.
+    assert_default(r#"a = '[1.5,"x"]'"#, json!({"a": [1.5, "x"]}));
 }

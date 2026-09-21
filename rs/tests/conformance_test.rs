@@ -65,6 +65,33 @@ fn manifest() -> Vec<Case> {
         .collect()
 }
 
+/// The canonical TypeScript result for every document in `divergent`.
+///
+/// A divergent document is one this grammar reads differently from the
+/// npm/ini oracle, so the oracle cannot say whether this port read it
+/// correctly. Without this file the only assertion left for those twelve
+/// was "not the oracle", which any third value satisfies: 12 of the 30
+/// valid documents, 40% of the corpus, were parsed and then not
+/// measured.
+///
+/// Measured on 2026-09-21 by running each document through
+/// `ts/src/ini.ts` at default options with the sibling checkouts beside
+/// this repository, and stored rather than computed because a Rust test
+/// cannot run Node. Regenerate it the same way if the canonical dialect
+/// changes; the key set is asserted to be exactly `divergent`, so an
+/// entry cannot be added to one and forgotten in the other.
+fn canonical_typescript() -> BTreeMap<String, Json> {
+    let raw = include_str!("conformance-canonical.json");
+    let document: Json =
+        serde_json::from_str(raw).expect("tests/conformance-canonical.json is not readable JSON");
+    document
+        .as_object()
+        .expect("tests/conformance-canonical.json is not an object")
+        .iter()
+        .map(|(name, value)| (name.clone(), value.clone()))
+        .collect()
+}
+
 /// Dialect differences: documents this grammar parses to something other
 /// than the npm/ini oracle, each for a reason written down. Keep in step
 /// with `DIVERGENT` in ts/test/conformance.test.ts and
@@ -126,7 +153,7 @@ fn accepted_by_design() -> BTreeMap<&'static str, &'static str> {
 /// integer, as `json.Marshal` and `JSON.stringify` render it in the
 /// other two runtimes. Map order is not compared, because a serde_json
 /// map compares as a map.
-fn canonical(value: &Json) -> Json {
+fn canonical_json(value: &Json) -> Json {
     match value {
         Json::Number(number) => match number.as_f64() {
             Some(float) if float.fract() == 0.0 && float.abs() < 9.007_199_254_740_992e15 => {
@@ -134,11 +161,11 @@ fn canonical(value: &Json) -> Json {
             }
             _ => value.clone(),
         },
-        Json::Array(items) => Json::Array(items.iter().map(canonical).collect()),
+        Json::Array(items) => Json::Array(items.iter().map(canonical_json).collect()),
         Json::Object(entries) => Json::Object(
             entries
                 .iter()
-                .map(|(key, value)| (key.clone(), canonical(value)))
+                .map(|(key, value)| (key.clone(), canonical_json(value)))
                 .collect(),
         ),
         other => other.clone(),
@@ -194,6 +221,7 @@ fn valid_documents_parse() {
 fn valid_documents_match_the_oracle() {
     let gaps = rust_parity_gap();
     let diverges = divergent();
+    let canonical = canonical_typescript();
     for case in manifest().iter().filter(|case| case.kind == "valid") {
         let got = match try_parse(&case.source) {
             Err(()) => {
@@ -204,8 +232,8 @@ fn valid_documents_match_the_oracle() {
             }
             Ok(value) => value,
         };
-        let got = canonical(&got);
-        let want = canonical(&case.expected);
+        let got = canonical_json(&got);
+        let want = canonical_json(&case.expected);
         if let Some(why) = gaps.get(case.name.as_str()) {
             assert_ne!(
                 got, want,
@@ -216,18 +244,33 @@ fn valid_documents_match_the_oracle() {
         }
         match diverges.get(case.name.as_str()) {
             None => assert_eq!(
-                got,
-                want,
+                got, want,
                 "{}: parsed, but to a different value than the npm/ini oracle. \
                  If this is a dialect difference, add it to `divergent` with the \
                  documented reason; otherwise it is a bug.",
                 case.name
             ),
-            Some(why) => assert_ne!(
-                got, want,
-                "{}: now MATCHES the oracle, so its divergence entry ({why:?}) is stale; delete it.",
-                case.name
-            ),
+            Some(why) => {
+                assert_ne!(
+                    got, want,
+                    "{}: now MATCHES the oracle, so its divergence entry ({why:?}) is stale; delete it.",
+                    case.name
+                );
+                // Differing from the oracle is not a result. The
+                // canonical TypeScript is, and it is the contract every
+                // port is held to, so the document is compared against
+                // it exactly.
+                let canon = canonical.get(case.name.as_str()).unwrap_or_else(|| {
+                    panic!("{}: no canonical TypeScript result recorded", case.name)
+                });
+                assert_eq!(
+                    got,
+                    canonical_json(canon),
+                    "{}: differs from the oracle for the documented reason ({why:?}), \
+                     but not in the way the canonical TypeScript does.",
+                    case.name
+                );
+            }
         }
     }
 }
@@ -269,6 +312,21 @@ fn the_divergence_lists_are_the_shared_ones() {
     assert!(
         rust_parity_gap().is_empty(),
         "the Rust parity-gap list is not empty; every entry needs a fix or a reason"
+    );
+}
+
+/// The recorded canonical results cover the divergent list exactly. An
+/// entry added to one and not the other would leave a document
+/// unmeasured again, or leave a stale result behind.
+#[test]
+fn every_divergent_document_has_a_canonical_result() {
+    let canonical = canonical_typescript();
+    let diverges = divergent();
+    let recorded: Vec<&str> = canonical.keys().map(String::as_str).collect();
+    let expected: Vec<&str> = diverges.keys().copied().collect();
+    assert_eq!(
+        recorded, expected,
+        "tests/conformance-canonical.json does not hold exactly the divergent documents"
     );
 }
 

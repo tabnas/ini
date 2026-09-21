@@ -351,8 +351,16 @@ fn resolve(options: &IniOptions) -> Resolved {
         resolved.multiline = true;
         resolved.continuation = match multiline.continuation.as_deref() {
             None => Some('\\'),
-            Some("") => None,
-            Some(text) => text.chars().next(),
+            // The canonical scanner compares one UTF-16 code unit of the
+            // source against the whole option string, so a string that is
+            // not exactly one code unit can never match and the feature is
+            // off. Taking the first character instead made `continuation:
+            // "~~"` continue a line ending in a single `~`, which the
+            // canonical implementation does not.
+            Some(text) => text
+                .chars()
+                .next()
+                .filter(|_| text.encode_utf16().count() == 1),
         };
         resolved.indent = multiline.indent.unwrap_or(false);
     }
@@ -363,7 +371,12 @@ fn resolve(options: &IniOptions) -> Resolved {
 
     if let Some(inline) = options.comment.as_ref().and_then(|c| c.inline.as_ref()) {
         resolved.inline_active = inline.active.unwrap_or(false);
-        if let Some(chars) = inline.chars.as_ref().filter(|chars| !chars.is_empty()) {
+        // `None` is "the caller said nothing", and only that takes the
+        // default. An EMPTY list is a choice: the canonical
+        // `_options.comment?.inline?.chars ?? ['#', ';']` defaults on
+        // absence alone, so `chars: []` leaves no inline comment
+        // character at all and `a=x;y` keeps its semicolon.
+        if let Some(chars) = inline.chars.as_ref() {
             resolved.inline_char_str = chars.clone();
             resolved.inline_chars = chars
                 .iter()
@@ -444,6 +457,16 @@ fn set_node(rule: &mut Rule, value: Value) {
 /// The JavaScript `String(value)` of a parsed value, for the fixed-token
 /// concatenation in the `val` after-close hook and for a key whose token
 /// carries a non-string value.
+///
+/// A composite reaches this only from the fixed-token concatenation, and
+/// only ever as what the JSON reader made of a single-quoted value:
+/// `a = ='[1,2]'` is the array `[1, 2]` with a `=` in front of its
+/// `String()`. So the two composite arms are the ones ECMA-262 applies
+/// to an ordinary array and an ordinary object.
+///
+/// Rendering the composite as JSON instead is the defect this replaces.
+/// It put `=[1.0,2.0]` where the canonical implementation puts `=1,2`,
+/// and `={"b":1.0}` where it puts `=[object Object]`.
 fn js_string(value: &Value) -> String {
     match value {
         Value::String(text) => text.clone(),
@@ -452,8 +475,41 @@ fn js_string(value: &Value) -> String {
         Value::Null => "null".to_string(),
         Value::Bool(flag) => flag.to_string(),
         Value::Number(number) => js_number_to_string(*number),
-        other => other.to_json().to_string(),
+        Value::Array(items) => js_array_string(items),
+        // `Object.prototype.toString`. The object came from the JSON
+        // reader, so it carries the ordinary prototype and its
+        // `String()` is this constant. A jsonic object, allocated with
+        // no prototype, would throw a `TypeError` instead, and cannot
+        // reach here: INI nulls the `#OB` token, so no value in this
+        // dialect opens a map.
+        _ => "[object Object]".to_string(),
     }
+}
+
+/// `Array.prototype.toString`, which is `join(',')` with no separator
+/// argument (ECMA-262 23.1.3.17 and 23.1.3.34): the elements are joined
+/// with a comma, `null` and `undefined` contribute the empty string, and
+/// every other element is converted by the rules above. A nested array
+/// therefore flattens, so `[1,[2,3]]` is `1,2,3` and `[]` is empty.
+///
+/// The empty string for a null belongs to `join`, not to `String`: a
+/// null VALUE is still `"null"`, and only a null ELEMENT disappears.
+///
+/// The recursion needs no depth bound. These values come from
+/// `serde_json`, whose reader refuses to nest past 128, and a parsed
+/// value is a tree, so the walk always terminates.
+fn js_array_string(items: &[Value]) -> String {
+    let mut joined = String::new();
+    for (index, item) in items.iter().enumerate() {
+        if 0 < index {
+            joined.push(',');
+        }
+        match item {
+            Value::Null | Value::Undefined => {}
+            other => joined.push_str(&js_string(other)),
+        }
+    }
+    joined
 }
 
 /// A double as JavaScript spells it: ECMA-262 6.1.6.1.20.
@@ -1738,6 +1794,83 @@ fn install_val_rule(parser: &mut Tabnas, _resolved: &Resolved) {
     });
 }
 
+/// The value `JSON.parse` gives a number literal too large for a double,
+/// which is the one document `serde_json` refuses where `JSON.parse`
+/// succeeds.
+///
+/// `JSON.parse("1e400")` is `Infinity` and `JSON.parse("-1e400")` is
+/// `-Infinity`, because the specification rounds an unrepresentable
+/// magnitude to the nearest double. `serde_json` reports
+/// `number out of range` instead, and the caller then kept the source
+/// text, so `a = '1e400'` was the STRING `"1e400"` in this port and the
+/// number `Infinity` in the canonical one. A literal too SMALL to
+/// represent is not affected: both readers round `1e-400` to zero.
+///
+/// `Some` only for a whole document that is one JSON number and whose
+/// value is not finite. Anything else, including a number that overflows
+/// INSIDE an array or an object, is left to the caller, which keeps the
+/// text; `DIVERGENCE.md` records that remaining gap.
+fn overflowed_json_number(text: &str) -> Option<f64> {
+    // The JSON whitespace set, which `JSON.parse` also allows around a
+    // top-level value.
+    let trimmed = text.trim_matches([' ', '\t', '\n', '\r']);
+    if !is_json_number(trimmed) {
+        return None;
+    }
+    // A valid JSON number `serde_json` rejected can only be one it could
+    // not fit in a double, so the parse below succeeds and is infinite.
+    // Testing for that rather than assuming it keeps this arm from
+    // quietly claiming any other failure.
+    trimmed
+        .parse::<f64>()
+        .ok()
+        .filter(|value| value.is_infinite())
+}
+
+/// Whether the whole of `text` is a JSON number literal (RFC 8259
+/// section 6). Rust's own float parser is wider than that grammar: it
+/// takes `inf`, `NaN`, `+1`, `1.` and `.5`, none of which `JSON.parse`
+/// accepts, so the grammar is checked here rather than inferred from a
+/// successful parse.
+fn is_json_number(text: &str) -> bool {
+    let mut chars = text.chars().peekable();
+    if chars.peek() == Some(&'-') {
+        chars.next();
+    }
+    match chars.next() {
+        // A leading zero admits no further integer digits.
+        Some('0') => {}
+        Some(digit) if digit.is_ascii_digit() => {
+            while chars.peek().is_some_and(char::is_ascii_digit) {
+                chars.next();
+            }
+        }
+        _ => return false,
+    }
+    if chars.peek() == Some(&'.') {
+        chars.next();
+        if !chars.peek().is_some_and(char::is_ascii_digit) {
+            return false;
+        }
+        while chars.peek().is_some_and(char::is_ascii_digit) {
+            chars.next();
+        }
+    }
+    if matches!(chars.peek(), Some('e' | 'E')) {
+        chars.next();
+        if matches!(chars.peek(), Some('+' | '-')) {
+            chars.next();
+        }
+        if !chars.peek().is_some_and(char::is_ascii_digit) {
+            return false;
+        }
+        while chars.peek().is_some_and(char::is_ascii_digit) {
+            chars.next();
+        }
+    }
+    chars.next().is_none()
+}
+
 fn val_after_close(rule: &mut Rule, st: tabnas::Tin) {
     // A single-quoted value carries JSON: `k = '{"a":1}'` is the object.
     // An invalid document is kept as the string it already is.
@@ -1753,6 +1886,8 @@ fn val_after_close(rule: &mut Rule, st: tabnas::Tin) {
         if let Some(text) = text {
             if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
                 set_node(rule, Value::from_json(&parsed));
+            } else if let Some(number) = overflowed_json_number(&text) {
+                set_node(rule, Value::Number(number));
             }
         }
     }

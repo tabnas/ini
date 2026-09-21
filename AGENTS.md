@@ -358,9 +358,19 @@ accepts the publish. Pushing a tag by hand is the orchestrator's path
 
 The steps, in order:
 
-1. Bump all **three** version sites together — `ts/package.json`, `VERSION`
-   in `ts/src/ini.ts` and `const VERSION` in `go/ini.go`. Drift is caught by
-   `ts/test/version.test.ts` and `go/version_test.go`.
+1. Bump all **five** version sites together — `ts/package.json`, `VERSION`
+   in `ts/src/ini.ts`, `const VERSION` in `go/ini.go`, `version` in
+   `rs/Cargo.toml` and `pub const VERSION` in `rs/src/lib.rs`. Drift is
+   caught by `ts/test/version.test.ts`, `go/version_test.go` and
+   `rs/tests/version_test.rs`.
+
+   `make version-rs V=x.y.z` does the two Rust sites and refreshes the
+   crate's own entry in `rs/Cargo.lock`, which `ci/rust/run.sh` diffs — so
+   the lockfile moves with them, and a stale one fails the Rust gate rather
+   than the version test. The crate is not published: it takes its siblings
+   as path dependencies and there is no registry release, so the version
+   sites and the lockfile are all a release moves on the Rust side. Nothing
+   in steps 2 to 6 has a Rust half.
 2. Verify against the **published** dependencies rather than your checkout.
    The release runner installs fresh from the registry; a working tree
    usually does not, so reproduce that before believing anything:

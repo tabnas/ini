@@ -12,6 +12,7 @@ and this file only covers what is specific to this crate.
 | `tests/parity_test.rs` | every shared `../test/spec/*.tsv` fixture through `tabnas_support::Runner`, one runner per file, with the per-file option table |
 | `tests/ini_test.rs` | in-language behaviour: the Rust twin of `go/ini_test.go`, plus the construction API, the threading contract and hostile input |
 | `tests/conformance_test.rs` | the third-party corpus in `../test/corpus/ini-corpus.json`, with the same divergence lists the other two runtimes carry |
+| `tests/conformance-canonical.json` | the canonical TypeScript result for each of the twelve corpus documents this dialect reads differently from the npm/ini oracle |
 | `tests/grammar_test.rs` | the embedded grammar against `../ini-grammar.jsonic`, and against the TypeScript and Go embeds |
 | `tests/perf_test.rs` | `parse` reuses its instance, building one really is dear, and many sections stay near linear |
 | `tests/version_test.rs` | Cargo.toml == `VERSION` == ts/package.json == the Go `const VERSION` |
@@ -155,6 +156,49 @@ converting or dropping a `Value` walks the tree with the call stack, and
 a header ten thousand segments deep aborted the process rather than
 erroring. TypeScript and Go have no limit, so the refusal is a recorded
 divergence (`../DIVERGENCE.md`) that must never reach a shared fixture.
+
+## A divergent corpus document is compared against TypeScript
+
+Twelve of the thirty valid corpus documents read differently from the
+npm/ini oracle, each for a documented dialect reason, so the oracle
+cannot say whether this port read them correctly. Asserting only that
+they DIFFER from the oracle leaves any third value green, which is 40% of
+the valid corpus parsed and not measured. `conformance-canonical.json`
+holds what `ts/src/ini.ts` produces for each one, measured by running it
+under node, and `valid_documents_match_the_oracle` compares against that
+as well. The key set is asserted to be exactly the divergence list, so
+neither can be changed without the other.
+
+The TypeScript and Go halves of this suite still assert only the
+inequality. Fixing them is their own change, and until it lands this is
+the only half that measures those twelve.
+
+## Reading a single-quoted value as JSON
+
+`@val-ac` hands a single-quoted value to `serde_json` where the canonical
+port hands it to `JSON.parse`. The two agree except on a number literal
+too large for a double: `JSON.parse` rounds it to an infinity,
+`serde_json` refuses it with `number out of range`, and `serde_json`'s
+own `Number` cannot hold a non-finite value at all.
+
+Where the WHOLE value is that literal, `overflowed_json_number` checks
+the JSON number grammar by hand and parses it with Rust's float parser,
+which rounds to an infinity as the specification does. Where the literal
+is inside an array or an object it cannot be recovered, and that is the
+recorded divergence in `../DIVERGENCE.md`. Do not replace the grammar
+check with "Rust parsed it as a float": Rust's parser also takes `inf`,
+`NaN`, `+1`, `1.` and `.5`, none of which `JSON.parse` accepts.
+
+## `String()` of a parsed value is not its JSON
+
+`js_string` is the JavaScript `String()`, used by the fixed-token
+concatenation in `@val-ac`. Rendering a composite as JSON there is wrong
+in both directions: an array coerces by `join(',')` and flattens, so
+`[1,[2,3]]` is `1,2,3` and `[]` is empty, a null or undefined ELEMENT
+contributes nothing, and an object is `[object Object]`. Numbers inside
+go through `js_number_to_string`, the ECMA-262 formatter, and never
+Rust's. This is the array-join defect class the csv port met; the repair
+is the same shape there.
 
 ## The error alternate with no tokens
 
