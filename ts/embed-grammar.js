@@ -1,7 +1,15 @@
 #!/usr/bin/env node
 
-// Embeds ini-grammar.jsonic into src/ini.ts and go/ini.go.
+// Embeds ini-grammar.jsonic into src/ini.ts, go/ini.go and
+// rs/src/lib.rs.
 // Run via: npm run embed
+//
+// All three runtimes embed the grammar as the jsonic TEXT it is
+// authored in, and each parses it with its own jsonic at load time, so
+// they do not each have a grammar: they have THE grammar.
+//
+// Never hand-edit between the BEGIN/END markers: edit
+// ini-grammar.jsonic and re-run this script.
 
 const fs = require('fs')
 const path = require('path')
@@ -46,3 +54,18 @@ embed(
   path.join(__dirname, '..', 'go', 'ini.go'),
   'const grammarText = `\n' + grammar + '`\n'
 )
+
+// Rust: raw string. A raw string has no escapes either, so the grammar
+// goes in verbatim, but the hash count has to clear the longest `"#...`
+// run the content holds. There is none, so one hash is enough; say so
+// rather than emit a literal that will not compile.
+const RS_FILE = path.join(__dirname, '..', 'rs', 'src', 'lib.rs')
+if (fs.existsSync(RS_FILE)) {
+  if (grammar.includes('"#')) {
+    console.error('Error: grammar file contains `"#`, cannot embed in an r#"..."# raw string')
+    process.exit(1)
+  }
+  embed(RS_FILE, 'const GRAMMAR_TEXT: &str = r#"\n' + grammar + '"#;')
+} else {
+  console.log('No Rust source at', RS_FILE, '- skipping')
+}

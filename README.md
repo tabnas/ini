@@ -10,7 +10,7 @@
 A [jsonic](https://github.com/tabnas/jsonic) syntax plugin that parses
 [INI](https://en.wikipedia.org/wiki/INI_file) files into objects / maps
 with sections, dot-nested keys, `[]` arrays, multiline values, and
-inline comments. Available for both TypeScript and Go.
+inline comments. Available for TypeScript, Go, and Rust.
 
 Docs, guides, the error reference and the playground: **[tabnas.dev](https://tabnas.dev)**.
 
@@ -25,6 +25,17 @@ npm install @tabnas/ini @tabnas/parser @tabnas/jsonic @tabnas/hoover
 
 # Go
 go get github.com/tabnas/ini/go@latest
+```
+
+Rust takes a path dependency on sibling checkouts, because no registry
+carries the engine or its plugins. Clone `tabnas/parser`, `tabnas/json`,
+`tabnas/jsonic`, and `tabnas/hoover` next to this repository and point at
+them:
+
+```toml
+[dependencies]
+tabnas-ini = { path = "../ini/rs" }
+tabnas = { path = "../parser/rs" }
 ```
 
 ## Example
@@ -49,6 +60,16 @@ result, _ := tabnasini.Parse("[server]\nhost = localhost\nport = 5432\ntags[] = 
 // map[string]any{"server": map[string]any{
 //   "host": "localhost", "port": "5432", "tags": []any{"a", "b"}}}
 ```
+
+**Rust**
+
+```rust
+let value = tabnas_ini::parse("[server]\nhost = localhost\ntags[] = a\ntags[] = b")?;
+// {"server":{"host":"localhost","tags":["a","b"]}}
+```
+
+The Rust crate lives in [`rs/`](rs/). Its front page is
+[`rs/README.md`](rs/README.md).
 
 INI values are strings by default; the keywords `true`/`false`/`null`
 resolve to their host types.
@@ -78,11 +99,12 @@ This repository contains:
 ## Grammar
 
 The grammar is defined once in the top-level
-[`ini-grammar.jsonic`](ini-grammar.jsonic) and embedded into both
-implementations, TypeScript ([`ts/src/ini.ts`](ts/src/ini.ts)) and Go
-([`go/ini.go`](go/ini.go)), by [`ts/embed-grammar.js`](ts/embed-grammar.js)
-(run as part of `npm run build`). Edit the `.jsonic` file, never the
-embedded copies.
+[`ini-grammar.jsonic`](ini-grammar.jsonic) and embedded into all three
+implementations, TypeScript ([`ts/src/ini.ts`](ts/src/ini.ts)), Go
+([`go/ini.go`](go/ini.go)) and Rust ([`rs/src/lib.rs`](rs/src/lib.rs)),
+by [`ts/embed-grammar.js`](ts/embed-grammar.js) (run as part of
+`npm run build`). Each runtime parses that text with its own jsonic at
+load time. Edit the `.jsonic` file, never the embedded copies.
 
 The installed grammar as a railroad/syntax diagram, generated from the
 live grammar with [`@tabnas/railroad`](https://github.com/tabnas/railroad):
