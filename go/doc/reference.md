@@ -96,6 +96,11 @@ continuation.
 Both modes can be combined. An escaped continuation character (`\\`
 before a newline) is a literal backslash, not a continuation.
 
+`Continuation` is compared against one character of the value, so only a
+single-character string can continue a line. The empty string and any
+longer string are equal to nothing there, and leave backslash
+continuation off.
+
 ### `Section.Duplicate`
 
 How a repeated `[section]` header is handled.
@@ -122,6 +127,13 @@ work, regardless of this option.)
 | `Chars` | `[]string` | `["#", ";"]` | The characters that start an inline comment. |
 | `Escape.Backslash` | `*bool` | `true` | A backslash before a comment char produces the literal char (for example `\;` → `;`); the char does not terminate. |
 | `Escape.Whitespace` | `*bool` | `false` | A comment char only starts a comment when preceded by whitespace; otherwise it is literal. |
+
+The default applies when `Chars` is nil. An empty slice is a choice
+rather than an absence: inline comments stay active with no character
+that starts one. Each entry is compared against one character of the
+value, so an entry that is not a single character starts no comment,
+although it still ends a value at the lexer level when
+`Escape.Whitespace` is off.
 
 ## Return types
 
@@ -159,7 +171,9 @@ key = value
   trimmed; the value runs to the end of the line, then is trimmed.
 - A bare key with no `=` is a **boolean key** set to `true`, anywhere a
   pair may appear, including as the first line of the document or of a
-  section (`[s]\nmykey` ⇒ `{"s": {"mykey": true}}`).
+  section (`[s]\nmykey` ⇒ `{"s": {"mykey": true}}`). A line holding only
+  `true`, `false` or `null` is the resolved value rather than a key, and
+  declares nothing.
 - A later `key = value` overwrites an earlier one, unless the key uses
   array syntax.
 
@@ -176,6 +190,9 @@ key = value
 - Dots split the header into a nested path (`[a.b.c]` ⇒
   `{a: {b: {c: {}}}}`). Escape a literal dot with `\.`, and `\]` for a
   literal bracket; any other backslash is kept as written.
+- A header that names a path already holding a value replaces that
+  value with the section: last writer wins, the same rule a repeated
+  key follows. An array built by `key[] =` is replaced in the same way.
 - Top-level pairs before any header sit at the root.
 - Repeated headers are governed by [`Section.Duplicate`](#sectionduplicate).
 
@@ -218,3 +235,31 @@ A `;`/`#` inside a value is literal unless
 start of the value (`k = ; x` ⇒ `; x`). With inline comments active the
 same input yields an empty value; either way the NEXT line is a fresh
 pair.
+
+## Limits
+
+A section header nests one level per dotted segment, and a document
+nested past `DepthLimit` (127) levels is refused with the engine's
+`cancel` code. `map` and `list` rules count towards the same budget, so
+a document nesting through more than one of them is bounded once. No
+ordinary configuration file comes near the limit.
+
+The bound exists because the parse is iterative but the result is not:
+rendering, converting or dropping the value tree walks it with the call
+stack. Without a bound a deep enough header raised a host error at a
+depth set by how much stack the caller had left rather than by the
+document, which is not a failure a caller can handle by code or report a
+position for.
+
+## Error codes
+
+| Code | Raised when |
+|---|---|
+| `duplicate_section` | A section header repeats a path already declared, and [`Section.Duplicate`](#sectionduplicate) is `"error"`. |
+| `unterminated_section` | A section header reaches a newline or end of input without its closing `]`. |
+| `cancel` | The document nests past `DepthLimit`, or a caller's own parse budget cancelled the parse. |
+
+The code is the contract; the message wording is not. A malformed header
+that is not merely unterminated (`[]`, `[a.]`, `[.a]`) surfaces through
+the engine's own `unexpected` code. Read the code off the error with
+`errors.As` and a `*jsonic.JsonicError`.

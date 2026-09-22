@@ -167,6 +167,40 @@ function altErrToken(r: any, ctx: any): any {
 // prototype makes __proto__ an ordinary own key, as jsonic and json5 do.
 const node = () => Object.create(null)
 
+// How deep a document may nest before it is refused with the engine's
+// `cancel` code. 127 is the number @tabnas/json and @tabnas/jsonic
+// already use, and the one the Rust port's serde_json accepts, so every
+// runtime in the family bounds nesting alike. No real configuration file
+// comes near it.
+const DEPTH_LIMIT = 127
+
+// The rules that count as a level: a section header is where an INI
+// document nests, so `dive` is counted beside `map` and `list`.
+const LEVEL_RULES = new Set(['map', 'list', 'dive'])
+
+// How deep the parse is: the level rules on the rule stack, plus the
+// rule the loop is working on, which the engine hands over separately.
+// Counted from the rule NAMES rather than the stack length, because the
+// stack holds several rules per container level and a length-based limit
+// would encode that ratio. `rsI` is the live top of the stack: entries
+// above it are spent rules the engine has not overwritten yet.
+const depth = (ctx: any) => {
+  let levels = LEVEL_RULES.has(ctx.rule?.name) ? 1 : 0
+  for (let rI = 0; rI < ctx.rsI; rI++) {
+    if (LEVEL_RULES.has(ctx.rs[rI]?.name)) {
+      levels++
+    }
+  }
+  return levels
+}
+
+// Whether a value already at a section path is a section, and so may be
+// continued rather than replaced. An array is not: `k[] =` builds one,
+// and a later header naming that key means a section, as both ports
+// read it.
+const isSection = (value: any) =>
+  null != value && 'object' === typeof value && !Array.isArray(value)
+
 
 function Ini(tn: Tabnas, _options: IniOptions) {
   // Resolve inline comment options. Needed before the config modifiers
@@ -444,11 +478,24 @@ function Ini(tn: Tabnas, _options: IniOptions) {
         }
 
         for (let dI = 0; dI < dive.length; dI++) {
+          const held = r.node[dive[dI]]
           if (dI === dive.length - 1 && isDuplicate && dupSection === 'override') {
             // Override: replace the section object entirely.
             r.node = r.node[dive[dI]] = node()
           } else {
-            r.node = r.node[dive[dI]] = r.node[dive[dI]] || node()
+            // A section may only continue a path that already holds a
+            // SECTION. A path holding a value (or an array built by
+            // `k[] =`) is replaced, which is the last-writer-wins rule
+            // the rest of the dialect uses for a repeated key, and what
+            // ts/doc/reference.md documents.
+            //
+            // The test used to be `|| node()`, which kept any truthy
+            // value where it stood: the walk then continued FROM that
+            // value, and assigning a property to a string threw a
+            // TypeError out of the parser. A host exception carries no
+            // code and no position, so a caller could not tell it from
+            // any other kind of failure.
+            r.node = r.node[dive[dI]] = isSection(held) ? held : node()
           }
         }
 
@@ -769,6 +816,28 @@ function Ini(tn: Tabnas, _options: IniOptions) {
   for (const name of ['list', 'elem']) {
     tn.rule(name, null)
   }
+
+  // The depth budget, installed LAST: a grammar document's options pass
+  // is not required to preserve one, and the rule edits above are what
+  // the count is taken over.
+  //
+  // A section header nests one level per dotted segment, and there was
+  // no limit at all. The engine parses iteratively, but displaying,
+  // converting or dropping the resulting tree walks it with the call
+  // stack, so a deep enough header raised a host RangeError with no code
+  // and no position. Worse, the depth at which it did so was a property
+  // of how much stack the host had left rather than of the document, so
+  // the same input succeeded in one caller and failed in another. A
+  // library on untrusted input refuses what it cannot handle with a
+  // coded error instead.
+  tn.options({
+    parse: {
+      budget: {
+        checkEveryN: 1,
+        onCheck: (ctx: any) => depth(ctx) <= DEPTH_LIMIT,
+      },
+    },
+  })
 }
 
 // VERSION is this package's version. It MUST equal package.json "version":
@@ -776,6 +845,6 @@ function Ini(tn: Tabnas, _options: IniOptions) {
 // build if they drift. Mirrors `const VERSION` in go/ini.go.
 const VERSION = '0.5.7'
 
-export { VERSION, Ini }
+export { VERSION, DEPTH_LIMIT, Ini }
 
 export type { IniOptions, InlineCommentOptions }

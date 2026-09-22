@@ -44,6 +44,7 @@ import { Ini } from '../dist/ini'
 
 const REPO = join(__dirname, '..', '..')
 const MANIFEST = join(REPO, 'test', 'corpus', 'ini-corpus.json')
+const CANONICAL = join(REPO, 'test', 'corpus', 'ini-canonical.json')
 
 const MISSING_CORPUS =
   'INI conformance corpus not found at test/corpus/ini-corpus.json.\n' +
@@ -52,6 +53,14 @@ const MISSING_CORPUS =
   'upstream SHAs) and ships with the repo. This test deliberately FAILS\n' +
   'rather than skips: a conformance suite that silently does not run\n' +
   'reports green while measuring nothing.'
+
+const MISSING_CANONICAL =
+  'canonical results not found at test/corpus/ini-canonical.json.\n' +
+  '\n' +
+  'It records what this runtime makes of every corpus document the\n' +
+  'dialect reads differently from the npm/ini oracle, and all three\n' +
+  'conformance suites read it. Regenerate it with\n' +
+  '`node scripts/build-ini-canonical.js` from a built ts/.'
 
 
 // Documents whose parse differs from the npm/ini oracle because the two
@@ -120,6 +129,23 @@ type Case = {
 }
 
 
+// The canonical result for each DIVERGENT document, read from the file
+// the Go and Rust suites read.
+//
+// For this runtime it is a golden file rather than a cross-check: the
+// canonical IS this code, so the comparison pins the dialect against
+// what was last recorded and makes an accidental change to any of the
+// twelve show up here rather than only in another runtime. The Go and
+// Rust suites cannot run Node, which is why the file is generated and
+// committed instead of computed.
+function loadCanonical() {
+  if (!existsSync(CANONICAL)) {
+    throw new Error(MISSING_CANONICAL)
+  }
+  return JSON.parse(readFileSync(CANONICAL, 'utf8'))
+}
+
+
 function loadManifest() {
   if (!existsSync(MANIFEST)) {
     throw new Error(MISSING_CORPUS)
@@ -152,9 +178,19 @@ function norm(v: any) {
 
 describe('conformance (third-party corpus)', () => {
   const manifest = loadManifest()
+  const canonical = loadCanonical()
   const cases: Case[] = manifest.cases
   const valid = cases.filter((c) => 'valid' === c.kind)
   const invalid = cases.filter((c) => 'invalid' === c.kind)
+
+  test('the canonical results cover the divergent list exactly', () => {
+    // An entry added to one and not the other would leave a document
+    // unmeasured again, or leave a stale result behind.
+    assert.deepStrictEqual(
+      Object.keys(canonical).sort(), Object.keys(DIVERGENT).sort(),
+      'test/corpus/ini-canonical.json does not hold exactly the ' +
+      'divergent documents')
+  })
 
   test('corpus is loaded and has both halves', () => {
     assert.strictEqual(valid.length, 30, 'valid case count changed')
@@ -185,6 +221,18 @@ describe('conformance (third-party corpus)', () => {
           assert.notDeepStrictEqual(got, want,
             `${c.name}: now MATCHES the oracle, so its DIVERGENT entry ` +
             `("${why}") is stale — delete it.`)
+          // Differing from the oracle is not a result. Without this,
+          // any third value kept the twelve divergent documents green:
+          // 40% of the valid corpus parsed and then not measured.
+          assert.ok(c.name in canonical,
+            `${c.name}: no canonical result recorded. Add it with ` +
+            `\`node scripts/build-ini-canonical.js ${c.name}\`.`)
+          assert.deepStrictEqual(got, norm(canonical[c.name]),
+            `${c.name}: differs from the oracle for the documented ` +
+            `reason ("${why}"), but no longer reads the way ` +
+            `test/corpus/ini-canonical.json records. If the dialect ` +
+            `changed deliberately, regenerate that file in the same ` +
+            `commit; otherwise it is a regression.`)
         }
       })
     }

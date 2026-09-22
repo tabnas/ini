@@ -5,7 +5,7 @@ import assert from 'node:assert'
 
 import { Tabnas } from '@tabnas/parser'
 import { jsonic } from '@tabnas/jsonic'
-import { Ini } from '../dist/ini'
+import { DEPTH_LIMIT, Ini } from '../dist/ini'
 
 
 const j = new Tabnas().use(jsonic).use(Ini)
@@ -635,6 +635,32 @@ describe('number-lex', () => {
     assert.deepEqual(jn.parse('a[]=1\na[]=2\na[]=hello'),
       { a: [1, 2, 'hello'] })
   })
+
+  test('nesting-past-the-depth-limit-is-refused', () => {
+    const header = (n: number) =>
+      '[' + Array(n).fill('a').join('.') + ']\nx=1\n'
+
+    // The boundary, and that an ordinary document is untouched by it.
+    assert.deepEqual(j.parse(header(1)), { a: { x: '1' } })
+    assert.equal(JSON.stringify(j.parse(header(DEPTH_LIMIT))).length, 771)
+
+    // Past it, and far past it, the answer is a coded parse error rather
+    // than a host RangeError raised at whatever depth the caller's stack
+    // happened to run out. 5000 overflowed the stack before this limit
+    // existed, which is not a failure a caller can catch by code or
+    // report a position for.
+    for (const deep of [DEPTH_LIMIT + 1, 1000, 5000]) {
+      assert.throws(
+        () => j.parse(header(deep)),
+        (err: any) => {
+          assert.equal(err.code, 'cancel', 'depth ' + deep)
+          assert.ok(!(err instanceof RangeError), 'depth ' + deep)
+          return true
+        },
+      )
+    }
+  })
+
 
   test('default-numbers-are-strings', () => {
     // Without number.lex, all values are strings
