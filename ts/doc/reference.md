@@ -93,6 +93,11 @@ Both modes may be combined (`{ continuation: '\\', indent: true }`).
 An escaped continuation character (`\\` before a newline) is a literal
 backslash, not a continuation.
 
+`continuation` is compared against one character of the value, so only a
+single-character string can continue a line. The empty string and any
+longer string are equal to nothing there, and leave backslash
+continuation off.
+
 ### `section.duplicate`
 
 How a repeated `[section]` header is handled.
@@ -120,6 +125,13 @@ always work, regardless of this option.)
 | `escape.backslash` | `boolean` | `true` | A backslash before a comment char produces the literal char (for example `\;` → `;`) and the char does not terminate. |
 | `escape.whitespace` | `boolean` | `false` | A comment char only starts a comment when preceded by whitespace; otherwise it is literal. |
 
+The default applies when `chars` is absent. An empty array is a choice
+rather than an absence: inline comments stay active with no character
+that starts one. Each entry is compared against one character of the
+value, so an entry that is not a single character starts no comment,
+although it still ends a value at the lexer level when
+`escape.whitespace` is off.
+
 ## Syntax
 
 The accepted grammar. The railroad diagram of the installed rules is in
@@ -134,7 +146,9 @@ key = value
 
 - The key runs up to the first `=`, a newline, or end of input, then is
   trimmed. The value runs to the end of the line, then is trimmed.
-- A bare key with no `=` is a **boolean key**: it is set to `true`.
+- A bare key with no `=` is a **boolean key**: it is set to `true`. A
+  line holding only `true`, `false` or `null` is the resolved value
+  rather than a key, and declares nothing.
   This holds anywhere a pair may appear, including as the first line of
   the document or of a section (`[s]\nmykey` ⇒ `{ s: { mykey: true } }`).
 - A later `key = value` overwrites an earlier one (`br = cold` then

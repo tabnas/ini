@@ -96,6 +96,11 @@ continuation.
 Both modes can be combined. An escaped continuation character (`\\`
 before a newline) is a literal backslash, not a continuation.
 
+`Continuation` is compared against one character of the value, so only a
+single-character string can continue a line. The empty string and any
+longer string are equal to nothing there, and leave backslash
+continuation off.
+
 ### `Section.Duplicate`
 
 How a repeated `[section]` header is handled.
@@ -122,6 +127,13 @@ work, regardless of this option.)
 | `Chars` | `[]string` | `["#", ";"]` | The characters that start an inline comment. |
 | `Escape.Backslash` | `*bool` | `true` | A backslash before a comment char produces the literal char (for example `\;` → `;`); the char does not terminate. |
 | `Escape.Whitespace` | `*bool` | `false` | A comment char only starts a comment when preceded by whitespace; otherwise it is literal. |
+
+The default applies when `Chars` is nil. An empty slice is a choice
+rather than an absence: inline comments stay active with no character
+that starts one. Each entry is compared against one character of the
+value, so an entry that is not a single character starts no comment,
+although it still ends a value at the lexer level when
+`Escape.Whitespace` is off.
 
 ## Return types
 
@@ -159,7 +171,9 @@ key = value
   trimmed; the value runs to the end of the line, then is trimmed.
 - A bare key with no `=` is a **boolean key** set to `true`, anywhere a
   pair may appear, including as the first line of the document or of a
-  section (`[s]\nmykey` ⇒ `{"s": {"mykey": true}}`).
+  section (`[s]\nmykey` ⇒ `{"s": {"mykey": true}}`). A line holding only
+  `true`, `false` or `null` is the resolved value rather than a key, and
+  declares nothing.
 - A later `key = value` overwrites an earlier one, unless the key uses
   array syntax.
 

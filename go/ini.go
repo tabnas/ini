@@ -4,9 +4,14 @@ package tabnasini
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math"
+	"strconv"
 	"strings"
 	"sync"
+	"unicode/utf16"
+	"unicode/utf8"
 
 	hoover "github.com/tabnas/hoover/go"
 	jsonic "github.com/tabnas/jsonic/go"
@@ -67,15 +72,21 @@ type InlineEscapeOptions struct {
 
 // resolved holds fully resolved options with defaults applied.
 type resolved struct {
-	multiline     bool
-	continuation  string // "" means disabled
-	indent        bool
-	dupSection    string
-	inlineActive  bool
-	inlineChars   map[rune]bool
-	inlineCharStr []string
-	escBackslash  bool
-	escWhitespace bool
+	multiline bool
+	// The continuation character, and whether there is one at all. The
+	// canonical `c === continuation` compares ONE UTF-16 code unit
+	// against the option value, so a marker of any other length is equal
+	// to nothing and continues no line; hasContinuation records that as
+	// "disabled" rather than letting a first byte stand in for it.
+	continuation    rune
+	hasContinuation bool
+	indent          bool
+	dupSection      string
+	inlineActive    bool
+	inlineChars     map[rune]bool
+	inlineCharStr   []string
+	escBackslash    bool
+	escWhitespace   bool
 }
 
 // defaultParser is a lazily-created instance reused by the no-options Parse
@@ -435,16 +446,24 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 
 				for sI < len(src) {
 					c := src[sI]
+					// The canonical scanner walks UTF-16 code units and
+					// compares a WHOLE one against each marker, so the
+					// comparisons below are on the decoded rune rather
+					// than on `c`. Comparing the first byte made every
+					// character of the Latin-1 supplement block equal to
+					// every other, since all of them start 0xC3, and cut
+					// a value at any of them.
+					r, rSize := utf8.DecodeRuneInString(src[sI:])
 
 					// Check for inline comment characters.
-					if opts.inlineActive && opts.inlineChars[rune(c)] {
+					if opts.inlineActive && opts.inlineChars[r] {
 						if opts.escWhitespace {
 							// Only treat as comment if preceded by whitespace.
 							if len(chars) > 0 && (chars[len(chars)-1] == ' ' || chars[len(chars)-1] == '\t') {
 								break
 							}
-							chars = append(chars, c)
-							sI++
+							chars = append(chars, src[sI:sI+rSize]...)
+							sI += rSize
 							cI++
 							continue
 						}
@@ -452,7 +471,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 					}
 
 					// Check for backslash continuation before newline.
-					if opts.continuation != "" && c == opts.continuation[0] {
+					if opts.hasContinuation && r == opts.continuation {
 						if sI+1 < len(src) && src[sI+1] == '\n' {
 							sI += 2
 							rI++
@@ -510,10 +529,10 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 
 					// Handle escape sequences.
 					if c == '\\' && sI+1 < len(src) {
-						next := src[sI+1]
-						if opts.inlineActive && opts.escBackslash && opts.inlineChars[rune(next)] {
-							chars = append(chars, next)
-							sI += 2
+						next, nextSize := utf8.DecodeRuneInString(src[sI+1:])
+						if opts.inlineActive && opts.escBackslash && opts.inlineChars[next] {
+							chars = append(chars, src[sI+1:sI+1+nextSize]...)
+							sI += 1 + nextSize
 							cI += 2
 							continue
 						}
@@ -693,8 +712,14 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		}),
 
 		"@pair-key-bool": jsonic.AltAction(func(r *jsonic.Rule, ctx *jsonic.Context) {
-			key := tokenString(r.O0)
-			if key != "" {
+			// boolKey, not tokenString: the canonical reads `r.o0.val`
+			// and declares a key only when it is a STRING, so a line
+			// holding `true`, `false` or `null` and nothing else declares
+			// nothing. Both value lexers resolve a keyword that is the
+			// whole span, so the token then carries a boolean or a nil,
+			// and falling back to its source turned the keyword back into
+			// the key TypeScript declined to make.
+			if key := boolKey(r.O0); key != "" {
 				nodeSet(r.Parent.Node, key, true)
 			}
 		}),
@@ -891,8 +916,9 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		}
 		atLineEnd := tI >= len(src) || src[tI] == '\n' ||
 			(src[tI] == '\r' && tI+1 < len(src) && src[tI+1] == '\n')
+		afterQuote, _ := utf8.DecodeRuneInString(src[tI:])
 		atInlineComment := opts.inlineActive &&
-			tI < len(src) && opts.inlineChars[rune(src[tI])] &&
+			tI < len(src) && opts.inlineChars[afterQuote] &&
 			(!opts.escWhitespace || tI > eI+1)
 
 		if atLineEnd || atInlineComment {
@@ -987,7 +1013,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 				if _, ok := p.U["ini_prev"]; !ok {
 					break
 				}
-				r.Node = p.O0.Src + fmt.Sprintf("%v", r.Node)
+				r.Node = p.O0.Src + jsString(r.Node)
 				p.Node = r.Node
 			}
 
@@ -1036,11 +1062,24 @@ func boolOpt(p *bool, def bool) bool {
 	return def
 }
 
-func stringOpt(p *string, def string) string {
-	if p != nil {
-		return *p
+// oneCodeUnit reports the single UTF-16 code unit text consists of.
+//
+// Several options are compared, in the canonical runtime, against one
+// element of a JavaScript string: `commentCharSet.has(c)` and
+// `c === continuation` both read a `src[i]`, which is one UTF-16 code
+// unit. A marker of any other length — empty, two characters, or one
+// astral character, which JavaScript spells as a surrogate pair — is
+// therefore equal to nothing there, and starts no comment and continues
+// no line. Mirrors `one_code_unit` in rs/src/lib.rs.
+func oneCodeUnit(text string) (rune, bool) {
+	first, size := utf8.DecodeRuneInString(text)
+	if first == utf8.RuneError && size <= 1 {
+		return 0, false
 	}
-	return def
+	if size != len(text) || utf16.RuneLen(first) != 1 {
+		return 0, false
+	}
+	return first, true
 }
 
 func resolve(o *IniOptions) *resolved {
@@ -1053,7 +1092,11 @@ func resolve(o *IniOptions) *resolved {
 
 	if o.Multiline != nil {
 		r.multiline = true
-		r.continuation = stringOpt(o.Multiline.Continuation, "\\")
+		if o.Multiline.Continuation == nil {
+			r.continuation, r.hasContinuation = '\\', true
+		} else if ch, ok := oneCodeUnit(*o.Multiline.Continuation); ok {
+			r.continuation, r.hasContinuation = ch, true
+		}
 		r.indent = boolOpt(o.Multiline.Indent, false)
 	}
 
@@ -1064,12 +1107,29 @@ func resolve(o *IniOptions) *resolved {
 	if o.Comment != nil && o.Comment.Inline != nil {
 		ic := o.Comment.Inline
 		r.inlineActive = boolOpt(ic.Active, false)
-		if ic.Chars != nil && len(ic.Chars) > 0 {
-			r.inlineChars = make(map[rune]bool)
+		// A nil slice is "the caller said nothing", and only that takes
+		// the default. An EMPTY list is a choice: the canonical
+		// `_options.comment?.inline?.chars ?? ['#', ';']` defaults on
+		// absence alone, so `Chars: []string{}` leaves no inline comment
+		// character at all and `a=x;y` keeps its semicolon.
+		if ic.Chars != nil {
+			// The WHOLE string is what hoover's end.fixed and its escape
+			// map compare, exactly as the canonical
+			// `eolEndFixed.push(...inlineComment.chars)` does, so a
+			// marker of any length still terminates a hoovered span.
 			r.inlineCharStr = ic.Chars
-			for _, s := range ic.Chars {
-				if len(s) > 0 {
-					r.inlineChars[rune(s[0])] = true
+			// The custom value scanner and the string check compare ONE
+			// code unit instead (`commentCharSet.has(c)` and
+			// `inlineComment.chars.includes(src[tI])`, both against a
+			// `src[i]`), so an entry that is not exactly one UTF-16 code
+			// unit can never start a comment there. Keeping the first
+			// BYTE instead truncated `["##"]` to `#` and cut `a=x ## note`
+			// short, and made every character of the Latin-1 supplement
+			// block equal to every other, since all of them start 0xC3.
+			r.inlineChars = make(map[rune]bool)
+			for _, marker := range ic.Chars {
+				if ch, ok := oneCodeUnit(marker); ok {
+					r.inlineChars[ch] = true
 				}
 			}
 		}
@@ -1106,6 +1166,18 @@ func getDive(r *jsonic.Rule) []string {
 		return dive
 	}
 	return nil
+}
+
+// boolKey is the key a BARE line declares: the token's value when it
+// carries a string, and nothing otherwise.
+func boolKey(t *jsonic.Token) string {
+	if t == nil || t.IsNoToken() {
+		return ""
+	}
+	if s, ok := t.Val.(string); ok {
+		return s
+	}
+	return ""
 }
 
 func tokenString(t *jsonic.Token) string {
@@ -1211,7 +1283,223 @@ func tryParseJSON(s string) any {
 	if err := json.Unmarshal([]byte(s), &result); err == nil {
 		return result
 	}
+	// `encoding/json` refuses a number literal too large for a double,
+	// where `JSON.parse` rounds it to an infinity. Recognising the
+	// literal restores the canonical value for the case the whole value
+	// IS the number. Inside an array or an object it cannot be
+	// recovered: the refusal comes from the scanner, before any value is
+	// built (see DIVERGENCE.md, which the Rust port shares).
+	if f, ok := overflowedJSONNumber(s); ok {
+		return f
+	}
 	return s
+}
+
+// overflowedJSONNumber is the double a JSON number literal rounds to
+// when `encoding/json` refused it for being out of range.
+//
+// strconv.ParseFloat is wider than the JSON grammar — it takes `inf`,
+// `NaN`, `+1`, `1.` and `.5`, none of which `JSON.parse` accepts — so
+// the grammar is checked here rather than inferred from a successful
+// parse. Mirrors `overflowed_json_number` in rs/src/lib.rs.
+func overflowedJSONNumber(text string) (float64, bool) {
+	// The JSON whitespace set, which `JSON.parse` also allows around a
+	// top-level value.
+	trimmed := strings.Trim(text, " \t\n\r")
+	if !isJSONNumber(trimmed) {
+		return 0, false
+	}
+	// A valid JSON number encoding/json rejected can only be one it
+	// could not fit in a double, so the parse below succeeds and is
+	// infinite. Testing for that rather than assuming it keeps this arm
+	// from quietly claiming any other failure.
+	// ParseFloat reports an out-of-range literal as an ErrRange NumError
+	// while still returning the infinity it rounds to, which is exactly
+	// the case this function is for. Any other error is a literal this
+	// grammar check should not have admitted.
+	f, err := strconv.ParseFloat(trimmed, 64)
+	if err != nil {
+		var numErr *strconv.NumError
+		if !errors.As(err, &numErr) || !errors.Is(numErr.Err, strconv.ErrRange) {
+			return 0, false
+		}
+	}
+	if !math.IsInf(f, 0) {
+		return 0, false
+	}
+	return f, true
+}
+
+// isJSONNumber reports whether the whole of text is a JSON number
+// literal (RFC 8259 section 6).
+func isJSONNumber(text string) bool {
+	i := 0
+	if i < len(text) && text[i] == '-' {
+		i++
+	}
+	digits := func() int {
+		start := i
+		for i < len(text) && '0' <= text[i] && text[i] <= '9' {
+			i++
+		}
+		return i - start
+	}
+	if i >= len(text) {
+		return false
+	}
+	if text[i] == '0' {
+		// A leading zero admits no further integer digits.
+		i++
+	} else if digits() == 0 {
+		return false
+	}
+	if i < len(text) && text[i] == '.' {
+		i++
+		if digits() == 0 {
+			return false
+		}
+	}
+	if i < len(text) && (text[i] == 'e' || text[i] == 'E') {
+		i++
+		if i < len(text) && (text[i] == '+' || text[i] == '-') {
+			i++
+		}
+		if digits() == 0 {
+			return false
+		}
+	}
+	return i == len(text)
+}
+
+// jsString is the JavaScript `String()`, used by the fixed-token
+// concatenation in @val-ac, where the canonical port writes
+// `p.o0.src + r.node` and the language coerces the right-hand side.
+//
+// `%v` is not that coercion in any of its cases: it writes an array as
+// `[1 2]` where JavaScript joins the elements with a comma, a map as
+// `map[b:1]` where JavaScript writes `[object Object]`, a nil as
+// `<nil>`, and a double with Go's formatter rather than the one
+// ECMA-262 specifies. Mirrors `js_string` in rs/src/lib.rs.
+func jsString(v any) string {
+	switch t := v.(type) {
+	case nil:
+		return "null"
+	case string:
+		return t
+	case bool:
+		if t {
+			return "true"
+		}
+		return "false"
+	case float64:
+		return jsNumberToString(t)
+	case []any:
+		return jsArrayString(t)
+	case map[string]any:
+		// `Object.prototype.toString`. The object came from the JSON
+		// reader, so it carries the ordinary prototype and its
+		// `String()` is this constant.
+		return "[object Object]"
+	}
+	if jsonic.IsUndefined(v) {
+		return "undefined"
+	}
+	return fmt.Sprintf("%v", v)
+}
+
+// jsArrayString is `Array.prototype.toString`, which is `join(',')` with
+// no separator argument (ECMA-262 23.1.3.17 and 23.1.3.34): the elements
+// are joined with a comma, a nil element contributes the empty string,
+// and every other element is converted by the rules above. A nested
+// array therefore flattens, so `[1,[2,3]]` is `1,2,3` and `[]` is empty.
+//
+// The empty string for a nil belongs to `join`, not to `String`: a nil
+// VALUE is still "null", and only a nil ELEMENT disappears.
+func jsArrayString(items []any) string {
+	var joined strings.Builder
+	for i, item := range items {
+		if 0 < i {
+			joined.WriteByte(',')
+		}
+		if item == nil || jsonic.IsUndefined(item) {
+			continue
+		}
+		joined.WriteString(jsString(item))
+	}
+	return joined.String()
+}
+
+// jsNumberToString is ECMAScript `Number::toString` with radix 10
+// (ECMA-262 6.1.6.1.20), which is what `String(n)` gives.
+//
+// strconv.FormatFloat(v, 'f', -1, 64) is NOT a substitute: it has no
+// switch to exponent form, so 1e21 comes out as twenty-two digits where
+// JavaScript writes "1e+21", and 1e-7 as a string of zeros where
+// JavaScript writes "1e-7". The digits come from a FIXED-precision
+// render rather than the shortest one, because the two break an exact
+// decimal midpoint differently: the shortest form rounds away from zero,
+// while the specification takes the even digit. Copied from
+// github.com/tabnas/csv/go, where it is fuzzed against Node.
+func jsNumberToString(f float64) string {
+	if math.IsNaN(f) {
+		return "NaN"
+	}
+	if math.IsInf(f, 1) {
+		return "Infinity"
+	}
+	if math.IsInf(f, -1) {
+		return "-Infinity"
+	}
+	// Covers -0, which JavaScript prints as "0".
+	if f == 0 {
+		return "0"
+	}
+
+	magnitude := math.Abs(f)
+
+	// The specification's `s` (the digits) and `n` (where the decimal
+	// point sits). Take the digit count from the shortest form, then take
+	// the digits themselves at that fixed precision.
+	shortest := strconv.FormatFloat(magnitude, 'e', -1, 64)
+	mantissa, _, _ := strings.Cut(shortest, "e")
+	k := len(strings.Replace(mantissa, ".", "", 1))
+
+	fixed := strconv.FormatFloat(magnitude, 'e', k-1, 64)
+	mantissa, exponentText, _ := strings.Cut(fixed, "e")
+	digits := strings.Replace(mantissa, ".", "", 1)
+	exponent, err := strconv.Atoi(exponentText)
+	if err != nil {
+		// FormatFloat with 'e' always emits a signed integer exponent.
+		return strconv.FormatFloat(f, 'g', -1, 64)
+	}
+	n := exponent + 1
+
+	var body string
+	switch {
+	case k <= n && n <= 21:
+		body = digits + strings.Repeat("0", n-k)
+	case 0 < n && n <= 21:
+		body = digits[:n] + "." + digits[n:]
+	case -6 < n && n <= 0:
+		body = "0." + strings.Repeat("0", -n) + digits
+	default:
+		e := n - 1
+		head := digits
+		if k > 1 {
+			head = digits[:1] + "." + digits[1:]
+		}
+		sign := "+"
+		if e < 0 {
+			sign = "-"
+			e = -e
+		}
+		body = head + "e" + sign + strconv.Itoa(e)
+	}
+
+	if f < 0 {
+		return "-" + body
+	}
+	return body
 }
 
 func resolveValue(s string) any {

@@ -34,6 +34,7 @@ func tsvOptions() map[string]IniOptions {
 	}
 	noContinuation := ""
 	backslash := "\\"
+	wideContinuation := "~~"
 
 	return map[string]IniOptions{
 		"inline-comments-active": {Comment: inlineActive()},
@@ -41,6 +42,24 @@ func tsvOptions() map[string]IniOptions {
 			Inline: &InlineCommentOptions{
 				Active: boolPtr(true),
 				Chars:  []string{";"},
+			},
+		}},
+		// An EMPTY list is a choice, not an absence: inline comments stay
+		// active with no character that starts one.
+		"inline-comments-empty-chars": {Comment: &CommentOptions{
+			Inline: &InlineCommentOptions{
+				Active: boolPtr(true),
+				Chars:  []string{},
+			},
+		}},
+		// A marker is compared as ONE code unit where the value is
+		// scanned, so "##" can never start a comment and "é" can, while
+		// "à" — which shares its first UTF-8 byte — cannot.
+		"inline-comments-marker-width": {Comment: &CommentOptions{
+			Inline: &InlineCommentOptions{
+				Active: boolPtr(true),
+				Chars:  []string{"##", "é"},
+				Escape: &InlineEscapeOptions{Whitespace: boolPtr(true)},
 			},
 		}},
 		"inline-comments-backslash": {Comment: &CommentOptions{
@@ -83,6 +102,11 @@ func tsvOptions() map[string]IniOptions {
 		"multiline-both": {Multiline: &MultilineOptions{
 			Continuation: &backslash,
 			Indent:       boolPtr(true),
+		}},
+		// A continuation of any length but one code unit continues
+		// nothing.
+		"multiline-continuation-width": {Multiline: &MultilineOptions{
+			Continuation: &wideContinuation,
 		}},
 		"multiline-with-inline": {
 			Multiline: &MultilineOptions{},

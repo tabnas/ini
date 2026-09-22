@@ -3,7 +3,9 @@
 package tabnasini
 
 import (
+	"math"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -1057,4 +1059,106 @@ func TestNestedSectionWithoutMiddleParent(t *testing.T) {
 			},
 		},
 	})
+}
+
+// TestSingleQuotedNumberTooLargeForADoubleIsInfinity pins the repair of
+// a divergence from the canonical: `encoding/json` refuses a number
+// literal too large for a double, where `JSON.parse` rounds it to an
+// infinity. It cannot be a shared fixture, because the expected column
+// is JSON and JSON has no way to spell an infinity.
+func TestSingleQuotedNumberTooLargeForADoubleIsInfinity(t *testing.T) {
+	// A literal with no exponent overflows the same way, so one is built
+	// rather than written out.
+	speltOut := "a = '1" + strings.Repeat("0", 400) + "'"
+	for _, c := range []struct {
+		src      string
+		positive bool
+	}{
+		{"a = '1e400'", true},
+		{"a = '-1e400'", false},
+		// JSON whitespace around a top-level value is allowed.
+		{"a = ' 1e400 '", true},
+		{speltOut, true},
+	} {
+		result, err := Parse(c.src)
+		if err != nil {
+			t.Fatalf("%q did not parse: %v", c.src, err)
+		}
+		f, ok := result["a"].(float64)
+		if !ok {
+			t.Fatalf("%q gave %#v rather than a number", c.src, result["a"])
+		}
+		if !math.IsInf(f, 0) {
+			t.Errorf("%q gave %v, want an infinity", c.src, f)
+		}
+		if math.Signbit(f) == c.positive {
+			t.Errorf("%q has the wrong sign: %v", c.src, f)
+		}
+	}
+
+	// Unaffected neighbours, each measured against the canonical
+	// implementation.
+	for _, c := range []struct {
+		src  string
+		want any
+	}{
+		{"a = '1e-400'", float64(0)},
+		{"a = '1'", float64(1)},
+		// Not JSON number syntax, so the text stands, as `JSON.parse`
+		// fails on all four.
+		{"a = 'inf'", "inf"},
+		{"a = '+1'", "+1"},
+		{"a = '01'", "01"},
+		{"a = '1.'", "1."},
+	} {
+		result, err := Parse(c.src)
+		if err != nil {
+			t.Fatalf("%q did not parse: %v", c.src, err)
+		}
+		assert(t, c.src, result["a"], c.want)
+	}
+}
+
+// TestNumberThatOverflowsInsideACompositeKeepsItsText pins the half of
+// the same defect that is NOT repaired: the refusal comes from the
+// scanner, before any value is built, so there is nothing to put the
+// infinity into. Recorded in DIVERGENCE.md, which the Rust port shares.
+func TestNumberThatOverflowsInsideACompositeKeepsItsText(t *testing.T) {
+	for _, c := range []struct{ src, want string }{
+		{"a = '[1e400]'", "[1e400]"},
+		{`a = '{"b":1e400}'`, `{"b":1e400}`},
+	} {
+		result, err := Parse(c.src)
+		if err != nil {
+			t.Fatalf("%q did not parse: %v", c.src, err)
+		}
+		assert(t, c.src, result["a"], c.want)
+	}
+}
+
+// TestJSNumberToString pins the ECMA-262 number spelling the fixed-token
+// concatenation needs. Go's own formatters are not that algorithm: they
+// never switch to exponent form, and they break an exact decimal
+// midpoint away from zero where the specification takes the even digit.
+func TestJSNumberToString(t *testing.T) {
+	for _, c := range []struct {
+		in   float64
+		want string
+	}{
+		{0, "0"},
+		{math.Copysign(0, -1), "0"},
+		{1, "1"},
+		{-1.5, "-1.5"},
+		{1e21, "1e+21"},
+		{1e20, "100000000000000000000"},
+		{1e-6, "0.000001"},
+		{1e-7, "1e-7"},
+		{math.Inf(1), "Infinity"},
+		{math.Inf(-1), "-Infinity"},
+		{math.NaN(), "NaN"},
+	} {
+		if got := jsNumberToString(c.in); got != c.want {
+			t.Errorf("jsNumberToString(%v) = %q, want %q", c.in, got, c.want)
+		}
+	}
 }

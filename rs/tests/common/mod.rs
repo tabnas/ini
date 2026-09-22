@@ -27,6 +27,8 @@ pub const FIXTURES: &[&str] = &[
     "inline-comments-backslash-disabled.tsv",
     "inline-comments-backslash.tsv",
     "inline-comments-custom-chars.tsv",
+    "inline-comments-empty-chars.tsv",
+    "inline-comments-marker-width.tsv",
     "inline-comments-off.tsv",
     "inline-comments-whitespace-backslash.tsv",
     "inline-comments-whitespace.tsv",
@@ -35,6 +37,7 @@ pub const FIXTURES: &[&str] = &[
     "line-comments.tsv",
     "multiline-backslash.tsv",
     "multiline-both.tsv",
+    "multiline-continuation-width.tsv",
     "multiline-escapes.tsv",
     "multiline-indent.tsv",
     "multiline-no-inline.tsv",
@@ -61,11 +64,14 @@ pub const OPTION_NAMES: &[&str] = &[
     "inline-comments-backslash",
     "inline-comments-backslash-disabled",
     "inline-comments-custom-chars",
+    "inline-comments-empty-chars",
+    "inline-comments-marker-width",
     "inline-comments-whitespace",
     "inline-comments-whitespace-backslash",
     "inline-comments-with-sections",
     "multiline-backslash",
     "multiline-both",
+    "multiline-continuation-width",
     "multiline-escapes",
     "multiline-indent",
     "multiline-no-inline",
@@ -105,6 +111,30 @@ pub fn options_for(name: &str) -> IniOptions {
                 active: Some(true),
                 chars: Some(vec![";".to_string()]),
                 escape: None,
+            }),
+            ..Default::default()
+        },
+        // An EMPTY list is a choice, not an absence: inline comments
+        // stay active with no character that starts one.
+        "inline-comments-empty-chars" => IniOptions {
+            comment: comment(InlineCommentOptions {
+                active: Some(true),
+                chars: Some(Vec::new()),
+                escape: None,
+            }),
+            ..Default::default()
+        },
+        // A marker is compared as ONE code unit where the value is
+        // scanned, so "##" can never start a comment and "é" can, while
+        // "à" cannot.
+        "inline-comments-marker-width" => IniOptions {
+            comment: comment(InlineCommentOptions {
+                active: Some(true),
+                chars: Some(vec!["##".to_string(), "é".to_string()]),
+                escape: Some(InlineEscapeOptions {
+                    backslash: None,
+                    whitespace: Some(true),
+                }),
             }),
             ..Default::default()
         },
@@ -179,6 +209,15 @@ pub fn options_for(name: &str) -> IniOptions {
             multiline: Some(MultilineOptions {
                 continuation: Some("\\".to_string()),
                 indent: Some(true),
+            }),
+            ..Default::default()
+        },
+        // A continuation of any length but one code unit continues
+        // nothing.
+        "multiline-continuation-width" => IniOptions {
+            multiline: Some(MultilineOptions {
+                continuation: Some("~~".to_string()),
+                indent: None,
             }),
             ..Default::default()
         },
