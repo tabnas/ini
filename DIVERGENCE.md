@@ -50,37 +50,6 @@ Pinned by `nesting_past_the_depth_limit_is_refused` in
 fixture: the limit is this port's alone, and a fixture row would have to
 be green in three runtimes.
 
-### A section header that reopens a key holding a value
-
-A document can name a key and then name a SECTION at the same path. The
-canonical implementation walks the path with
-`r.node[k] = r.node[k] || node()`, which keeps a truthy value where it
-stands: the walk then continues from a string, and writing a property to
-a string is a `TypeError` under the strict mode a compiled module runs
-in. The error carries no code and no position, and it is not a parse
-failure a caller can tell from any other.
-
-| input | TypeScript | Go | Rust |
-|---|---|---|---|
-| `a=1` then `[a]` | `{"a":"1"}` | `{"a":{}}` | `{"a":{}}` |
-| `a=1` then `[a]` then `x=2` | `TypeError: Cannot create property 'x' on string '1'` | `{"a":{"x":"2"}}` | `{"a":{"x":"2"}}` |
-| `a=1` then `[a.b]` then `x=2` | `TypeError: Cannot create property 'b' on string '1'` | `{"a":{"b":{"x":"2"}}}` | `{"a":{"b":{"x":"2"}}}` |
-
-This port replaces the value with the section, as the Go port does. A
-host exception that escapes the parser is not a behaviour worth
-reproducing, and the two ports that do not have one agree with each
-other.
-
-Owner: the canonical port. The repair is to decide what the dialect
-means here and say so in `ts/doc/reference.md`: either keep the value and
-refuse the header with a code, or replace it as the two ports do. This
-row goes when that lands.
-
-Pinned by `a_section_header_may_reopen_a_key_that_holds_a_value` in
-[`rs/tests/ini_test.rs`](rs/tests/ini_test.rs). It cannot be a shared
-fixture either: the row would have to be green in three runtimes, and
-one of them raises a host error.
-
 ### An escaped lone surrogate in a single-quoted value
 
 A single-quoted value is read as JSON, and `JSON.parse` accepts an

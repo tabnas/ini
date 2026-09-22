@@ -167,6 +167,13 @@ function altErrToken(r: any, ctx: any): any {
 // prototype makes __proto__ an ordinary own key, as jsonic and json5 do.
 const node = () => Object.create(null)
 
+// Whether a value already at a section path is a section, and so may be
+// continued rather than replaced. An array is not: `k[] =` builds one,
+// and a later header naming that key means a section, as both ports
+// read it.
+const isSection = (value: any) =>
+  null != value && 'object' === typeof value && !Array.isArray(value)
+
 
 function Ini(tn: Tabnas, _options: IniOptions) {
   // Resolve inline comment options. Needed before the config modifiers
@@ -444,11 +451,24 @@ function Ini(tn: Tabnas, _options: IniOptions) {
         }
 
         for (let dI = 0; dI < dive.length; dI++) {
+          const held = r.node[dive[dI]]
           if (dI === dive.length - 1 && isDuplicate && dupSection === 'override') {
             // Override: replace the section object entirely.
             r.node = r.node[dive[dI]] = node()
           } else {
-            r.node = r.node[dive[dI]] = r.node[dive[dI]] || node()
+            // A section may only continue a path that already holds a
+            // SECTION. A path holding a value (or an array built by
+            // `k[] =`) is replaced, which is the last-writer-wins rule
+            // the rest of the dialect uses for a repeated key, and what
+            // ts/doc/reference.md documents.
+            //
+            // The test used to be `|| node()`, which kept any truthy
+            // value where it stood: the walk then continued FROM that
+            // value, and assigning a property to a string threw a
+            // TypeError out of the parser. A host exception carries no
+            // code and no position, so a caller could not tell it from
+            // any other kind of failure.
+            r.node = r.node[dive[dI]] = isSection(held) ? held : node()
           }
         }
 

@@ -190,6 +190,9 @@ key = value
 - Dots split the header into a nested path (`[a.b.c]` ⇒
   `{a: {b: {c: {}}}}`). Escape a literal dot with `\.`, and `\]` for a
   literal bracket; any other backslash is kept as written.
+- A header that names a path already holding a value replaces that
+  value with the section: last writer wins, the same rule a repeated
+  key follows. An array built by `key[] =` is replaced in the same way.
 - Top-level pairs before any header sit at the root.
 - Repeated headers are governed by [`Section.Duplicate`](#sectionduplicate).
 

@@ -168,6 +168,9 @@ key = value
   `{ a: { b: { c: {} } } }`. Escape a literal dot with `\.`
   (`[x\.y]` ⇒ key `x.y`), and `\]` for a literal bracket. Any other
   backslash is kept as written, so `[C:\path]` ⇒ key `C:\path`.
+- A header that names a path already holding a value replaces that
+  value with the section: last writer wins, the same rule a repeated
+  key follows. An array built by `key[] =` is replaced in the same way.
 - Top-level pairs before any header sit at the root.
 - Repeated headers are governed by [`section.duplicate`](#sectionduplicate).
 

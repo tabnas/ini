@@ -759,11 +759,13 @@ fn hostile_input_is_answered_rather_than_crashing() {
     }
 }
 
-/// The second recorded divergence: a section header may reopen a key
-/// that already holds a value, and this port replaces the value with the
-/// section, as the Go port does. The canonical port keeps the value and
-/// then raises a host `TypeError` as soon as the section has a key of
-/// its own. `../../DIVERGENCE.md` carries the measured table.
+/// A section header may reopen a key that already holds a value, and
+/// the section replaces it: last writer wins, which is how the dialect
+/// treats a repeated key. The canonical port used to keep the value and
+/// then raise a host `TypeError` as soon as the section had a key of its
+/// own; it now replaces it too, so this is ordinary behaviour rather
+/// than a divergence, and `../../test/spec/sections-over-value.tsv`
+/// holds all three runtimes to it.
 #[test]
 fn a_section_header_may_reopen_a_key_that_holds_a_value() {
     assert_default("a=1\n[a]", json!({"a": {}}));
