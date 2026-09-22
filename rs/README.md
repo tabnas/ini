@@ -184,6 +184,13 @@ points where the host language has no way to say what JavaScript says.
 Any difference in what a document PARSES TO is recorded in
 [`../DIVERGENCE.md`](../DIVERGENCE.md) instead.
 
+- **The crate adds functions the plugin does not need.** TypeScript
+  exports the plugin and nothing else: a caller builds an engine and
+  registers `Ini` on it. This crate also carries `parse`, `parse_with`,
+  `make` and `make_with`, which is the shape the Go port has, because a
+  Rust caller that wants one line should not have to assemble three
+  crates to get it. `ini` and `plugin` are the plugin itself, and are
+  what the TypeScript export corresponds to.
 - **Options are a typed struct.** TypeScript takes a plain object whose
   every field is optional; here the struct spells the same shape, an
   absent field is `None`, and `IniOptions::default()` is the TypeScript

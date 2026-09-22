@@ -91,23 +91,31 @@ difference is in how the engine's `Value` spells it back out, and it
 shows only for a number a single-quoted value hands to the JSON reader,
 since `number.lex` is off in INI.
 
-| input | TypeScript | Rust `Value::to_string` |
-|---|---|---|
-| `a = '{"y":6}'` | `{"a":{"y":6}}` | `{"a":{"y":6}}` |
-| `a = '[1,2.5,3]'` | `{"a":[1,2.5,3]}` | `{"a":[1,2.5,3]}` |
-| `a = '1e21'` | `{"a":1e+21}` | `{"a":1000000000000000000000}` |
-| `a = '0.0000001'` | `{"a":1e-7}` | `{"a":0.0000001}` |
-| `a = '1e400'` | `{"a":null}` | `{"a":inf}` |
+The Go column is `encoding/json` rather than an engine display: the Go
+port hands back a `map[string]any` and the caller marshals it, so there
+is no `Value` in between.
+
+| input | TypeScript | Go `json.Marshal` | Rust `Value::to_string` |
+|---|---|---|---|
+| `a = '{"y":6}'` | `{"a":{"y":6}}` | `{"a":{"y":6}}` | `{"a":{"y":6}}` |
+| `a = '[1,2.5,3]'` | `{"a":[1,2.5,3]}` | `{"a":[1,2.5,3]}` | `{"a":[1,2.5,3]}` |
+| `a = '1e21'` | `{"a":1e+21}` | `{"a":1e+21}` | `{"a":1000000000000000000000}` |
+| `a = '0.0000001'` | `{"a":1e-7}` | `{"a":1e-7}` | `{"a":0.0000001}` |
+| `a = '1e400'` | `{"a":null}` | refused: `unsupported value: +Inf` | `{"a":inf}` |
 
 ECMA-262 6.1.6.1.20 switches to exponent form at 1e21 and at 1e-7; the
 engine's formatter does not, and it spells an infinity `inf` where
 JavaScript spells it `Infinity`. The last row is the one the TypeScript
 column renders through `JSON.stringify`, which writes `null` for an
 infinity; `Value::to_json` writes `null` for it too, so the two agree
-everywhere except the engine's own display. The shared fixtures compare values rather
-than their rendering, so no row is affected, and the one place this port
-spells a number itself (the fixed-token concatenation in the `val`
-after-close hook) uses the specification's algorithm.
+everywhere except the engine's own display. Go's `encoding/json` refuses
+an infinity outright rather than writing `null` for it, which is a
+property of that marshaller and not of the parse: the value in the map
+is `math.Inf(1)`, the same double the other two hold. The shared
+fixtures compare values rather than their rendering, so no row is
+affected, and the one place each port spells a number itself (the
+fixed-token concatenation in the `val` after-close hook) uses the
+specification's algorithm.
 
 Owner: [`github.com/tabnas/parser`](https://github.com/tabnas/parser),
 in its `Value` display.
