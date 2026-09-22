@@ -12,44 +12,6 @@ this repository: `@tabnas/parser` and `@tabnas/jsonic` from `ts/`,
 
 ## The Rust port
 
-### Nesting past 127 levels is refused
-
-A section header of more than `DEPTH_LIMIT` (127) segments is rejected
-with the engine's `cancel` code. Counted alongside the `map` and `list`
-rules, so a document nesting through both is bounded once.
-
-| input | TypeScript | Go | Rust |
-|---|---|---|---|
-| `[a.a. ... ]` 127 deep, then `x=1` | `{"a":{...}}`, 771 bytes | same, 771 bytes | same, 771 bytes |
-| 128 deep | `{...}`, 777 bytes | same, 777 bytes | `ERROR:cancel` |
-| 1000 deep | `{...}`, 6009 bytes | same, 6009 bytes | `ERROR:cancel` |
-| 5000 deep | `RangeError: Maximum call stack size exceeded` | `{...}`, 30009 bytes | `ERROR:cancel` |
-| 10000 deep | not reached | `{...}`, 60009 bytes | **aborted the process** without this limit |
-
-The engine parses iteratively, but displaying, converting or dropping a
-`Value` walks the tree with the call stack. A header ten thousand
-segments deep overflowed the stack and aborted the process: not an
-error a caller can catch, and not a failure mode a library may have on
-untrusted input. The limit turns it into an ordinary coded rejection.
-
-The row at 5000 is the reason the limit is not simply a Rust weakness.
-The canonical implementation has no limit and no crash guard either; it
-reaches a `RangeError` at some depth between 1000 and 5000, with no
-error code and no position. Go, whose stack grows, keeps going.
-
-127 is the number `tabnas-json` and `tabnas-jsonic` already use, and the
-one `serde_json` accepts, so every crate in the family bounds nesting
-alike. No real configuration file comes near it.
-
-Owner: this port. The repair, if a caller ever needs deeper documents,
-is an iterative `to_json` and `Drop` in the engine, after which the limit
-can be raised or removed here.
-
-Pinned by `nesting_past_the_depth_limit_is_refused` in
-[`rs/tests/ini_test.rs`](rs/tests/ini_test.rs). It cannot be a shared
-fixture: the limit is this port's alone, and a fixture row would have to
-be green in three runtimes.
-
 ### An escaped lone surrogate in a single-quoted value
 
 A single-quoted value is read as JSON, and `JSON.parse` accepts an

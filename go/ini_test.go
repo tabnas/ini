@@ -3,10 +3,13 @@
 package tabnasini
 
 import (
+	"errors"
 	"math"
 	"reflect"
 	"strings"
 	"testing"
+
+	jsonic "github.com/tabnas/jsonic/go"
 )
 
 // assert is a test helper that checks deep equality.
@@ -1161,4 +1164,45 @@ func TestJSNumberToString(t *testing.T) {
 			t.Errorf("jsNumberToString(%v) = %q, want %q", c.in, got, c.want)
 		}
 	}
+}
+
+// TestNestingPastTheDepthLimitIsRefused is the Go twin of
+// nesting-past-the-depth-limit-is-refused in ts/test/ini.test.ts and
+// nesting_past_the_depth_limit_is_refused in rs/tests/ini_test.rs. The
+// shared fixture test/spec/sections-depth-limit.tsv pins the boundary in
+// every runtime; this covers the far side of it, where the canonical
+// runtime used to raise a host RangeError.
+func TestNestingPastTheDepthLimitIsRefused(t *testing.T) {
+	header := func(n int) string {
+		segments := make([]string, n)
+		for i := range segments {
+			segments[i] = "a"
+		}
+		return "[" + strings.Join(segments, ".") + "]\nx=1\n"
+	}
+
+	if _, err := Parse(header(DepthLimit)); err != nil {
+		t.Fatalf("depth %d should parse: %v", DepthLimit, err)
+	}
+
+	for _, deep := range []int{DepthLimit + 1, 1000, 10000} {
+		_, err := Parse(header(deep))
+		if err == nil {
+			t.Fatalf("depth %d should be refused", deep)
+		}
+		code, ok := errorCode(err)
+		if !ok || code != "cancel" {
+			t.Errorf("depth %d gave code %q, want cancel", deep, code)
+		}
+	}
+}
+
+// errorCode reads the code off a parse error, which is what the shared
+// fixtures compare and what a caller handles a failure by.
+func errorCode(err error) (string, bool) {
+	var tabnasErr *jsonic.JsonicError
+	if errors.As(err, &tabnasErr) {
+		return tabnasErr.Code, true
+	}
+	return "", false
 }

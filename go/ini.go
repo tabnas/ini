@@ -819,6 +819,22 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		return fmt.Errorf("failed to apply ini grammar: %w", err)
 	}
 
+	// The depth budget. Set on the live config here, after Grammar() and
+	// for the same reason the checks below are: SetOptions rebuilds the
+	// parse configuration and would drop it.
+	//
+	// A section header nests one level per dotted segment, and there was
+	// no limit at all. The engine parses iteratively, but rendering or
+	// walking the resulting tree recurses, and the canonical runtime
+	// raised a host RangeError at a depth that was a property of the
+	// caller's remaining stack rather than of the document. All three
+	// runtimes refuse past DepthLimit with the engine's "cancel" code
+	// instead.
+	cfg.ParseBudgetN = 1
+	cfg.ParseBudgetCheck = func(ctx *jsonic.Context) bool {
+		return depth(ctx) <= DepthLimit
+	}
+
 	// Line check: skip line matching inside val rule (matches TS @line-check).
 	// Set after Grammar() to ensure it's not overwritten by SetOptions.
 	cfg.LineCheck = func(lex *jsonic.Lex) *jsonic.LexCheckResult {
@@ -1051,6 +1067,40 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 	}
 
 	return nil
+}
+
+// DepthLimit is how deep a document may nest before it is refused with
+// the engine's "cancel" code. 127 is the number github.com/tabnas/json
+// and github.com/tabnas/jsonic already use, and the one the Rust port's
+// serde_json accepts, so every runtime in the family bounds nesting
+// alike. No real configuration file comes near it.
+const DepthLimit = 127
+
+// isLevelRule reports whether a rule counts as a level of nesting. A
+// section header is where an INI document nests, so "dive" is counted
+// beside "map" and "list".
+func isLevelRule(name string) bool {
+	return name == "map" || name == "list" || name == "dive"
+}
+
+// depth is how deep the parse is: the level rules on the rule stack,
+// plus the rule the loop is working on, which the engine hands over
+// separately. Counted from the rule NAMES rather than the stack length,
+// because the stack holds several rules per container level and a
+// length-based limit would encode that ratio. RSI is the live top of the
+// stack: entries above it are spent rules the engine has not overwritten
+// yet.
+func depth(ctx *jsonic.Context) int {
+	levels := 0
+	if ctx.Rule != nil && isLevelRule(ctx.Rule.Name) {
+		levels++
+	}
+	for rI := 0; rI < ctx.RSI && rI < len(ctx.RS); rI++ {
+		if ctx.RS[rI] != nil && isLevelRule(ctx.RS[rI].Name) {
+			levels++
+		}
+	}
+	return levels
 }
 
 // ---- Helper functions ----

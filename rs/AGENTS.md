@@ -154,8 +154,9 @@ and `list` only, which leaves a section header, the one place an INI
 document nests, unbounded. The engine parses iteratively, but displaying,
 converting or dropping a `Value` walks the tree with the call stack, and
 a header ten thousand segments deep aborted the process rather than
-erroring. TypeScript and Go have no limit, so the refusal is a recorded
-divergence (`../DIVERGENCE.md`) that must never reach a shared fixture.
+erroring. TypeScript and Go carry the same budget, at the same number
+and over the same three rules, so the boundary is a shared fixture
+(`../test/spec/sections-depth-limit.tsv`) rather than a divergence.
 
 ## A divergent corpus document is compared against TypeScript
 

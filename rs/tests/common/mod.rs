@@ -44,6 +44,7 @@ pub const FIXTURES: &[&str] = &[
     "multiline-with-inline.tsv",
     "numbers-are-strings.tsv",
     "quoted-values.tsv",
+    "sections-depth-limit.tsv",
     "sections-duplicate-error.tsv",
     "sections-duplicate-merge.tsv",
     "sections-duplicate-override.tsv",

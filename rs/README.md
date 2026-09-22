@@ -208,7 +208,7 @@ Any difference in what a document PARSES TO is recorded in
 - **Nesting is bounded.** A section path of a few thousand segments
   builds a value tree the engine walks with the call stack, so a parse
   budget refuses one deeper than 127 levels with the engine's `cancel`
-  code. Neither other runtime has a limit.
+  code. Every runtime bounds it at the same number.
 - **Key order is document order**, because the result is built on an
   `IndexMap`.
 - **An escaped lone surrogate becomes U+FFFD.** A single-quoted value is
@@ -217,7 +217,8 @@ Any difference in what a document PARSES TO is recorded in
   port substitutes the replacement character, as Go's `encoding/json`
   does, which keeps the type and the shape of the value. A single-quoted
   JSON value nested past 127 levels keeps its source text, for the reason
-  nesting is bounded above. Both are in `../DIVERGENCE.md`.
+  nesting is bounded above, where the other two runtimes read it as a
+  value. Both are in `../DIVERGENCE.md`.
 - **Columns count Unicode scalar values.** An astral character advances
   the column by one, where TypeScript counts UTF-16 units and advances by
   two. That is the engine's unit, recorded in its own `DIVERGENCE.md`.

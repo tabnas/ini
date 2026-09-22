@@ -837,12 +837,11 @@ fn the_option_table_is_exhaustive() {
     }
 }
 
-/// A recorded divergence from the canonical TypeScript: a section
-/// header deeper than [`DEPTH_LIMIT`] is refused with the engine's
-/// `cancel` code, where TypeScript and Go accept it. See
-/// `../../DIVERGENCE.md` for the measured table and the reason. It
-/// cannot be a shared fixture, because a fixture row has to be green in
-/// three runtimes.
+/// A section header deeper than [`DEPTH_LIMIT`] is refused with the
+/// engine's `cancel` code. Every runtime now bounds nesting at the same
+/// number, and `../../test/spec/sections-depth-limit.tsv` holds all
+/// three to the boundary; this covers the far side of it, where the
+/// canonical runtime used to overflow the host stack.
 #[test]
 fn nesting_past_the_depth_limit_is_refused() {
     let header = |segments: usize| format!("[{}]\nx = 1", vec!["a"; segments].join("."));

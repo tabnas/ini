@@ -235,3 +235,31 @@ A `;`/`#` inside a value is literal unless
 start of the value (`k = ; x` ⇒ `; x`). With inline comments active the
 same input yields an empty value; either way the NEXT line is a fresh
 pair.
+
+## Limits
+
+A section header nests one level per dotted segment, and a document
+nested past `DepthLimit` (127) levels is refused with the engine's
+`cancel` code. `map` and `list` rules count towards the same budget, so
+a document nesting through more than one of them is bounded once. No
+ordinary configuration file comes near the limit.
+
+The bound exists because the parse is iterative but the result is not:
+rendering, converting or dropping the value tree walks it with the call
+stack. Without a bound a deep enough header raised a host error at a
+depth set by how much stack the caller had left rather than by the
+document, which is not a failure a caller can handle by code or report a
+position for.
+
+## Error codes
+
+| Code | Raised when |
+|---|---|
+| `duplicate_section` | A section header repeats a path already declared, and [`Section.Duplicate`](#sectionduplicate) is `"error"`. |
+| `unterminated_section` | A section header reaches a newline or end of input without its closing `]`. |
+| `cancel` | The document nests past `DepthLimit`, or a caller's own parse budget cancelled the parse. |
+
+The code is the contract; the message wording is not. A malformed header
+that is not merely unterminated (`[]`, `[a.]`, `[.a]`) surfaces through
+the engine's own `unexpected` code. Read the code off the error with
+`errors.As` and a `*jsonic.JsonicError`.

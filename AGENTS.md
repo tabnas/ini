@@ -592,7 +592,10 @@ shared fixtures pin `ERROR:<code>` and the runner compares the error's
 
 Everything else surfaces through the engine's base codes — notably
 `unexpected` for a header that is malformed rather than unterminated
-(`[]`, `[a.]`, `[.a]`).
+(`[]`, `[a.]`, `[.a]`), and `cancel` for a document that nests past the
+depth limit (see "Untrusted input" below). Neither is declared here:
+they belong to the engine, and `tabnas.plugin.json`'s `errorCodes` lists
+only what this grammar declares.
 
 Both codes are exercised by fixtures: `test/spec/sections-duplicate-error.tsv`
 and `test/spec/sections-unterminated.tsv`. Keep the list here, the grammar
@@ -640,10 +643,12 @@ treat every section name, key and value as hostile text.
 - A hostile document must not crash the parser either. Deep nesting, very
   long lines, unterminated headers, control characters and odd Unicode are
   all covered by `hostile_input_is_answered_rather_than_crashing` in
-  `rs/tests/ini_test.rs`. The Rust port additionally refuses a section
-  header nested past 127 segments with the engine's `cancel` code,
-  because converting or dropping a value that deep walks the call stack
-  and aborted the process; see [`DIVERGENCE.md`](DIVERGENCE.md).
+  `rs/tests/ini_test.rs`. Every runtime refuses a section header nested
+  past 127 segments with the engine's `cancel` code, because rendering,
+  converting or dropping a value that deep walks the call stack: it
+  aborted the Rust process and raised an uncatchable `RangeError` in
+  TypeScript. `test/spec/sections-depth-limit.tsv` pins the boundary in
+  all three.
 - A key named `__proto__` is an ordinary key. The TypeScript port
   allocates its nodes with `Object.create(null)` for exactly this reason,
   and `ts/test/prototype-pollution.test.ts` and
