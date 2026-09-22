@@ -15,7 +15,8 @@ inline comments. Available for TypeScript, Go, and Rust.
 Docs, guides, the error reference and the playground: **[tabnas.dev](https://tabnas.dev)**.
 
 It is a plugin on the [tabnas](https://github.com/tabnas/parser) engine:
-the grammar is declarative data, the same for both language ports.
+the grammar is declarative data, the same for all three language
+ports.
 
 ## Install
 
@@ -94,7 +95,9 @@ This repository contains:
 |---|---|
 | [`ts/`](ts/) | TypeScript / JavaScript implementation (`@tabnas/ini`). |
 | [`go/`](go/) | Go port (`github.com/tabnas/ini/go`). |
-| [`test/spec/`](test/spec/) | Shared `.tsv` conformance fixtures, exercised by both runtimes. |
+| [`rs/`](rs/) | Rust port (crate `tabnas-ini`). |
+| [`test/spec/`](test/spec/) | Shared `.tsv` conformance fixtures, exercised by all three runtimes. |
+| [`test/corpus/`](test/corpus/) | The third-party conformance corpus, and what the canonical runtime makes of the documents this dialect reads differently from the corpus oracle. |
 
 ## Grammar
 

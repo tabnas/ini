@@ -299,7 +299,7 @@ The commands that prove a change is correct. Run them from the repo root
 unless stated:
 
 ```bash
-make build && make test      # both runtimes — the check that matters
+make build && make test      # all three runtimes — the check that matters
 ```
 
 Narrower, when iterating:
@@ -307,6 +307,8 @@ Narrower, when iterating:
 ```bash
 (cd ts && npm test)                    # `pretest` builds first
 (cd go && go test ./...)               # unit tests + shared fixtures + the conformance corpus
+(cd rs && cargo test --all-targets)    # the same three, plus the grammar embed check
+./ci/rust/run.sh                       # the full Rust gate: fmt, clippy, doctests, lockfile
 ```
 
 Each line is a subshell. `npm test` compiles first — its `pretest`
@@ -322,10 +324,10 @@ around it; the wiring is fixed instead, and
 
 What "correct" means here, in order of authority:
 
-1. **The shared fixtures pass in BOTH runtimes.** `test/spec/*.tsv` is the
-   parity contract (`ts/test/ini-tsv.test.ts` / `go/ini_tsv_test.go`) — a
-   row green in one runtime and red in another is a failure, not a
-   discrepancy. The conformance suite over `test/corpus/ini-corpus.json`
+1. **The shared fixtures pass in ALL THREE runtimes.** `test/spec/*.tsv`
+   is the parity contract (`ts/test/ini-tsv.test.ts` /
+   `go/ini_tsv_test.go` / `rs/tests/parity_test.rs`) — a row green in one
+   runtime and red in another is a failure, not a discrepancy. The conformance suite over `test/corpus/ini-corpus.json`
    (`ts/test/conformance.test.ts` / `go/ini_conformance_test.go` /
    `rs/tests/conformance_test.rs`) must also stay green, and it must never
    skip.
@@ -586,8 +588,8 @@ They stay in the Makefile because removing them is a separate change.
 
 This package declares **two** error codes, in the `options: error:` block
 of [`ini-grammar.jsonic`](ini-grammar.jsonic). The grammar is embedded
-verbatim into both runtimes by `ts/embed-grammar.js`, so there is one
-catalogue, not two that must be kept in step:
+verbatim into all three runtimes by `ts/embed-grammar.js`, so there is
+one catalogue, not three that must be kept in step:
 
 | Code | Raised when |
 | --- | --- |
@@ -623,7 +625,7 @@ before moving either:
   return value, and an error published on the context from `bo` is
   overwritten when the rule's alternates are matched. So `@table-bo` only
   *flags* a duplicate (`r.u.dupsec`); the error alternate on `table: open`
-  raises it in both runtimes from the one shared grammar.
+  raises it in every runtime from the one shared grammar.
 - `unterminated_section` needs the lexer's cooperation. The `divekey`
   Hoover block is committed once it starts, so a header running to end of
   input used to leave it unterminated — reported as a generic `invalid_text`

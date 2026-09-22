@@ -140,8 +140,10 @@ Parse errors are the engine's `TabnasError`, re-exported as `IniError`,
 with `code`, `row`, `col` and a report that shows the offending source
 with a caret under it. This plugin declares two codes of its own,
 `duplicate_section` and `unterminated_section`; everything else surfaces
-through the engine's own codes, `unexpected` among them. The CODE is the
-cross-runtime contract, and the message wording is not.
+through the engine's own codes, `unexpected` for a malformed section
+header and `cancel` for a document nested past the depth limit among
+them. The CODE is the cross-runtime contract, and the message wording is
+not.
 
 ## Install
 
@@ -241,10 +243,14 @@ including formatting and the lockfile check, run `ci/rust/run.sh`.
 
 The suite runs every shared `../test/spec/*.tsv` fixture, the same files
 the TypeScript and Go suites run, discovered by listing the directory so
-a new fixture runs everywhere at once. Beside them are the in-language
-tests for what a fixture cannot express: the option matrix, the API
-surface, the embedded grammar, the version constants, hostile input, and
-the shared default parser under threads.
+a new fixture runs everywhere at once, with a census test so a renamed
+or deleted fixture is a failure rather than a silent loss of coverage. It
+also runs the third-party corpus in `../test/corpus/ini-corpus.json`,
+with the same divergence lists the other two suites carry and the same
+canonical results in `../test/corpus/ini-canonical.json`. Beside them
+are the in-language tests for what a fixture cannot express: the option
+matrix, the API surface, the embedded grammar, the version constants,
+hostile input, and the shared default parser under threads.
 
 ## License
 
