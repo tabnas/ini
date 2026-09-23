@@ -20,7 +20,7 @@ import (
 // VERSION is this module's version. It MUST equal ts/package.json
 // "version": the release orchestrator rewrites both, and
 // TestVersionMatchesPackageJSON fails the build if they drift.
-const VERSION = "0.5.7"
+const VERSION = "0.5.8"
 
 // IniOptions configures the INI parser.
 type IniOptions struct {
@@ -153,8 +153,10 @@ func MakeJsonic(opts ...IniOptions) *jsonic.Jsonic {
 				// Explicit Lex: post the comment.def merge alignment, a def for
 				// a NEW comment name (not a jsonic default) is inactive unless
 				// it sets Lex — so ini's `#` and `;` line comments turn it on.
-				"hash": {Line: true, Start: "#", Lex: &bTrue},
-				"semi": {Line: true, Start: ";", Lex: &bTrue},
+				// Line is a *bool since parser 0.12.0 (nil = not supplied,
+				// falls back to the base def); both stay explicit line comments.
+				"hash": {Line: &bTrue, Start: "#", Lex: &bTrue},
+				"semi": {Line: &bTrue, Start: ";", Lex: &bTrue},
 			},
 		},
 		String: &jsonic.StringOptions{
