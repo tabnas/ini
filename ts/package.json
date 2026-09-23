@@ -1,6 +1,6 @@
 {
   "name": "@tabnas/ini",
-  "version": "0.5.8",
+  "version": "0.5.9",
   "description": "This plugin allows the [Tabnas](https://github.com/tabnas/jsonic) JSON parser to support INI syntax.",
   "main": "dist/ini.js",
   "type": "commonjs",
@@ -26,7 +26,7 @@
     "embed": "node embed-grammar.js",
     "docs:grammar": "node gen-railroad.js",
     "watch": "tsc --build src test -w",
-    "build": "node embed-grammar.js && tsc -p node_modules/@tabnas/hoover/src/tsconfig.json && tsc --build src test",
+    "build": "node embed-grammar.js && tsc -p node_modules/@tabnas/hoover/src/tsconfig.json && tsc --build src && tsc --build test",
     "clean": "rm -rf dist dist-test node_modules yarn.lock package-lock.json",
     "reset": "npm run clean && npm i && npm run build && npm test",
     "repo-tag": "REPO_VERSION=`node -e \"console.log(require('./package').version)\"` && echo TAG: ts/v$REPO_VERSION && git commit -a -m v$REPO_VERSION && git push && git tag ts/v$REPO_VERSION && git push origin ts/v$REPO_VERSION;",
@@ -55,8 +55,8 @@
     "@tabnas/parser": "*",
     "@tabnas/railroad": "*",
     "@tabnas/support": "*",
-    "@types/node": "25.6.0",
-    "typescript": "6.0.3"
+    "@types/node": "26.6.2",
+    "typescript": "7.0.2"
   },
   "engines": {
     "node": ">=24"
