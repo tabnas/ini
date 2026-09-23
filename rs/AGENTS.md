@@ -133,16 +133,37 @@ value there.
 The array a `k[] = v` pair grows is read back off the parent's NODE for
 the same reason, rather than out of the parent's `u` bag.
 
-## The fixed-token chain needs no write-back
+## The fixed-token chain writes back into every link
 
 A value that starts with `[`, `]`, `=` or `.` replaces the `val` rule
-once per leading fixed token, and the canonical port walks that chain
-writing the accumulated text into EVERY link, because the pair rule reads
-its child node from the first one. This engine's parent takes the LAST
-rule of a replacement chain as its child, so only the current rule's node
-is set. Writing into the earlier links would be worse than redundant:
-those links never reach their close state, so they still share the pair's
-node cell, and the write replaced the enclosing map with a string.
+once per leading fixed token, and only the LAST `val` of that chain runs
+the after-close hook. `val_after_close` walks the chain through
+`prev_rule`, prepends each link's token source, and writes the text
+accumulated so far into EVERY link's node, as the canonical ports do
+(`p.node = r.node` at `../ts/src/ini.ts:530`, `p.Node = r.Node` at
+`../go/ini.go:1033`).
+
+The first link is the one that matters. The pair rule reads its child
+node from the rule it PUSHED, which is the first link, not the link that
+popped. The engine has done so since parser `a801621` ("keep the
+parent's child link on the rule it pushed"), which aligned Rust with
+TypeScript and Go. Before it, the parent took the LAST link, so setting
+only the current rule's node was enough; against the engine after it,
+that left the first link's node unset, and the value came out `null`.
+
+The write goes THROUGH the shared `Rc<RefCell<Value>>`
+(`*link.node.borrow_mut() = ...`), not through `set_node`. The engine
+freezes the first link's cell as the pair's child link when that link is
+replaced, so only a write into that cell reaches the node the pair
+reads. `set_node` swaps in a new `Rc` and leaves the frozen handle
+holding the old value.
+
+No link shares the enclosing map's cell, so the write cannot clobber the
+map. The `val` before-open hook in `install_val_rule` gives every link,
+each replacement included, a fresh cell before its alternates run:
+`set_node(rule, Value::Undefined)`. The `a = .b\nc = 1` row of
+`../test/spec/value-fixed-token-start.tsv` pins that the map keeps its
+other keys.
 
 ## The depth budget is a crash fix
 

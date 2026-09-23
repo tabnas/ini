@@ -2031,6 +2031,15 @@ fn val_after_close(rule: &mut Rule, st: tabnas::Tin) {
                 .map(|token| token.src.as_str().to_string())
                 .unwrap_or_default();
             text = format!("{source}{text}");
+            // The canonical `p.node = r.node` (ts/src/ini.ts:530,
+            // go/ini.go:1033), which this port had never carried. The
+            // write goes THROUGH the cell rather than replacing it:
+            // `link.node` is the very `Rc<RefCell<Value>>` the engine
+            // froze as the parent's child link when the pair rule pushed
+            // the FIRST val of this chain, so only a write into that cell
+            // reaches the node the pair later reads. `set_node` swaps the
+            // `Rc` instead, which leaves the frozen handle untouched.
+            *link.node.borrow_mut() = Value::String(text.clone());
             cursor = link.prev_rule.clone();
         }
         set_node(rule, Value::String(text));
