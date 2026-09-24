@@ -6,7 +6,7 @@ objects, with sections, dot-nested keys, `[]` arrays, multiline
 values, and inline comments.
 
 [![npm version](https://img.shields.io/npm/v/@tabnas/ini.svg)](https://npmjs.com/package/@tabnas/ini)
-[![build](https://github.com/tabnas/ini/actions/workflows/build.yml/badge.svg)](https://github.com/tabnas/ini/actions/workflows/build.yml)
+[![CI](https://github.com/tabnas/ini/actions/workflows/ci.yml/badge.svg)](https://github.com/tabnas/ini/actions/workflows/ci.yml)
 
 ## Install
 
