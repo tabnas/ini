@@ -755,8 +755,11 @@ that shared workflow, and are not restated here. It publishes nothing;
 It runs `npm test` in `ts/` and the Go tests in `go/`.
 
 The Rust gate runs from `.github/workflows/rust.yml`. It was staged
-under `ci/`, per admin `DECISIONS.md` ADR-8, and a maintainer has
-promoted it. It clones `parser`, `json`, `jsonic`, `hoover` and
+under `ci/` and promoted by a maintainer, as admin `DECISIONS.md` ADR-8
+then required. ADR-8 as amended on 2026-09-24 lets a session change
+`.github/workflows/` itself, in a reviewed pull request; sessions still
+cannot push tags, so a release is dispatched (see "Releasing"). The
+gate clones `parser`, `json`, `jsonic`, `hoover` and
 `support` beside the checkout and runs `ci/rust/run.sh`, which is the
 same script a contributor runs locally.
 See [`ci/README.md`](ci/README.md).
