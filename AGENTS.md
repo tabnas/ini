@@ -757,10 +757,11 @@ neither publishing to npm:
   `../vendor/` replaces and a `go work` over every non-vendor-replaced
   module, then `go build ./...` / `go test -v ./...` here.
 
-The Rust gate is **staged, not promoted**: `ci/workflows/rust.yml` is a
-proposed workflow awaiting a maintainer, per admin `DECISIONS.md` ADR-8.
-It clones the same sibling closure and runs `ci/rust/run.sh`, which is
-the same script a contributor runs locally. See [`ci/README.md`](ci/README.md).
+The Rust gate runs from `.github/workflows/rust.yml`. It was staged
+under `ci/`, per admin `DECISIONS.md` ADR-8, and a maintainer has
+promoted it. It clones the same sibling closure and runs
+`ci/rust/run.sh`, which is the same script a contributor runs locally.
+See [`ci/README.md`](ci/README.md).
 
 ## Agent tooling
 
