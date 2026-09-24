@@ -86,7 +86,7 @@ const UPSTREAMS = {
   },
   'iniparser': {
     url: 'https://github.com/ndevilla/iniparser',
-    sha: '4bef811283e0ec1658c60e09950bd5a1ddc92e4b',
+    sha: '7e2959bbb629883dfaf789eb31a27e232fc19cdb',
   },
   'go-ini': {
     url: 'https://github.com/go-ini/ini',
