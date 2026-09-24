@@ -237,7 +237,7 @@ Any difference in what a document PARSES TO is recorded in
 
 ## Build and test
 
-The engine, the jsonic core, the hoover block lexer and the fixture
+The engine, the jsonic core, the hoover block lexer, and the fixture
 runner are path dependencies on sibling checkouts, so there is nothing to
 fetch:
 

@@ -1,7 +1,7 @@
-# The Rust gate. Standalone rather than an arm of build.yml, because that
-# workflow builds the TypeScript and Go halves against a cloned sibling
-# closure and takes no Rust input: promoting this file needs no change
-# there.
+# The Rust gate. Standalone rather than an arm of ci.yml, because ci.yml
+# calls the org-shared polyglot workflow, which builds the TypeScript and
+# Go halves against a cloned sibling closure and takes no Rust input:
+# promoting this file needs no change there.
 name: Rust
 
 # Runs on EVERY branch push, not just main, and the path lists are
@@ -59,8 +59,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # CRLF corrupts the .tsv fixtures, which the Rust suite reads from
-      # test/spec the same way the other two runtimes do. build.yml sets
-      # this for the same reason.
+      # test/spec the same way the other two runtimes do. The org-shared
+      # workflow ci.yml calls sets this for the same reason.
       - name: Keep line endings as committed
         run: git config --global core.autocrlf false
 

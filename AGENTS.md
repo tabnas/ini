@@ -42,7 +42,7 @@ sweep, an install or a fetch, a release, a wait on CI, a benchmark, a
 script or loop you write, and anything sent to the background.
 
 - **Minimal is enough.** One line with the step and a count, such as
-  `conformance: 412/1500 (27%)`, meets it. When no total is known, print
+  `conformance: 412 of 1500 (27%)`, meets it. When no total is known, print
   what is known (the step, the current item, the elapsed time) and say the
   percentage is unknown rather than inventing one.
 - **Build it into what you write.** A script or loop prints a line per
@@ -744,23 +744,22 @@ runs them — keep doc examples correct.
 
 ## CI
 
-[`.github/workflows/build.yml`](.github/workflows/build.yml) has two jobs,
-neither publishing to npm:
+`.github/workflows/ci.yml` is a caller: it delegates to the org-shared
+`tabnas/.github/.github/workflows/polyglot-ci.yml@main` and passes
+`deps: "parser support debug json hoover railroad jsonic"`, the
+siblings that workflow git-clones and builds this repository against.
+The operating systems, the Node and Go versions and the steps live in
+that shared workflow, and are not restated here. It publishes nothing;
+`.github/workflows/release.yml` handles releases.
 
-- **build** (Ubuntu/Windows/macOS, Node 24): sets `git config --global
-  core.autocrlf false` (CRLF corrupts the `.tsv` fixtures), git-clones the
-  tabnas closure (`parser debug json hoover abnf railroad jsonic`) as
-  siblings, `npm i && npm run build --if-present` each in topo order, then
-  `npm test` here.
-- **build-go** (Ubuntu/macOS, Go 1.24): clones the same siblings, mirrors
-  `admin/scripts/link.sh` by creating `vendor/` symlinks for any
-  `../vendor/` replaces and a `go work` over every non-vendor-replaced
-  module, then `go build ./...` / `go test -v ./...` here.
+It runs `npm test` in `ts/` and the Go tests in `go/`.
 
-The Rust gate is **staged, not promoted**: `ci/workflows/rust.yml` is a
-proposed workflow awaiting a maintainer, per admin `DECISIONS.md` ADR-8.
-It clones the same sibling closure and runs `ci/rust/run.sh`, which is
-the same script a contributor runs locally. See [`ci/README.md`](ci/README.md).
+The Rust gate runs from `.github/workflows/rust.yml`. It was staged
+under `ci/`, per admin `DECISIONS.md` ADR-8, and a maintainer has
+promoted it. It clones `parser`, `json`, `jsonic`, `hoover` and
+`support` beside the checkout and runs `ci/rust/run.sh`, which is the
+same script a contributor runs locally.
+See [`ci/README.md`](ci/README.md).
 
 ## Agent tooling
 
