@@ -1206,3 +1206,39 @@ func errorCode(err error) (string, bool) {
 	}
 	return "", false
 }
+
+// TestErrorCodesCarryTheirOwnHints: a declared code without a hint of its
+// own falls back to the engine's hint for an UNKNOWN code, which tells the
+// reader the error is probably a bug in jsonic or a plugin.
+func TestErrorCodesCarryTheirOwnHints(t *testing.T) {
+	for _, c := range []struct {
+		src, code, want string
+		opts            []IniOptions
+	}{
+		{"[a]\nx=1\n[a]\ny=2", "duplicate_section", "declared more than once",
+			[]IniOptions{{Section: &SectionOptions{Duplicate: "error"}}}},
+		{"[a\nb=1", "unterminated_section", "closed with ]", nil},
+	} {
+		_, err := Parse(c.src, c.opts...)
+		var jerr *jsonic.JsonicError
+		if !errors.As(err, &jerr) {
+			t.Fatalf("%q: want a %s error, got %v", c.src, c.code, err)
+		}
+		if jerr.Code != c.code {
+			t.Errorf("%q: code %q, want %q", c.src, jerr.Code, c.code)
+		}
+		if !strings.Contains(jerr.Hint, c.want) || strings.Contains(jerr.Hint, "probably a bug") {
+			t.Errorf("%q: hint %q", c.src, jerr.Hint)
+		}
+	}
+	// Every declared code, not only these, has a hint of its own.
+	o := MakeJsonic().Options()
+	if len(o.Error) == 0 {
+		t.Fatal("no declared error codes")
+	}
+	for code := range o.Error {
+		if strings.TrimSpace(o.Hint[code]) == "" {
+			t.Errorf("%s has no hint", code)
+		}
+	}
+}

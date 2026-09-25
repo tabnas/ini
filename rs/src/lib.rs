@@ -83,6 +83,13 @@ const GRAMMAR_TEXT: &str = r#"
     duplicate_section: 'duplicate section header: [{section}]'
     unterminated_section: 'unterminated section header: [{src}'
   }
+  # A hint for each declared code, keyed alike. Without one the engine falls
+  # back to its hint for an UNKNOWN code, which tells the reader the error is
+  # probably a bug in jsonic or a plugin -- wrong for both of these.
+  options: hint: {
+    duplicate_section: 'The section [{section}] is declared more than once, and the\nsection.duplicate option is error. Combine the two sections, or set\nsection.duplicate to merge or override to allow a repeated header.'
+    unterminated_section: 'A section header must be closed with ] on the same line, as in\n[name] or [a.b].'
+  }
   options: comment: def: {
     hash: { eatline: true }
     slash: null
