@@ -158,3 +158,5 @@ test/corpus/upstream/
 
 # Rust build output (rs/target).
 target/
+
+.DS_Store
