@@ -658,6 +658,12 @@ one catalogue, not three that must be kept in step:
 | `duplicate_section` | a section header repeats a path already declared, and `section.duplicate` is `'error'` |
 | `unterminated_section` | a section header reaches a newline or end of input without its closing `]` |
 
+Each code also has a hint, in the grammar's `options: hint:` block beside
+the messages. A declared code without one falls back to the engine's hint
+for an *unknown* code, which tells the reader the error is probably a bug
+in jsonic or a plugin, so a new code gets its hint in the same change. The
+suites check that every declared code has one.
+
 **The code is the contract; the message wording is not.** Two runtimes that
 reject the same input with different codes have agreed on nothing, so the
 shared fixtures pin `ERROR:<code>` and the runner compares the error's

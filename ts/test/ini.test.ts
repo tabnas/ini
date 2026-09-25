@@ -672,3 +672,28 @@ describe('number-lex', () => {
     assert.deepEqual(j.parse('a=0xFF'), { a: '0xFF' })
   })
 })
+
+
+describe('error hints', () => {
+
+  // A declared code without a hint of its own falls back to the engine's
+  // hint for an UNKNOWN code, which tells the reader the error is probably
+  // a bug in jsonic or a plugin.
+  test('each declared code carries its own hint', () => {
+    const je = new Tabnas().use(jsonic).use(Ini, { section: { duplicate: 'error' } })
+    const cases: [string, string, string][] = [
+      ['[a]\nx=1\n[a]\ny=2', 'duplicate_section', 'declared more than once'],
+      ['[a\nb=1', 'unterminated_section', 'closed with ]'],
+    ]
+    for (const [src, code, want] of cases) {
+      assert.throws(() => je.parse(src), (err: any) => {
+        // The structured diagnostic is where the hint is exposed.
+        const diag = JSON.parse(JSON.stringify(err))
+        assert.equal(diag.code, code)
+        assert.ok(String(diag.hint).includes(want), String(diag.hint))
+        assert.ok(!String(diag.hint).includes('probably a bug'), String(diag.hint))
+        return true
+      })
+    }
+  })
+})

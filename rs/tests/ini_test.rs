@@ -1180,3 +1180,36 @@ fn a_fixed_token_value_coerces_a_composite_as_javascript_does() {
     // composite, so the coercion is not reached at all.
     assert_default(r#"a = '[1.5,"x"]'"#, json!({"a": [1.5, "x"]}));
 }
+
+#[test]
+fn declared_error_codes_carry_their_own_hints() {
+    // A declared code without a hint of its own falls back to the engine's
+    // hint for an UNKNOWN code, which tells the reader the error is
+    // probably a bug in jsonic or a plugin.
+    for (src, options, code, want) in [
+        (
+            "[a]\nx=1\n[a]\ny=2",
+            duplicate(Duplicate::Error),
+            "duplicate_section",
+            "declared more than once",
+        ),
+        (
+            "[a\nb=1",
+            IniOptions::default(),
+            "unterminated_section",
+            "closed with ]",
+        ),
+    ] {
+        let error = parse_with(src, &options).expect_err(src);
+        assert_eq!(error.code, code, "rejecting {src:?}");
+        assert!(
+            error.hint.contains(want) && !error.hint.contains("probably a bug"),
+            "{src:?}: {}",
+            error.hint
+        );
+    }
+    let config = make().config();
+    for code in config.error.keys() {
+        assert!(config.hint.contains_key(code), "{code} has no hint");
+    }
+}
