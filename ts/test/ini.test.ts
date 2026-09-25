@@ -695,5 +695,10 @@ describe('error hints', () => {
         return true
       })
     }
+    // Every declared code, not only these, has a hint of its own.
+    const options: any = je.options
+    for (const code of Object.keys(options.error)) {
+      assert.ok(String(options.hint[code] ?? '').trim(), code + ' has no hint')
+    }
   })
 })

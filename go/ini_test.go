@@ -1231,4 +1231,14 @@ func TestErrorCodesCarryTheirOwnHints(t *testing.T) {
 			t.Errorf("%q: hint %q", c.src, jerr.Hint)
 		}
 	}
+	// Every declared code, not only these, has a hint of its own.
+	o := MakeJsonic().Options()
+	if len(o.Error) == 0 {
+		t.Fatal("no declared error codes")
+	}
+	for code := range o.Error {
+		if strings.TrimSpace(o.Hint[code]) == "" {
+			t.Errorf("%s has no hint", code)
+		}
+	}
 }
