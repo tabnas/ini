@@ -56,7 +56,7 @@ mod readme_examples {}
 /// release orchestrator rewrites both, and `tests/version_test.rs` fails
 /// the build if they drift. Mirrors `VERSION` in `ts/src/ini.ts` and
 /// `const VERSION` in `go/ini.go`.
-pub const VERSION: &str = "0.5.10";
+pub const VERSION: &str = "0.5.11";
 
 /// The engine's error, re-exported under this crate's name.
 pub use tabnas::TabnasError as IniError;
