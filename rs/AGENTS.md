@@ -53,13 +53,13 @@ pin.
 7. Snapshots the string configuration the string check reads, which the
    document above is what sets.
 8. Rewrites the `val` rule, removes `list` and `elem`, and installs the
-   depth budget.
+   depth guard.
 
 Order is load bearing at every step. The hoover blocks must exist before
 the grammar document, because the document's `val` alternates sit in
 front of hoover's. The refs must exist before the document, because the
-document is what looks them up. The budget goes last, because a grammar
-document's options pass is not required to preserve one.
+document is what looks them up. The guard goes after jsonic's, which it
+replaces by installing under the same name.
 
 ## The in-value probe
 
@@ -165,18 +165,26 @@ each replacement included, a fresh cell before its alternates run:
 `../test/spec/value-fixed-token-start.tsv` pins that the map keeps its
 other keys.
 
-## The depth budget is a crash fix
+## The depth guard is a crash fix
 
-`ini` ends by installing a parse budget that refuses nesting past
-`DEPTH_LIMIT` (127) with the engine's `cancel` code, counting `map`,
-`list` and `dive` rules alike. jsonic installs the same check over `map`
+`ini` ends by installing a parse guard, named `depth`, that refuses
+nesting past `DEPTH_LIMIT` (127) with the engine's `cancel` code,
+counting `map`, `list` and `dive` rules alike. jsonic installs the same check over `map`
 and `list` only, which leaves a section header, the one place an INI
 document nests, unbounded. The engine parses iteratively, but displaying,
 converting or dropping a `Value` walks the tree with the call stack, and
 a header ten thousand segments deep aborted the process rather than
-erroring. TypeScript and Go carry the same budget, at the same number
+erroring. TypeScript and Go carry the same limit, at the same number
 and over the same three rules, so the boundary is a shared fixture
 (`../test/spec/sections-depth-limit.tsv`) rather than a divergence.
+
+The limit is a guard, and not the parse budget it once was, because the
+budget is one slot: a caller's `parse_budget` replaced it in place, and
+the limit went with it. The guard holds whatever budget the caller sets.
+TypeScript and Go keep theirs in the budget, since their engines have no
+guards, so there a caller's own budget still replaces the limit. The
+default boundary, the one the shared fixture pins, is the same in all
+three; the difference shows only when a caller sets a budget.
 
 ## A divergent corpus document is compared against TypeScript
 

@@ -903,12 +903,12 @@ pub fn ini(parser: &mut Tabnas, options: &IniOptions) -> Result<(), IniPluginErr
 
     install_val_rule(parser, &resolved);
 
-    // AFTER the documents, because `grammar` applies a document's
-    // options and an options pass that does not mention `parse.budget`
-    // is not required to preserve one. jsonic installs the same check
-    // over `map` and `list`; this one adds `dive`, which is where an INI
-    // document nests, and is otherwise identical.
-    parser.parse_budget(1, within_depth_limit);
+    // A parse guard, under the name jsonic installs its own under, so it
+    // replaces jsonic's: that one counts `map` and `list`, and this one
+    // adds `dive`, which is where an INI document nests, and is otherwise
+    // identical. A guard rather than the budget, which is one slot a
+    // caller's `parse_budget` replaced in place, taking the limit with it.
+    parser.parse_guard(DEPTH_GUARD, within_depth_limit);
 
     // INI has no array syntax: `val` is restricted to scalars and maps
     // above, leaving jsonic's `list` and `elem` rules unreachable.
@@ -1376,7 +1376,7 @@ fn declared_add(context: &mut Context, key: String) {
 /// reference, so the path has to be taken apart on the way down and put
 /// back together on the way up, and doing that with the call stack
 /// aborted the process on a section header thousands of segments deep.
-/// The depth budget below bounds the vectors; the shape does not depend
+/// The depth guard below bounds the vectors; the shape does not depend
 /// on it.
 fn open_section(root: &mut Value, dive: &[String], override_last: bool) -> Value {
     if !is_object(root) {
@@ -1455,11 +1455,15 @@ fn depth(context: &Context) -> usize {
     ancestors + current
 }
 
-/// The budget check: [`DEPTH_LIMIT`] levels parse, the next one is
+/// The depth guard: [`DEPTH_LIMIT`] levels parse, the next one is
 /// refused with the engine's `cancel` code.
 fn within_depth_limit(context: &Context) -> bool {
     depth(context) <= DEPTH_LIMIT
 }
+
+/// The name the depth check is installed under, as a parse guard: the
+/// name jsonic's own check uses, so this one replaces it.
+const DEPTH_GUARD: &str = "depth";
 
 // ---------------------------------------------------------------------
 // The grammar's function references

@@ -857,6 +857,35 @@ fn nesting_past_the_depth_limit_is_refused() {
     }
 }
 
+/// The limit holds whatever budget the caller sets. It was the parse
+/// budget, which is one slot: a caller's `parse_budget` replaced it in
+/// place, and a header ten thousand segments deep could abort the process
+/// again. It is a parse guard now, which replaces jsonic's rather than
+/// running beside it.
+#[test]
+fn the_depth_limit_holds_whatever_budget_the_caller_sets() {
+    let header = |segments: usize| format!("[{}]\nx = 1", vec!["a"; segments].join("."));
+    let calls = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let seen = calls.clone();
+    let mut parser = make();
+    parser.parse_budget(1, move |_| {
+        seen.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        true
+    });
+    assert_eq!(parser.parse_guards.keys().collect::<Vec<_>>(), ["depth"]);
+    assert!(parser.parse(&header(tabnas_ini::DEPTH_LIMIT)).is_ok());
+    assert!(
+        calls.load(std::sync::atomic::Ordering::Relaxed) > 0,
+        "the caller's budget runs too"
+    );
+    for segments in [tabnas_ini::DEPTH_LIMIT + 1, 10_000] {
+        let error = parser
+            .parse(&header(segments))
+            .expect_err("a header past the depth limit is refused");
+        assert_eq!(error.code, "cancel", "at {segments} segments");
+    }
+}
+
 // --- the option defaults ------------------------------------------------
 
 /// An EMPTY marker list is a choice, not an omission.
