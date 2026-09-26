@@ -169,9 +169,9 @@ other keys.
 
 `ini` ends by installing a parse guard, named `depth`, that refuses
 nesting past `DEPTH_LIMIT` (127) with the engine's `cancel` code,
-counting `map`, `list` and `dive` rules alike. jsonic installs the same check over `map`
-and `list` only, which leaves a section header, the one place an INI
-document nests, unbounded. The engine parses iteratively, but displaying,
+counting `map`, `list` and `dive` rules alike. jsonic installs the
+same check over `map` and `list` only, which leaves a section header,
+the one place an INI document nests, unbounded. The engine parses iteratively, but displaying,
 converting or dropping a `Value` walks the tree with the call stack, and
 a header ten thousand segments deep aborted the process rather than
 erroring. TypeScript and Go carry the same limit, at the same number
@@ -184,7 +184,9 @@ the limit went with it. The guard holds whatever budget the caller sets.
 TypeScript and Go keep theirs in the budget, since their engines have no
 guards, so there a caller's own budget still replaces the limit. The
 default boundary, the one the shared fixture pins, is the same in all
-three; the difference shows only when a caller sets a budget.
+three; the difference shows only when a caller sets a budget. It is a
+divergence, measured in `../DIVERGENCE.md` ("The depth limit under a
+caller's parse budget") and pinned in all three suites.
 
 ## A divergent corpus document is compared against TypeScript
 

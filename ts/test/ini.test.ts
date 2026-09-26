@@ -661,6 +661,36 @@ describe('number-lex', () => {
     }
   })
 
+  test('a-caller-budget-replaces-the-depth-limit', () => {
+    // A DIVERGENCE, pinned: DIVERGENCE.md, "The depth limit under a
+    // caller's parse budget". The limit is this plugin's parse budget, so
+    // a caller's own budget replaces it and 128 segments parse. The Rust
+    // port installs its limit as a parse guard, which a budget does not
+    // replace, and refuses them. When this engine has guards and the limit
+    // moves to one, this fails, and the register entry goes with it.
+    const header = (n: number) =>
+      '[' + Array(n).fill('a').join('.') + ']\nx=1\n'
+    let calls = 0
+    const k = new Tabnas().use(jsonic).use(Ini)
+    k.options({
+      parse: {
+        budget: {
+          checkEveryN: 1,
+          onCheck: () => {
+            calls++
+            return true
+          },
+        },
+      },
+    })
+    let node: any = k.parse(header(DEPTH_LIMIT + 1))
+    for (let level = 0; level <= DEPTH_LIMIT; level++) {
+      node = node.a
+    }
+    assert.deepEqual(node, { x: '1' })
+    assert.ok(0 < calls, 'the caller\'s budget ran')
+  })
+
 
   test('default-numbers-are-strings', () => {
     // Without number.lex, all values are strings
