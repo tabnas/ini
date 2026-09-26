@@ -303,6 +303,14 @@ Two gaps used to live here, both rooted in
   (`#DK`, `#HK`, `#HV`) via `config.modify` → `cfg.tokenDesc`, which
   `@tabnas/railroad` reads off the live config when drawing the diagram
   legend.
+- **Go hooks go in through options, never onto `j.Config()`.** The Go
+  port installs its lexer checks and its depth budget in the forms the TS
+  plugin uses: the grammar's `@line-check` ref, `Property.ConfigModify`
+  entries under the TS `config.modify` names, and `Parse.Budget`.
+  `SetOptions` rebuilds the lexer config from options and copies it over
+  the live one, so a hook written onto the live config is lost to the
+  caller's next call. The second pass of `TestSpec`, which runs every
+  shared fixture after an unrelated `SetOptions`, fails if one is.
 
 ## Build & test
 

@@ -786,6 +786,19 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 			return r.Parent != nil && r.Parent.Parent != nil &&
 				r.Parent.Parent.Name == "table"
 		}),
+
+		// Option callbacks.
+
+		// Line check: skip line matching inside the val rule. The grammar's
+		// own `line: { check: '@line-check' }` names it, as it does for the
+		// TS and Rust ports, so it arrives through options and a later
+		// SetOptions keeps it.
+		"@line-check": jsonic.LexCheck(func(lex *jsonic.Lex) *jsonic.LexCheckResult {
+			if lex.Ctx != nil && lex.Ctx.Rule != nil && lex.Ctx.Rule.Name == "val" {
+				return &jsonic.LexCheckResult{Done: true, Token: nil}
+			}
+			return nil
+		}),
 	}
 
 	// Parse grammar file and apply rules via j.Grammar() — same as TS approach.
@@ -812,11 +825,9 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 			strOpts["chars"] = `'"`
 		}
 		// Remove entries handled directly in Go code.
-		// - line.check: set via cfg.LineCheck above.
 		// - comment.def: grammar text has partial overrides (e.g. hash: {eatline:true})
 		//   but Go's SetOptions replaces entire comment config, so keep jopts setup.
 		// - fixed.token: not handled by MapToOptions, handled manually above.
-		delete(optionsMap, "line")
 		delete(optionsMap, "comment")
 		delete(optionsMap, "fixed")
 		grammarDef.OptionsMap = optionsMap
@@ -828,29 +839,26 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		return fmt.Errorf("failed to apply ini grammar: %w", err)
 	}
 
-	// The depth budget. Set on the live config here, after Grammar() and
-	// for the same reason the checks below are: SetOptions rebuilds the
-	// parse configuration and would drop it.
-	//
-	// A section header nests one level per dotted segment, and there was
-	// no limit at all. The engine parses iteratively, but rendering or
-	// walking the resulting tree recurses, and the canonical runtime
-	// raised a host RangeError at a depth that was a property of the
-	// caller's remaining stack rather than of the document. All three
-	// runtimes refuse past DepthLimit with the engine's "cancel" code
-	// instead.
-	cfg.ParseBudgetN = 1
-	cfg.ParseBudgetCheck = func(ctx *jsonic.Context) bool {
-		return depth(ctx) <= DepthLimit
-	}
+	// ---- Lexer and parse hooks ----
+	// Everything below goes in THROUGH OPTIONS, never onto j.Config():
+	// SetOptions rebuilds the lexer config from options and copies it over
+	// the live one, so a hook written onto the live config was lost to the
+	// caller's next SetOptions, including the number-lexing one
+	// go/doc/guide.md recommends, and the depth limit and every check went
+	// with it. Each takes the form its TS twin takes: the line check is the
+	// grammar's own line.check ("@line-check" above), the comment, text and
+	// string checks are config modifiers under the TS config.modify names,
+	// re-run on every rebuild, and the depth limit is the parse budget.
 
-	// Line check: skip line matching inside val rule (matches TS @line-check).
-	// Set after Grammar() to ensure it's not overwritten by SetOptions.
-	cfg.LineCheck = func(lex *jsonic.Lex) *jsonic.LexCheckResult {
-		if lex.Ctx != nil && lex.Ctx.Rule != nil && lex.Ctx.Rule.Name == "val" {
-			return &jsonic.LexCheckResult{Done: true, Token: nil}
+	// Is the lexer inside the value of a `key = value` pair? The three
+	// checks below only apply there. Mirrors the TS inValue() helper.
+	inValue := func(lex *jsonic.Lex) bool {
+		if lex.Ctx == nil || lex.Ctx.Rule == nil {
+			return false
 		}
-		return nil
+		rule := lex.Ctx.Rule
+		return rule.Name == "val" && rule.State == "o" && rule.Parent != nil &&
+			(rule.Parent.Name == "pair" || rule.Parent.Name == "elem")
 	}
 
 	// Comment check: a comment marker is only a comment when it starts a
@@ -862,18 +870,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 	// the value at the marker and the comment is lexed normally once the
 	// value rule has closed. Mirrors the TS 'ini-comment-check' config
 	// modifier.
-	// Is the lexer inside the value of a `key = value` pair? Both checks
-	// below only apply there. Mirrors the TS inValue() helper.
-	inValue := func(lex *jsonic.Lex) bool {
-		if lex.Ctx == nil || lex.Ctx.Rule == nil {
-			return false
-		}
-		rule := lex.Ctx.Rule
-		return rule.Name == "val" && rule.State == "o" && rule.Parent != nil &&
-			(rule.Parent.Name == "pair" || rule.Parent.Name == "elem")
-	}
-
-	cfg.CommentCheck = func(lex *jsonic.Lex) *jsonic.LexCheckResult {
+	commentCheck := func(lex *jsonic.Lex) *jsonic.LexCheckResult {
 		if inValue(lex) {
 			return &jsonic.LexCheckResult{Done: true, Token: nil}
 		}
@@ -888,7 +885,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 	// key. Declining in value position hands the whole line to Hoover,
 	// which does the same keyword lookup on the complete, trimmed value.
 	// Mirrors the TS 'ini-text-check' config modifier.
-	cfg.TextCheck = func(lex *jsonic.Lex) *jsonic.LexCheckResult {
+	textCheck := func(lex *jsonic.Lex) *jsonic.LexCheckResult {
 		if inValue(lex) {
 			return &jsonic.LexCheckResult{Done: true, Token: nil}
 		}
@@ -903,22 +900,25 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 	// unterminated quote is left to the string matcher, which abandons it
 	// and lets Hoover take the raw line. Mirrors the TS 'ini-string-check'
 	// config modifier.
-	cfg.StringCheck = func(lex *jsonic.Lex) *jsonic.LexCheckResult {
+	stringCheck := func(lex *jsonic.Lex) *jsonic.LexCheckResult {
 		if !inValue(lex) {
 			return nil
 		}
+		// The quote and escape characters are options too, so read them
+		// off the config the lexer is running with.
+		live := lex.Config
 		src := lex.Src
 		sI := lex.Cursor().SI
 		if sI >= len(src) {
 			return nil
 		}
 		quote := rune(src[sI])
-		if !cfg.StringChars[quote] {
+		if !live.StringChars[quote] {
 			return nil
 		}
 
 		// Find the closing quote on this line.
-		esc := byte(cfg.EscapeChar)
+		esc := byte(live.EscapeChar)
 		eI := sI + 1
 		for ; eI < len(src); eI++ {
 			if src[eI] == esc {
@@ -952,6 +952,46 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		// Trailing text after the closing quote: not a quoted value.
 		return &jsonic.LexCheckResult{Done: true, Token: nil}
 	}
+
+	// The depth budget. A section header nests one level per dotted
+	// segment, and there was no limit at all. The engine parses
+	// iteratively, but rendering or walking the resulting tree recurses,
+	// and the canonical runtime raised a host RangeError at a depth that
+	// was a property of the caller's remaining stack rather than of the
+	// document. All three runtimes refuse past DepthLimit with the engine's
+	// "cancel" code instead.
+	//
+	// It is a parse budget and not a config modifier on purpose: a modifier
+	// re-runs on every rebuild and would override a caller's own budget,
+	// where the canonical runtime lets the caller's replace it
+	// (DIVERGENCE.md, "The depth limit under a caller's parse budget").
+	// jsonic does not re-export BudgetOptions, so it is built from a map,
+	// and MapToOptions reads the checker only as a plain
+	// func(*jsonic.Context) bool.
+	hooks := jsonic.MapToOptions(map[string]any{
+		"parse": map[string]any{"budget": map[string]any{
+			"checkEveryN": 1,
+			"onCheck": func(ctx *jsonic.Context) bool {
+				return depth(ctx) <= DepthLimit
+			},
+		}},
+	})
+	// Each modifier writes the config being built, which SetOptions then
+	// copies over the live one: a write to j.Config() here would be lost.
+	hooks.Property = &jsonic.PropertyOptions{
+		ConfigModify: map[string]jsonic.ConfigModifier{
+			"ini-comment-check": func(built *jsonic.LexConfig, _ *jsonic.Options) {
+				built.CommentCheck = commentCheck
+			},
+			"ini-text-check": func(built *jsonic.LexConfig, _ *jsonic.Options) {
+				built.TextCheck = textCheck
+			},
+			"ini-string-check": func(built *jsonic.LexConfig, _ *jsonic.Options) {
+				built.StringCheck = stringCheck
+			},
+		},
+	}
+	j.SetOptions(hooks)
 
 	// ---- val rule ----
 	// Mirrors TS: rs.fnref(refs).open([...], { custom: filter })
@@ -1012,7 +1052,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 			// (true/false/null) are resolved here, on the WHOLE trimmed
 			// value. The text matcher used to do it, but it matched a
 			// keyword that merely started the value; it is declined in
-			// value position now (see cfg.TextCheck). The custom multiline
+			// value position now (see textCheck). The custom multiline
 			// matcher already resolves its own #HV via resolveValue.
 			if r.O0 != nil && !r.O0.IsNoToken() && r.O0.Tin == HV {
 				if s, ok := r.Node.(string); ok {

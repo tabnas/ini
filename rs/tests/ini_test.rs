@@ -886,6 +886,83 @@ fn the_depth_limit_holds_whatever_budget_the_caller_sets() {
     }
 }
 
+// --- an unrelated set_options -------------------------------------------
+
+/// A parser after a `set_options` call a caller makes for its own
+/// reasons: one changing nothing, and one turning number lexing on.
+/// Neither names a lex check or a parse budget, so neither may cost the
+/// plugin its own.
+fn reconfigured(number_lex: bool) -> tabnas::Tabnas {
+    let mut parser = make();
+    parser
+        .set_options(|options| {
+            if number_lex {
+                options.number.lex = true;
+            }
+        })
+        .expect("the options apply");
+    parser
+}
+
+/// Twin of `TestAnUnrelatedSetOptionsKeepsTheDepthLimit` in
+/// `go/ini_test.go` and `an-unrelated-options-call-keeps-the-depth-limit`
+/// in `ts/test/ini.test.ts`. The Go port wrote its limit onto the live
+/// config and lost it to such a call; here the limit is a parse guard,
+/// outside the options altogether.
+#[test]
+fn an_unrelated_set_options_keeps_the_depth_limit() {
+    let header = |segments: usize| format!("[{}]\nx = 1", vec!["a"; segments].join("."));
+    for number_lex in [false, true] {
+        let parser = reconfigured(number_lex);
+        assert!(
+            parser.parse(&header(tabnas_ini::DEPTH_LIMIT)).is_ok(),
+            "number lexing {number_lex}"
+        );
+        for segments in [tabnas_ini::DEPTH_LIMIT + 1, 10_000] {
+            let error = parser
+                .parse(&header(segments))
+                .expect_err("a header past the depth limit is refused");
+            assert_eq!(
+                error.code, "cancel",
+                "at {segments} segments, number lexing {number_lex}"
+            );
+        }
+    }
+}
+
+/// Twin of `TestAnUnrelatedSetOptionsKeepsTheLexChecks` in
+/// `go/ini_test.go` and `an-unrelated-options-call-keeps-the-lex-checks`
+/// in `ts/test/ini.test.ts`: each input is one the line, comment, text or
+/// string check exists for.
+#[test]
+fn an_unrelated_set_options_keeps_the_lex_checks() {
+    // No input holds a digit, so turning number lexing on changes none.
+    let cases = [
+        ("line", "a=\nb=", json!({"a": "", "b": ""})),
+        ("comment", "n=;\nm=x", json!({"n": ";", "m": "x"})),
+        (
+            "text",
+            "a = true, false, false",
+            json!({"a": "true, false, false"}),
+        ),
+        ("text", "a = null x", json!({"a": "null x"})),
+        ("string", "a = \"x\"y", json!({"a": "\"x\"y"})),
+    ];
+    for number_lex in [false, true] {
+        let parser = reconfigured(number_lex);
+        for (check, src, want) in &cases {
+            let got = parser
+                .parse(src)
+                .unwrap_or_else(|error| panic!("{check} check, {src:?}: {error:?}"));
+            assert_eq!(
+                got.to_json(),
+                *want,
+                "{check} check, {src:?}, number lexing {number_lex}"
+            );
+        }
+    }
+}
+
 // --- the option defaults ------------------------------------------------
 
 /// An EMPTY marker list is a choice, not an omission.

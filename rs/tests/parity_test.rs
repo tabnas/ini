@@ -30,6 +30,26 @@ use tabnas_support::{find_spec_dir, load_spec_dir, report, Runner, SpecOptions};
 /// skipped before that check; there are none in these fixtures.
 #[test]
 fn spec() {
+    run_every_fixture(|_| {});
+}
+
+/// The same fixtures again, each through a parser that has had a
+/// `set_options` call changing nothing. Twin of the "after an unrelated
+/// SetOptions" pass in `go/ini_tsv_test.go` and `ts/test/ini-tsv.test.ts`:
+/// the Go port lost its depth limit and its line, comment, text and
+/// string checks to exactly such a call.
+#[test]
+fn spec_after_an_unrelated_set_options() {
+    run_every_fixture(|parser| {
+        parser
+            .set_options(|_| {})
+            .expect("an empty set_options applies");
+    });
+}
+
+/// Runs every fixture, each row through a fresh parser that `prepare`
+/// has had first.
+fn run_every_fixture(prepare: fn(&mut tabnas::Tabnas)) {
     let dir = find_spec_dir(Some(Path::new(env!("CARGO_MANIFEST_DIR")))).expect("test/spec");
     let load = SpecOptions {
         min_cols: 2,
@@ -50,10 +70,9 @@ fn spec() {
         // nothing has to be resolved through message wording (which is
         // deliberately not a cross-runtime contract).
         let runner = Runner::new(move |input| {
-            tabnas_ini::make_with(&options)
-                .parse(input)
-                .map(value_of)
-                .map_err(failure_of)
+            let mut parser = tabnas_ini::make_with(&options);
+            prepare(&mut parser);
+            parser.parse(input).map(value_of).map_err(failure_of)
         })
         .load(load.clone());
         failures.extend(runner.run_spec(spec).expect("the fixture runs"));

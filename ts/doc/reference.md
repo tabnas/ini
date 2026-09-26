@@ -252,6 +252,12 @@ depth set by how much stack the caller had left rather than by the
 document, which is not a failure a caller can handle by code or report a
 position for.
 
+The limit is this plugin's parse budget, set through the options, so a
+later `options()` call leaves it in place. A `parse.budget` of your own
+replaces it, which
+[DIVERGENCE.md](../../DIVERGENCE.md#the-depth-limit-under-a-callers-parse-budget)
+records.
+
 ## Error codes
 
 | Code | Raised when |

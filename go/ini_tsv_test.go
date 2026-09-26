@@ -18,6 +18,7 @@ import (
 	"strings"
 	"testing"
 
+	jsonic "github.com/tabnas/jsonic/go"
 	support "github.com/tabnas/support/go"
 )
 
@@ -164,6 +165,29 @@ func TestSpec(t *testing.T) {
 			},
 		}.Spec(t, spec)
 	}
+
+	// The same fixtures again, each through a parser that has had a
+	// SetOptions call naming nothing. SetOptions rebuilds the lexer config
+	// from options, so a hook the plugin set anywhere else is gone after
+	// it, and this pass is what shows it: the depth limit and the line,
+	// comment, text and string checks were all lost to it once.
+	t.Run("after an unrelated SetOptions", func(t *testing.T) {
+		for _, spec := range specs {
+			var opts []IniOptions
+			if o, ok := options[strings.TrimSuffix(spec.Name, ".tsv")]; ok {
+				opts = []IniOptions{o}
+			}
+			// A fresh instance: reconfiguring the cached default parser
+			// would reach every other test.
+			j := MakeJsonic(opts...)
+			j.SetOptions(jsonic.Options{})
+			support.Runner{
+				Parse: func(input string) (any, error) {
+					return parseRecoveringWith(j, input)
+				},
+			}.Spec(t, spec)
+		}
+	})
 }
 
 // parseRecovering turns a recovered panic into an error. No parse path
@@ -176,14 +200,32 @@ func TestSpec(t *testing.T) {
 // wrapping it in fmt.Errorf would strip a *TabnasError down to a plain
 // error, and with it the Code the runner compares against ERROR:<code>.
 func parseRecovering(input string, opts ...IniOptions) (got any, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			if e, ok := r.(error); ok {
-				got, err = nil, e
-				return
-			}
-			got, err = nil, fmt.Errorf("%v", r)
-		}
-	}()
+	defer recoverParse(&got, &err)
 	return Parse(input, opts...)
+}
+
+// parseRecoveringWith is parseRecovering on a parser the caller built,
+// with the result shaped as Parse shapes it.
+func parseRecoveringWith(j *jsonic.Jsonic, input string) (got any, err error) {
+	defer recoverParse(&got, &err)
+	result, err := j.Parse(input)
+	if err != nil {
+		return nil, err
+	}
+	if m, ok := result.(map[string]any); ok {
+		return m, nil
+	}
+	return map[string]any{}, nil
+}
+
+// recoverParse is the deferred half of both: it turns a panic into the
+// parse's error.
+func recoverParse(got *any, err *error) {
+	if r := recover(); r != nil {
+		if e, ok := r.(error); ok {
+			*got, *err = nil, e
+			return
+		}
+		*got, *err = nil, fmt.Errorf("%v", r)
+	}
 }

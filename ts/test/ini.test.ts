@@ -704,6 +704,67 @@ describe('number-lex', () => {
 })
 
 
+describe('an unrelated options() call', () => {
+
+  // Options calls a caller makes for its own reasons. Neither names a lex
+  // check or a parse budget, so neither may cost the plugin its own; the
+  // second is the one the number-lex tests make. Twins of
+  // TestAnUnrelatedSetOptionsKeepsTheDepthLimit/TheLexChecks in
+  // go/ini_test.go and an_unrelated_set_options_keeps_the_depth_limit/
+  // the_lex_checks in rs/tests/ini_test.rs. The Go port wrote these hooks
+  // onto its live config and lost every one of them to such a call.
+  const RECONFIGURATIONS: [string, any][] = [
+    ['empty options', {}],
+    ['number lexing on', { number: { lex: true } }],
+  ]
+
+  function reconfigured(change: any) {
+    const k = new Tabnas().use(jsonic).use(Ini)
+    k.options(change)
+    return k
+  }
+
+  test('an-unrelated-options-call-keeps-the-depth-limit', () => {
+    const header = (n: number) =>
+      '[' + Array(n).fill('a').join('.') + ']\nx=1\n'
+    for (const [name, change] of RECONFIGURATIONS) {
+      const k = reconfigured(change)
+      assert.doesNotThrow(() => k.parse(header(DEPTH_LIMIT)), name)
+      for (const deep of [DEPTH_LIMIT + 1, 10000]) {
+        assert.throws(
+          () => k.parse(header(deep)),
+          (err: any) => {
+            assert.equal(err.code, 'cancel', name + ', depth ' + deep)
+            return true
+          },
+        )
+      }
+    }
+  })
+
+  test('an-unrelated-options-call-keeps-the-lex-checks', () => {
+    // No input holds a digit, so turning number lexing on changes none.
+    const cases: [string, string, any][] = [
+      ['line', 'a=\nb=', { a: '', b: '' }],
+      ['comment', 'n=;\nm=x', { n: ';', m: 'x' }],
+      ['text', 'a = true, false, false', { a: 'true, false, false' }],
+      ['text', 'a = null x', { a: 'null x' }],
+      ['string', 'a = "x"y', { a: '"x"y' }],
+    ]
+    for (const [name, change] of RECONFIGURATIONS) {
+      const k = reconfigured(change)
+      for (const [check, src, want] of cases) {
+        assert.deepEqual(
+          k.parse(src),
+          want,
+          name + ', ' + check + ' check, ' + JSON.stringify(src),
+        )
+      }
+    }
+  })
+})
+
+
 describe('error hints', () => {
 
   // A declared code without a hint of its own falls back to the engine's

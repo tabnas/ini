@@ -11,6 +11,8 @@
 // What is left here is only what is specific to ini: which options each
 // fixture is parsed with, and the messages a rejection must carry.
 
+import { describe } from 'node:test'
+
 import { Tabnas } from '@tabnas/parser'
 import { jsonic } from '@tabnas/jsonic'
 import { findSpecDir, loadSpecDir, makeRunner } from '@tabnas/support'
@@ -102,3 +104,21 @@ for (const spec of loadSpecDir(findSpecDir(__dirname), { minCols: 2 })) {
       new Tabnas().use(jsonic).use(Ini, OPTIONS[name] || {}).parse(input),
   }).spec(spec)
 }
+
+
+// The same fixtures again, each through a parser that has had an options()
+// call naming nothing. Twin of the "after an unrelated SetOptions" pass in
+// go/ini_tsv_test.go: the Go port lost its depth limit and its line,
+// comment, text and string checks to exactly such a call.
+describe('after an unrelated options() call', () => {
+  for (const spec of loadSpecDir(findSpecDir(__dirname), { minCols: 2 })) {
+    const name = spec.file.replace(/\.tsv$/, '')
+    makeRunner({
+      parse: (input) => {
+        const k = new Tabnas().use(jsonic).use(Ini, OPTIONS[name] || {})
+        k.options({})
+        return k.parse(input)
+      },
+    }).spec(spec)
+  }
+})
