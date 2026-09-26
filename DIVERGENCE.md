@@ -78,6 +78,49 @@ Pinned by
 `a_single_quoted_json_value_nested_past_the_depth_limit_keeps_its_text`
 in [`rs/tests/ini_test.rs`](rs/tests/ini_test.rs).
 
+### The depth limit under a caller's parse budget
+
+A caller that sets a parse budget of its own, for a deadline say,
+replaces the depth limit in TypeScript and Go, where the limit is this
+plugin's budget. The Rust port installs the limit as a parse guard
+instead, which a budget does not replace, so the same caller still gets
+`cancel` past 127 levels.
+
+Measured on 2026-09-26 with a budget that checks every step and always
+passes: `@tabnas/ini` 0.5.11 on `@tabnas/parser` 0.12.4 and
+`@tabnas/jsonic` 0.7.2 from npm, `github.com/tabnas/parser/go` 0.12.4
+and `github.com/tabnas/jsonic/go` 0.7.2 from `go/`, and `rs/` against
+the engine's `main`.
+
+| a section header, under that budget | TypeScript | Go | Rust |
+|---|---|---|---|
+| 127 segments | parses | parses | parses |
+| 128 segments | parses, 128 levels | parses, 128 levels | `ERROR:cancel` |
+| 5,000 segments | parses; `JSON.stringify` of the result throws `RangeError` | parses | `ERROR:cancel` |
+| 10,000 segments | the same as 5,000 | parses | `ERROR:cancel` |
+
+Without a budget of the caller's, all three refuse 128 segments, and
+`test/spec/sections-depth-limit.tsv` pins that boundary.
+
+This port keeps the limit whatever the caller sets, because displaying,
+converting or dropping a `Value` walks the tree with the call stack:
+without it, a header ten thousand segments deep aborts the process. The
+engine's parse guards exist in Rust only, so TypeScript and Go have no
+slot that a caller's budget leaves alone.
+
+Owner: the engine, in TypeScript and Go. The repair direction is those
+two runtimes moving to this one. TypeScript is canonical, but the
+5,000-segment row is the host `RangeError`, with no code, that the
+limit exists to turn into `cancel`. The repair is parse guards in both
+engines, and this plugin installing its limit as one.
+
+Pinned by `a-caller-budget-replaces-the-depth-limit` in
+[`ts/test/ini.test.ts`](ts/test/ini.test.ts),
+`TestACallerBudgetReplacesTheDepthLimit` in
+[`go/ini_test.go`](go/ini_test.go), and
+`the_depth_limit_holds_whatever_budget_the_caller_sets` in
+[`rs/tests/ini_test.rs`](rs/tests/ini_test.rs).
+
 ## Inherited, and owned elsewhere
 
 These are not ini's behaviour. They are recorded because a reader of this

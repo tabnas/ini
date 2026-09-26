@@ -1197,6 +1197,48 @@ func TestNestingPastTheDepthLimitIsRefused(t *testing.T) {
 	}
 }
 
+// TestACallerBudgetReplacesTheDepthLimit pins a DIVERGENCE:
+// DIVERGENCE.md, "The depth limit under a caller's parse budget", and the
+// Go twin of a-caller-budget-replaces-the-depth-limit in
+// ts/test/ini.test.ts. The limit is this plugin's parse budget, so a
+// caller's own budget replaces it and 128 segments parse; SetOptions with
+// a Parse.Budget does the same. The Rust port installs its limit as a
+// parse guard, which a budget does not replace, and refuses them. When
+// this engine has guards and the limit moves to one, this fails, and the
+// register entry goes with it.
+func TestACallerBudgetReplacesTheDepthLimit(t *testing.T) {
+	segments := make([]string, DepthLimit+1)
+	for i := range segments {
+		segments[i] = "a"
+	}
+	src := "[" + strings.Join(segments, ".") + "]\nx=1\n"
+
+	calls := 0
+	j := MakeJsonic()
+	j.Config().ParseBudgetN = 1
+	j.Config().ParseBudgetCheck = func(*jsonic.Context) bool {
+		calls++
+		return true
+	}
+	node, err := j.Parse(src)
+	if err != nil {
+		t.Fatalf("%d segments under the caller's budget: %v", DepthLimit+1, err)
+	}
+	for level := 0; level <= DepthLimit; level++ {
+		m, ok := node.(map[string]any)
+		if !ok {
+			t.Fatalf("level %d is %T, want a map", level, node)
+		}
+		node = m["a"]
+	}
+	if m, ok := node.(map[string]any); !ok || len(m) != 1 || m["x"] != "1" {
+		t.Errorf("the innermost section is %v, want map[x:1]", node)
+	}
+	if calls == 0 {
+		t.Error("the caller's budget never ran")
+	}
+}
+
 // errorCode reads the code off a parse error, which is what the shared
 // fixtures compare and what a caller handles a failure by.
 func errorCode(err error) (string, bool) {
