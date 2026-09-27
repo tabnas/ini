@@ -1381,3 +1381,60 @@ func TestErrorCodesCarryTheirOwnHints(t *testing.T) {
 		}
 	}
 }
+
+// TestADerivedInstanceKeepsTheGrammar (#78): MakeJsonic called the ini
+// plugin directly instead of registering it, and Derive rebuilds a child
+// by re-running only the registered plugins, so a derived instance had no
+// ini rules and parsed every document to nil with no error. Twin of
+// a-made-child-keeps-the-grammar in ts/test/ini.test.ts and
+// a_derived_child_and_grandchild_keep_the_whole_plugin in
+// rs/tests/ini_test.rs.
+func TestADerivedInstanceKeepsTheGrammar(t *testing.T) {
+	parse := func(t *testing.T, j *jsonic.Jsonic, src string) any {
+		t.Helper()
+		got, err := j.Parse(src)
+		if err != nil {
+			t.Fatalf("%q: %v", src, err)
+		}
+		return got
+	}
+
+	parent := MakeJsonic()
+	child, err := parent.Derive()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert(t, "child", parse(t, child, "a=1\n[s]\nb=2"),
+		map[string]any{"a": "1", "s": map[string]any{"b": "2"}})
+	assert(t, "child keeps the value checks", parse(t, child, "k = true, false"),
+		map[string]any{"k": "true, false"})
+
+	grandchild, err := child.Derive()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert(t, "grandchild", parse(t, grandchild, "[a.b]\nc=3"),
+		map[string]any{"a": map[string]any{"b": map[string]any{"c": "3"}}})
+
+	// Each generation installs the plugins once: the list does not grow.
+	if p, c, g := len(parent.Plugins()), len(child.Plugins()), len(grandchild.Plugins()); p != c || c != g {
+		t.Errorf("plugins per generation: %d, %d, %d; want the same count", p, c, g)
+	}
+
+	// The limit comes with the grammar.
+	deep := "[" + strings.Repeat("a.", DepthLimit) + "a]\nx=1\n"
+	if _, err := child.Parse(deep); err == nil {
+		t.Errorf("a child parsed %d segments; want the cancel code", DepthLimit+1)
+	} else if code, _ := errorCode(err); code != "cancel" {
+		t.Errorf("a child refused %d segments with %q; want cancel", DepthLimit+1, code)
+	}
+
+	// A child of an instance built with options keeps them.
+	inline := MakeJsonic(IniOptions{Comment: &CommentOptions{Inline: &InlineCommentOptions{Active: boolPtr(true)}}})
+	inlineChild, err := inline.Derive()
+	if err != nil {
+		t.Fatal(err)
+	}
+	assert(t, "child keeps the plugin options", parse(t, inlineChild, "a = 1 ; note"),
+		map[string]any{"a": "1"})
+}

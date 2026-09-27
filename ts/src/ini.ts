@@ -4,7 +4,16 @@
 // grammar that the embedded grammar text is authored in. Engine types
 // (RuleSpec, AltSpec, Lex, makePoint, Token, Tin) are re-exported by
 // @tabnas/parser.
-import { Tabnas, RuleSpec, AltSpec, Lex, makePoint, Token, Tin } from '@tabnas/parser'
+import {
+  Tabnas,
+  RuleSpec,
+  AltSpec,
+  Lex,
+  makePoint,
+  Token,
+  Tin,
+  util,
+} from '@tabnas/parser'
 import { jsonic } from '@tabnas/jsonic'
 import { Hoover } from '@tabnas/hoover'
 
@@ -365,7 +374,13 @@ function Ini(tn: Tabnas, _options: IniOptions) {
     }
   }
 
-  tn.use(Hoover as any, {
+  // Hoover is called, not registered with use(): Ini is the registered
+  // plugin, and make() re-runs every registered plugin on the child, so a
+  // registered Hoover ran twice there, once from Ini and once from the
+  // plugin list, and a child with inline comments active could not parse
+  // `a = 1 ; note` (#78). The Go and Rust ports call it the same way. The
+  // merge is the one use() does.
+  Hoover(tn as any, util.deep({}, (Hoover as any).defaults || {}, {
     lex: {
       order: 8.5e6,
     },
@@ -447,7 +462,7 @@ function Ini(tn: Tabnas, _options: IniOptions) {
         trim: true,
       },
     ],
-  })
+  }))
 
   const dupSection = _options.section?.duplicate || 'merge'
 

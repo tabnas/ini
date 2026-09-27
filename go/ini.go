@@ -173,8 +173,11 @@ func MakeJsonic(opts ...IniOptions) *jsonic.Jsonic {
 
 	j := jsonic.Make(jopts)
 
+	// Registered, not called: Derive builds a child by re-running the
+	// registered plugins, and a plugin called directly left a derived
+	// instance with no ini rules, parsing every document to nil (#78).
 	pluginMap := optionsToMap(&o, r)
-	if err := iniPlugin(j, pluginMap); err != nil {
+	if err := j.Use(iniPlugin, pluginMap); err != nil {
 		panic("ini plugin: " + err.Error())
 	}
 
@@ -333,7 +336,13 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 
 	// Use Hoover plugin for key, value, and dive key matching.
 	// Mirrors the TS: jsonic.use(Hoover, { ... })
-	err := j.UseDefaults(hoover.Hoover, hoover.Defaults, map[string]any{
+	//
+	// Called, not registered, as the Rust port calls it: this plugin is the
+	// registered one, and Derive re-runs it, so a registered hoover would
+	// run twice on every derived child and grow the plugin list by one each
+	// generation. The merge is the one UseDefaults does.
+	hooverOpts := jsonic.Deep(map[string]any{}, hoover.Defaults).(map[string]any)
+	hooverOpts = jsonic.Deep(hooverOpts, map[string]any{
 		"lex": map[string]any{
 			"order": 8500000,
 		},
@@ -412,8 +421,8 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 				Trim:               true,
 			},
 		},
-	})
-	if err != nil {
+	}).(map[string]any)
+	if err := hoover.Hoover(j, hooverOpts); err != nil {
 		return fmt.Errorf("failed to use hoover plugin: %w", err)
 	}
 
@@ -824,11 +833,14 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		if strOpts, ok := optionsMap["string"].(map[string]any); ok {
 			strOpts["chars"] = `'"`
 		}
-		// Remove entries handled directly in Go code.
-		// - comment.def: grammar text has partial overrides (e.g. hash: {eatline:true})
-		//   but Go's SetOptions replaces entire comment config, so keep jopts setup.
-		// - fixed.token: not handled by MapToOptions, handled manually above.
-		delete(optionsMap, "comment")
+		// fixed.token is made by hand above (#EQ and #DOT registered; the
+		// `{`, `}` and `:` tokens removed), so the grammar's copy is dropped.
+		//
+		// comment.def goes through: definitions merge key by key, so the
+		// grammar's `eatline` reaches hash and semi, as it does in TS and
+		// Rust. Its `slash: null` and `multi: null` do not: the map form
+		// drops a null definition rather than deleting with it, so the hooks
+		// below remove those two with typed nils instead (#77).
 		delete(optionsMap, "fixed")
 		grammarDef.OptionsMap = optionsMap
 	}
@@ -991,6 +1003,14 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 			},
 		},
 	}
+	// jsonic's `//` and `/* */` comments are not INI comments: `//x = 1`
+	// is a key. The grammar says so with `slash: null` and `multi: null`,
+	// which TS and Rust honour, but the map form drops a null definition
+	// (see above), so the two go here as typed nils, which do delete.
+	hooks.Comment = &jsonic.CommentOptions{Def: map[string]*jsonic.CommentDef{
+		"slash": nil,
+		"multi": nil,
+	}}
 	j.SetOptions(hooks)
 
 	// ---- val rule ----

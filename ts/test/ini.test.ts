@@ -765,6 +765,36 @@ describe('an unrelated options() call', () => {
 })
 
 
+describe('a made child', () => {
+
+  // Twin of TestADerivedInstanceKeepsTheGrammar in go/ini_test.go (#78)
+  // and a_derived_child_and_grandchild_keep_the_whole_plugin in
+  // rs/tests/ini_test.rs. The Go port called its plugin directly instead
+  // of registering it, so a derived instance had no ini rules and parsed
+  // every document to nil. Here a registered Hoover ran twice on the
+  // child, which broke inline comments there.
+  test('a-made-child-keeps-the-grammar', () => {
+    const parent = new Tabnas().use(jsonic).use(Ini)
+    const child = parent.make()
+    assert.deepEqual(child.parse('a=1\n[s]\nb=2'), { a: '1', s: { b: '2' } })
+    assert.deepEqual(child.parse('k = true, false'), { k: 'true, false' })
+
+    const grandchild = child.make()
+    assert.deepEqual(grandchild.parse('[a.b]\nc=3'), { a: { b: { c: '3' } } })
+
+    const deep = '[' + 'a.'.repeat(DEPTH_LIMIT) + 'a]\nx=1\n'
+    assert.throws(() => child.parse(deep), (err: any) => {
+      assert.equal(err.code, 'cancel')
+      return true
+    })
+
+    const inline = new Tabnas().use(jsonic)
+      .use(Ini, { comment: { inline: { active: true } } })
+    assert.deepEqual(inline.make().parse('a = 1 ; note'), { a: '1' })
+  })
+})
+
+
 describe('error hints', () => {
 
   // A declared code without a hint of its own falls back to the engine's

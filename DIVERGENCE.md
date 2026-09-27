@@ -227,7 +227,7 @@ spell an infinity.
 [`go/ini_conformance_test.go`](go/ini_conformance_test.go) is empty, and
 every shared fixture passes in all three runtimes.
 
-Six gaps sat outside both sets and are now repaired, each with a shared
+Eight gaps sat outside both sets and are now repaired, each with a shared
 fixture or a runtime test standing where its table used to:
 
 - a line holding nothing but a value keyword declared a key, where the
@@ -254,4 +254,13 @@ fixture or a runtime test standing where its table used to:
   own `options()` calls. `TestAnUnrelatedSetOptionsKeepsTheDepthLimit`
   and `TestAnUnrelatedSetOptionsKeepsTheLexChecks` in `go/ini_test.go`
   pin the repair, as does a second pass of every shared fixture in
-  `go/ini_tsv_test.go`.
+  `go/ini_tsv_test.go`;
+- `//` and `/* */` were comments, where the canonical treats them as
+  text: `//x = 1` dropped the key. The Go port deleted the grammar's
+  `comment` block, whose `slash: null` and `multi: null` turn jsonic's
+  two defaults off (`test/spec/slash-comments-are-text.tsv`);
+- an instance made with `Derive` had no ini rules and parsed every
+  document to nil, because the plugin was called directly rather than
+  registered (`TestADerivedInstanceKeepsTheGrammar` in `go/ini_test.go`).
+  The canonical's own child, from `make()`, ran Hoover twice and could
+  not parse an inline comment; both are repaired.
