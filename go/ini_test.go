@@ -4,6 +4,7 @@ package tabnasini
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"reflect"
 	"strings"
@@ -1201,11 +1202,11 @@ func TestNestingPastTheDepthLimitIsRefused(t *testing.T) {
 // DIVERGENCE.md, "The depth limit under a caller's parse budget", and the
 // Go twin of a-caller-budget-replaces-the-depth-limit in
 // ts/test/ini.test.ts. The limit is this plugin's parse budget, so a
-// caller's own budget replaces it and 128 segments parse; SetOptions with
-// a Parse.Budget does the same. The Rust port installs its limit as a
-// parse guard, which a budget does not replace, and refuses them. When
-// this engine has guards and the limit moves to one, this fails, and the
-// register entry goes with it.
+// caller's own budget replaces it and 128 segments parse, whether the
+// caller writes it onto the live config or passes it to SetOptions. The
+// Rust port installs its limit as a parse guard, which a budget does not
+// replace, and refuses them. When this engine has guards and the limit
+// moves to one, this fails, and the register entry goes with it.
 func TestACallerBudgetReplacesTheDepthLimit(t *testing.T) {
 	segments := make([]string, DepthLimit+1)
 	for i := range segments {
@@ -1213,29 +1214,125 @@ func TestACallerBudgetReplacesTheDepthLimit(t *testing.T) {
 	}
 	src := "[" + strings.Join(segments, ".") + "]\nx=1\n"
 
-	calls := 0
-	j := MakeJsonic()
-	j.Config().ParseBudgetN = 1
-	j.Config().ParseBudgetCheck = func(*jsonic.Context) bool {
-		calls++
-		return true
-	}
-	node, err := j.Parse(src)
-	if err != nil {
-		t.Fatalf("%d segments under the caller's budget: %v", DepthLimit+1, err)
-	}
-	for level := 0; level <= DepthLimit; level++ {
-		m, ok := node.(map[string]any)
-		if !ok {
-			t.Fatalf("level %d is %T, want a map", level, node)
+	for _, install := range []struct {
+		how string
+		set func(j *jsonic.Jsonic, check func(*jsonic.Context) bool)
+	}{
+		{"on the live config", func(j *jsonic.Jsonic, check func(*jsonic.Context) bool) {
+			j.Config().ParseBudgetN = 1
+			j.Config().ParseBudgetCheck = check
+		}},
+		{"through SetOptions", func(j *jsonic.Jsonic, check func(*jsonic.Context) bool) {
+			j.SetOptions(jsonic.MapToOptions(map[string]any{
+				"parse": map[string]any{"budget": map[string]any{
+					"checkEveryN": 1,
+					"onCheck":     check,
+				}},
+			}))
+		}},
+	} {
+		calls := 0
+		j := MakeJsonic()
+		install.set(j, func(*jsonic.Context) bool {
+			calls++
+			return true
+		})
+		node, err := j.Parse(src)
+		if err != nil {
+			t.Fatalf("%d segments under a caller's budget set %s: %v", DepthLimit+1, install.how, err)
 		}
-		node = m["a"]
+		for level := 0; level <= DepthLimit; level++ {
+			m, ok := node.(map[string]any)
+			if !ok {
+				t.Fatalf("%s: level %d is %T, want a map", install.how, level, node)
+			}
+			node = m["a"]
+		}
+		if m, ok := node.(map[string]any); !ok || len(m) != 1 || m["x"] != "1" {
+			t.Errorf("%s: the innermost section is %v, want map[x:1]", install.how, node)
+		}
+		if calls == 0 {
+			t.Errorf("%s: the caller's budget never ran", install.how)
+		}
 	}
-	if m, ok := node.(map[string]any); !ok || len(m) != 1 || m["x"] != "1" {
-		t.Errorf("the innermost section is %v, want map[x:1]", node)
+}
+
+// reconfiguration is a SetOptions call a caller makes for its own reasons.
+type reconfiguration struct {
+	name string
+	opts jsonic.Options
+}
+
+// unrelatedReconfigurations name no lex check and no parse budget, so
+// neither may cost the plugin its own. The second is the call
+// go/doc/guide.md recommends for reading numbers as numbers.
+func unrelatedReconfigurations() []reconfiguration {
+	return []reconfiguration{
+		{"empty options", jsonic.Options{}},
+		{"number lexing on", jsonic.Options{Number: &jsonic.NumberOptions{Lex: boolPtr(true)}}},
 	}
-	if calls == 0 {
-		t.Error("the caller's budget never ran")
+}
+
+// TestAnUnrelatedSetOptionsKeepsTheDepthLimit: the limit was written onto
+// the live config, which SetOptions rebuilds from options, so any later
+// SetOptions dropped it and a header of any depth parsed. It goes in
+// through options now, as the canonical runtime installs it. Twin of
+// an-unrelated-options-call-keeps-the-depth-limit in ts/test/ini.test.ts
+// and an_unrelated_set_options_keeps_the_depth_limit in
+// rs/tests/ini_test.rs.
+func TestAnUnrelatedSetOptionsKeepsTheDepthLimit(t *testing.T) {
+	header := func(n int) string {
+		return "[" + strings.Repeat("a.", n-1) + "a]\nx=1\n"
+	}
+	for _, rc := range unrelatedReconfigurations() {
+		j := MakeJsonic()
+		j.SetOptions(rc.opts)
+
+		if _, err := j.Parse(header(DepthLimit)); err != nil {
+			t.Errorf("%s: depth %d should parse: %v", rc.name, DepthLimit, err)
+		}
+		for _, deep := range []int{DepthLimit + 1, 10000} {
+			_, err := j.Parse(header(deep))
+			if code, ok := errorCode(err); !ok || code != "cancel" {
+				t.Errorf("%s: depth %d gave %v, want the cancel code", rc.name, deep, err)
+			}
+		}
+	}
+}
+
+// TestAnUnrelatedSetOptionsKeepsTheLexChecks: the line, comment, text and
+// string checks sat on the live config beside the depth limit and were
+// lost with it. Each failure they exist to prevent came back: an empty
+// value swallowed the next line, a comment marker ate the next pair, a
+// keyword that merely starts a value stood for all of it, and the text
+// after a quoted value became a key. Twin of
+// an-unrelated-options-call-keeps-the-lex-checks in ts/test/ini.test.ts
+// and an_unrelated_set_options_keeps_the_lex_checks in
+// rs/tests/ini_test.rs.
+func TestAnUnrelatedSetOptionsKeepsTheLexChecks(t *testing.T) {
+	// No input holds a digit, so turning number lexing on changes none.
+	cases := []struct {
+		check, src string
+		want       map[string]any
+	}{
+		{"line", "a=\nb=", map[string]any{"a": "", "b": ""}},
+		{"comment", "n=;\nm=x", map[string]any{"n": ";", "m": "x"}},
+		{"text", "a = true, false, false", map[string]any{"a": "true, false, false"}},
+		{"text", "a = null x", map[string]any{"a": "null x"}},
+		{"string", `a = "x"y`, map[string]any{"a": `"x"y`}},
+	}
+	for _, rc := range unrelatedReconfigurations() {
+		j := MakeJsonic()
+		j.SetOptions(rc.opts)
+		for _, c := range cases {
+			name := fmt.Sprintf("%s, %s check, %q", rc.name, c.check, c.src)
+			got, err := j.Parse(c.src)
+			if err != nil {
+				t.Errorf("%s: %v", name, err)
+				continue
+			}
+			assert(t, name, got, c.want)
+		}
 	}
 }
 

@@ -100,7 +100,9 @@ the engine's `main`.
 | 10,000 segments | the same as 5,000 | parses | `ERROR:cancel` |
 
 Without a budget of the caller's, all three refuse 128 segments, and
-`test/spec/sections-depth-limit.tsv` pins that boundary.
+`test/spec/sections-depth-limit.tsv` pins that boundary. An options call
+that sets no budget, such as one turning number lexing on, leaves the
+limit in place in all three.
 
 This port keeps the limit whatever the caller sets, because displaying,
 converting or dropping a `Value` walks the tree with the call stack:
@@ -225,7 +227,7 @@ spell an infinity.
 [`go/ini_conformance_test.go`](go/ini_conformance_test.go) is empty, and
 every shared fixture passes in all three runtimes.
 
-Five gaps sat outside both sets and are now repaired, each with a shared
+Six gaps sat outside both sets and are now repaired, each with a shared
 fixture or a runtime test standing where its table used to:
 
 - a line holding nothing but a value keyword declared a key, where the
@@ -245,4 +247,11 @@ fixture or a runtime test standing where its table used to:
   than rounding to an infinity
   (`TestSingleQuotedNumberTooLargeForADoubleIsInfinity` in
   `go/ini_test.go`; the composite half of that one is still open and is
-  recorded above).
+  recorded above);
+- any `SetOptions` after construction, including the number-lexing call
+  `go/doc/guide.md` recommends, dropped the depth limit and the line,
+  comment, text and string checks, which the canonical keeps through its
+  own `options()` calls. `TestAnUnrelatedSetOptionsKeepsTheDepthLimit`
+  and `TestAnUnrelatedSetOptionsKeepsTheLexChecks` in `go/ini_test.go`
+  pin the repair, as does a second pass of every shared fixture in
+  `go/ini_tsv_test.go`.
