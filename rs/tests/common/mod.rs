@@ -52,6 +52,7 @@ pub const FIXTURES: &[&str] = &[
     "sections-over-value.tsv",
     "sections-unterminated.tsv",
     "sections.tsv",
+    "slash-comments-are-text.tsv",
     "value-comment-char-start-inline.tsv",
     "value-comment-char-start.tsv",
     "value-fixed-token-start.tsv",

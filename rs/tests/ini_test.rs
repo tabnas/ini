@@ -963,6 +963,45 @@ fn an_unrelated_set_options_keeps_the_lex_checks() {
     }
 }
 
+// --- a derived instance -----------------------------------------------
+
+/// Twin of `TestADerivedInstanceKeepsTheGrammar` in `go/ini_test.go`
+/// (#78) and `a-made-child-keeps-the-grammar` in `ts/test/ini.test.ts`,
+/// beyond `a_derived_instance_keeps_the_grammar` above: a grandchild, the
+/// value checks, the depth limit and the plugin options all come along.
+/// The Go port called its plugin directly instead of registering it, so a
+/// derived instance had no ini rules and parsed every document to nil.
+#[test]
+fn a_derived_child_and_grandchild_keep_the_whole_plugin() {
+    let parent = make();
+    let child = parent.derive(|_| {}).expect("the child derives");
+    assert_eq!(
+        child.parse("a=1\n[s]\nb=2").unwrap().to_json(),
+        json!({"a": "1", "s": {"b": "2"}})
+    );
+    assert_eq!(
+        child.parse("k = true, false").unwrap().to_json(),
+        json!({"k": "true, false"})
+    );
+
+    let grandchild = child.derive(|_| {}).expect("the grandchild derives");
+    assert_eq!(
+        grandchild.parse("[a.b]\nc=3").unwrap().to_json(),
+        json!({"a": {"b": {"c": "3"}}})
+    );
+
+    let deep = format!("[{}a]\nx=1\n", "a.".repeat(tabnas_ini::DEPTH_LIMIT));
+    let error = child.parse(&deep).expect_err("past the depth limit");
+    assert_eq!(error.code, "cancel");
+
+    let inline = make_with(&inline_active());
+    let inline_child = inline.derive(|_| {}).expect("the child derives");
+    assert_eq!(
+        inline_child.parse("a = 1 ; note").unwrap().to_json(),
+        json!({"a": "1"})
+    );
+}
+
 // --- the option defaults ------------------------------------------------
 
 /// An EMPTY marker list is a choice, not an omission.

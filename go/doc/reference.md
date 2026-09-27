@@ -44,6 +44,10 @@ apply further jsonic configuration with `SetOptions` (for example enabling
 number lexing). Its `Parse` method returns `(any, error)`; type-assert
 the result to `map[string]any`.
 
+`MakeJsonic` registers the plugin on the instance, so `Derive` re-runs it
+on the child: a derived instance parses INI with the same options, value
+checks and depth limit, matching jsonic's plugin model.
+
 ## Options
 
 ```go
