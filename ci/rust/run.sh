@@ -5,7 +5,7 @@
 #
 # The engine, the jsonic base grammar, the hoover block lexer and the
 # fixture runner are PATH DEPENDENCIES on sibling checkouts
-# (rs/Cargo.toml: `tabnas = { path = "../../parser/rs" }`,
+# (rs/Cargo.toml: `tabnas = { package = "tabnas-parser", path = "../../parser/rs" }`,
 # `tabnas-jsonic = { path = "../../jsonic/rs" }`,
 # `tabnas-hoover = { path = "../../hoover/rs" }`, and as a
 # dev-dependency `tabnas-support = { path = "../../support/rs" }`).
@@ -87,7 +87,7 @@ fi
 lock_without_sibling_versions() {
   awk '
     /^\[\[package\]\]$/                { sib = 0 }
-    /^name = "tabnas"$/                { sib = 1 }
+    /^name = "tabnas-parser"$/                { sib = 1 }
     /^name = "tabnas-json"$/           { sib = 1 }
     /^name = "tabnas-jsonic"$/         { sib = 1 }
     /^name = "tabnas-hoover"$/         { sib = 1 }
