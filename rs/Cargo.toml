@@ -32,7 +32,7 @@ path = "src/lib.rs"
 # because it is tabnas-jsonic that depends on it, but cargo reads the
 # whole manifest graph before it compiles anything, so without that
 # checkout nothing here resolves.
-tabnas = { path = "../../parser/rs" }
+tabnas = { package = "tabnas-parser", path = "../../parser/rs" }
 tabnas-jsonic = { path = "../../jsonic/rs" }
 # The default features: the three blocks are built as typed `Block`
 # values here, so hoover's `serde_json` reader of the shared data shape
