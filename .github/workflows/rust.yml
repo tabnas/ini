@@ -30,6 +30,8 @@ on:
     branches: [ '**' ]
     paths:
       - 'rs/**'
+      - 'tabnas.plugin.json'
+      - 'alchemy/**'
       - 'test/**'
       - 'ini-grammar.jsonic'
       - 'ts/embed-grammar.js'
@@ -41,6 +43,8 @@ on:
   pull_request:
     paths:
       - 'rs/**'
+      - 'tabnas.plugin.json'
+      - 'alchemy/**'
       - 'test/**'
       - 'ini-grammar.jsonic'
       - 'ts/embed-grammar.js'
