@@ -8,12 +8,14 @@ and this file only covers what is specific to this crate.
 
 | Path | |
 |---|---|
-| `src/lib.rs` | the whole port: the typed options, the embedded grammar text, every closure the grammar names, the hoover blocks, the lexer hooks, the custom value matcher, the `val` rule, `ini`, `plugin`, `make`, `make_with`, `parse`, `parse_with` |
+| `src/lib.rs` | the whole port: the typed options, the embedded grammar text, every closure the grammar names, the hoover blocks, the lexer hooks, the custom value matcher, the `val` rule, `ini`, `plugin`, `make`, `make_with`, `parse`, `parse_with`, and the translation parts `manifest_text` and `render_text`, `include_str!` of the copies in `translate/` |
+| `translate/` | the crate's copies of `../tabnas.plugin.json` (as `manifest.json`) and `../alchemy/render.alc`, which a packaged crate needs; `tests/translate_test.rs` holds them to the files |
 | `tests/parity_test.rs` | every shared `../test/spec/*.tsv` fixture through `tabnas_support::Runner`, one runner per file, with the per-file option table |
 | `tests/ini_test.rs` | in-language behaviour: the Rust twin of `go/ini_test.go`, plus the construction API, the threading contract and hostile input |
 | `tests/conformance_test.rs` | the third-party corpus in `../test/corpus/ini-corpus.json`, with the same divergence lists the other two runtimes carry |
 | `tests/grammar_test.rs` | the embedded grammar against `../ini-grammar.jsonic`, and against the TypeScript and Go embeds |
 | `tests/perf_test.rs` | `parse` reuses its instance, building one really is dear, and many sections stay near linear |
+| `tests/translate_test.rs` | the translation parts: the render the embedded manifest names is the one `render_text()` embeds, the manifest's shapes, language and loss lines, and every render definition named `ini-...` |
 | `tests/version_test.rs` | Cargo.toml == `VERSION` == ts/package.json == the Go `const VERSION` |
 | `tests/common/mod.rs` | the per-fixture option table and the two conversions the runner needs |
 | `README.md` | the crate front page, prose-gated; its `rust` fences are doctests of this crate |
