@@ -65,6 +65,16 @@ fn the_render_the_manifest_names_is_the_one_the_crate_embeds() {
     );
 }
 
+#[test]
+fn the_structural_interface_names_the_render_entry() {
+    let parts = tabnas_ini::translate().expect("INI carries translation parts");
+    assert_eq!(parts.manifest, tabnas_ini::manifest_text());
+    assert_eq!(parts.lift, None);
+    let render = parts.render.expect("INI carries a render");
+    assert_eq!(render.entry, "ini-render");
+    assert_eq!(render.source, Some(tabnas_ini::render_text()));
+}
+
 /// INI is read as a tree and written from one. Its events carry the
 /// tree already, so there is no lift, and no accessor for one.
 #[test]

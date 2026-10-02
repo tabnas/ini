@@ -1,0 +1,54 @@
+{
+  "$schema": "https://tabnas.dev/schema/plugin.schema.json",
+  "name": "@tabnas/ini",
+  "go": "github.com/tabnas/ini/go",
+  "description": "INI configuration-file parsing for the tabnas engine.",
+  "base": "@tabnas/jsonic",
+  "engine": "@tabnas/parser",
+  "grammar": "ini-grammar.jsonic",
+  "extensions": [
+    ".ini"
+  ],
+  "languageId": "ini",
+  "pluginKind": "grammar",
+  "grammarKind": "closure",
+  "lexStream": "clean",
+  "syncGroups": [
+    "end",
+    "comma",
+    "close"
+  ],
+  "specDir": "test/spec",
+  "clib": {
+    "dir": "go/clib",
+    "library": "libtabnasini",
+    "abi": "v1",
+    "errorCodes": [
+      "usage",
+      "grammar",
+      "handle",
+      "internal"
+    ]
+  },
+  "errorCodes": [
+    "duplicate_section",
+    "unterminated_section"
+  ],
+  "docs": "https://tabnas.dev/docs/packages",
+  "repository": "https://github.com/tabnas/ini",
+  "versionSource": "ts/package.json",
+  "translate": {
+    "reads": "tree",
+    "writes": "tree",
+    "render": "alchemy/render.alc",
+    "loss": [
+      "Comments are not kept.",
+      "Every key and every string value is written double-quoted; a section name, a boolean and null are written as they are.",
+      "A number is written by its lexeme, or as Infinity, -Infinity or NaN, and reads back as a string, since the reader builds every unquoted value but true, false and null as a string.",
+      "A key that ends in a pair of square brackets reads back as an array under the name before them, since that is the reader's array mark inside quotes too.",
+      "A section name is written with its dots, closing brackets and backslashes escaped, so one that starts with a quote, holds a line break or is padded with whitespace does not read back as written.",
+      "A member that follows a section inside a section is written after that section's header again, which reads back as written only while section.duplicate is merge, the default.",
+      "A root member that follows a section, an array holding an array or an object, an empty array, and an empty key naming a section or an array have no INI form and are refused."
+    ]
+  }
+}
