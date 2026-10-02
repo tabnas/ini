@@ -870,3 +870,6 @@ const VERSION = '0.5.12'
 export { VERSION, DEPTH_LIMIT, Ini }
 
 export type { IniOptions, InlineCommentOptions }
+
+export { translate } from './translate'
+export type { TranslationPart, TranslationParts } from './translate'

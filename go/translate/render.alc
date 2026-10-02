@@ -1,0 +1,262 @@
+; INI's render: a tree's events written as one INI document, in the
+; dialect this repository's reader builds its values from
+; (ts/doc/reference.md). This is a library of definitions, each named
+; `ini-...`, which a host links with its own program (alchemy's
+; `compile_sources`); its entry point is `ini-render`, and nothing else
+; here is the host's to call.
+;
+; INI is the format whose writer depends most on its reader, so the
+; reader's facts come first, each measured through `aless -k ini --json`
+; on this checkout:
+;
+; - A value wrapped in double quotes is read as the JSON string inside
+;   them, every JSON escape decoded (`\n`, `\t`, `\"`, `\\`, `\uXXXX`, a
+;   surrogate pair included), and the quotes count only when they wrap
+;   the whole value. So every string value is written double-quoted
+;   through `quoted`, as YAML's render writes its strings, and a string
+;   holding `=`, `;`, `#`, a quote or a line break reads back as it is.
+; - A key wrapped in double quotes is read the same way, so every key is
+;   written double-quoted too, and reads back whatever it holds. The one
+;   exception is the reader's array mark: a key that ends in `[]` once
+;   decoded names an array under the name before the brackets.
+; - An unquoted value is a string, whatever it looks like, except the
+;   whole-value keywords `true`, `false` and `null`, which are read as
+;   themselves. So a boolean is written by its name and null as `null`,
+;   and both read back; a number is written by its lexeme, or as
+;   `Infinity`, `-Infinity` or `NaN`, and reads back as a string, since
+;   INI has no numbers.
+; - `key =` with nothing after it reads as the empty string, as `key =
+;   ""` does; the render writes the quoted form.
+; - A header `[a.b]` opens the section `b` inside `a`, making `a` when
+;   it is missing, and a key under the LAST header read lands in that
+;   section. A header read again reopens its section and keeps what it
+;   held (`section.duplicate: merge`, the default). A dot, a closing
+;   bracket and a backslash in a section name are written `\.`, `\]` and
+;   `\\`, which the reader decodes; a section name cannot be quoted, and
+;   an empty one (`[]`, `[a.]`) is an error.
+; - `key[] = item`, one line per item, builds an array of scalars under
+;   `key`; there is no form for an empty array or for an item that is a
+;   container.
+;
+; The document: the root object's scalar and array members first, one
+; `"key" = value` or `"key[]" = item` line each; then each member whose
+; value is an object as a section, its header `[path]` on its own line
+; and its members under it the same way, a nested object's header being
+; `[path.name]`. A header is written when its object opens, so an empty
+; section is a header alone. A scalar or array member that arrives after
+; a section at the same level comes after that level's own header
+; written again, which the reader reads as a return to that section; at
+; the root there is no header to return to, so a root member after a
+; section fails: written in order it would be read inside that section,
+; and a render cannot reorder a stream. A root that is not an object, an
+; empty array, an array holding an array or an object, and an empty key
+; naming a section or an array fail too, since INI has no form for them.
+;
+; The events are a tree's: an object holds each key once, which the
+; host holds a stream to. Events no tree has fail with INPUT_INVALID,
+; saying so.
+;
+; The state is a vector of three: the stack of open containers, one
+; marker each, so it grows with a document's nesting and never with its
+; width; the trail of the open sections' names, which the next header is
+; made from; and the key whose value is due, or `:none`, which while an
+; array is open is the array's key. The markers: `:scalars` for an
+; object whose own header is the last one written, `[:sections last]`
+; for one under which the section `last` was written last, `:array-open`
+; for an array with no item written yet and `:array` for one with an
+; item. Once the root object is closed the stack is `[:root-done]`, and
+; nothing may follow it.
+;
+; `fail` takes a string, and alchemy joins strings only into a text, so
+; a failure that names the key it met carries its sentence and the names
+; as the JSON text of a record (`scalar-text`); the others are sentences.
+; The same is why an array item's key `"name[]"` is made from the quoted
+; name by a `replace-text` at its closing quote, not by quoting a joined
+; name.
+
+; The top marker, or :none before the root object.
+def ini-top [stack]
+  match (count stack)
+    case 0 :none
+    case _ (top stack)
+
+def ini-key-due "the events hold a value where a key is due, which a tree's never do"
+def ini-key-in-array "the events hold a key inside an array, which a tree's never do"
+def ini-end-in-array "the events end an object while an array is open, which a tree's never do"
+def ini-in-array "INI holds only scalars in an array, so an item of this array that is an array or an object cannot be written"
+def ini-after-section "INI reads a key under the last section header and has no header for the root, so this root member cannot be written in order after this section"
+def ini-empty-key "INI has no form for an empty section name or an empty array key, so this member named \"\" cannot be written"
+
+; A failure that names what it met: the sentence and the key as the JSON
+; text of a record.
+def ini-refuse [sentence member]
+  fail (scalar-text csv-options (record (entry :error sentence) (entry :key member)))
+
+; The root order failure: the key, and the section it would be read under.
+def ini-refuse-after [member section]
+  fail (scalar-text csv-options (record (entry :error ini-after-section) (entry :key member) (entry :section section)))
+
+; A section name as a header segment: a backslash, a dot and a closing
+; bracket escaped, the backslash first so the escapes it makes are not
+; escaped again.
+def ini-segment [name]
+  replace-text "]" "\\]"
+    replace-text "." "\\."
+      replace-text "\\" "\\\\" name
+
+; The header of the section at `trail`: the names dotted, in brackets.
+def ini-header [trail]
+  concat "[" (join "." (map ini-segment trail)) "]\n"
+
+; An array item's key, `"name[]"`: the quoted name with `[]` put before
+; its closing quote. A sentinel control character follows the quoted
+; form, which `quoted` never leaves raw, so the closing quote is the one
+; quote the sentinel follows.
+def ini-array-key [name]
+  replace-text "\"\u0004" "[]\""
+    concat (quoted name) "\u0004"
+
+def ini-number [n]
+  match (number-class n)
+    case :finite (scalar-text csv-options n)
+    case :infinity "Infinity"
+    case :negative-infinity "-Infinity"
+    case :nan "NaN"
+
+def ini-scalar [value]
+  match (kind value)
+    case :null "null"
+    case :boolean
+      match value
+        case true "true"
+        case false "false"
+    case :number (ini-number value)
+    case _ (quoted value)
+
+; An object opens: the root, or a section under the key that is due.
+def ini-open [stack trail pending]
+  match (ini-top stack)
+    case :none (transition [[:scalars] trail :none] [])
+    case :array-open (ini-refuse ini-in-array pending)
+    case :array (ini-refuse ini-in-array pending)
+    case _
+      match pending
+        case :none (fail ini-key-due)
+        case _ (ini-section stack trail pending)
+
+; A member whose value is an object is a section: its header is written
+; now, so an empty section is a header alone, and its parent's own header
+; is no longer the last one written.
+def ini-section [stack trail name]
+  match (length name)
+    case 0 (fail ini-empty-key)
+    case _
+      let [next (push name trail)]
+        transition [(push :scalars (push [:sections name] (pop stack))) next :none] [(ini-header next)]
+
+; An array opens under the key that is due. Its items are `"key[]" =
+; item` lines, so for the order's sake it is a scalar member: after a
+; section at the same level it comes after that level's header again,
+; and at the root there is none to write.
+def ini-open-array [stack trail pending]
+  match (ini-top stack)
+    case :none (fail "INI writes an object, and the root of this document is an array")
+    case :array-open (ini-refuse ini-in-array pending)
+    case :array (ini-refuse ini-in-array pending)
+    case :scalars
+      match pending
+        case :none (fail ini-key-due)
+        case _ (transition [(push :array-open stack) trail pending] [])
+    case [:sections last]
+      match pending
+        case :none (fail ini-key-due)
+        case _
+          match (count trail)
+            case 0 (ini-refuse-after pending last)
+            case _ (transition [(push :array-open (push :scalars (pop stack))) trail pending] [(ini-header trail)])
+
+; A key: held until its value says whether it is a pair, a section or an
+; array.
+def ini-member [stack trail pending name]
+  match (ini-top stack)
+    case :none (fail "the events hold a key outside any object, which a tree's never do")
+    case :array-open (fail ini-key-in-array)
+    case :array (fail ini-key-in-array)
+    case _
+      match pending
+        case :none (transition [stack trail name] [])
+        case _ (fail "the events hold a key where a value is due, which a tree's never do")
+
+; A scalar: a pair under the key that is due, or an item of the open
+; array. A pair that follows a section at the same level comes after that
+; level's header again, and at the root there is none to write.
+def ini-value [stack trail pending value]
+  match (ini-top stack)
+    case :none (fail "INI writes an object, and the root of this document is a scalar")
+    case :array-open
+      match (length pending)
+        case 0 (fail ini-empty-key)
+        case _ (transition [(push :array (pop stack)) trail pending] [(ini-array-key pending) " = " (ini-scalar value) "\n"])
+    case :array (transition [stack trail pending] [(ini-array-key pending) " = " (ini-scalar value) "\n"])
+    case :scalars
+      match pending
+        case :none (fail ini-key-due)
+        case _ (transition [stack trail :none] [(quoted pending) " = " (ini-scalar value) "\n"])
+    case [:sections last]
+      match pending
+        case :none (fail ini-key-due)
+        case _
+          match (count trail)
+            case 0 (ini-refuse-after pending last)
+            case _ (transition [(push :scalars (pop stack)) trail :none] [(ini-header trail) (quoted pending) " = " (ini-scalar value) "\n"])
+
+; An object closes: the root, and the document is done, or a section,
+; and its name leaves the trail. Nothing is written: the next header
+; says where the next key goes.
+def ini-close [stack trail pending]
+  match (ini-top stack)
+    case :none (fail "the events end an object that is not open, which a tree's never do")
+    case :array-open (fail ini-end-in-array)
+    case :array (fail ini-end-in-array)
+    case _
+      match pending
+        case :none
+          match (count stack)
+            case 1 (transition [[:root-done] trail :none] [])
+            case _ (transition [(pop stack) (pop trail) :none] [])
+        case _ (fail "the events end an object after a key and before its value, which a tree's never do")
+
+def ini-close-array [stack trail pending]
+  match (ini-top stack)
+    case :array-open (ini-refuse "INI has no form for an empty array, so this key cannot hold one" pending)
+    case :array (transition [(pop stack) trail :none] [])
+    case _ (fail "the events end an array that is not open, which a tree's never do")
+
+def ini-event [stack trail pending event]
+  match event
+    case object-start (ini-open stack trail pending)
+    case array-start (ini-open-array stack trail pending)
+    case (key name) (ini-member stack trail pending name)
+    case (scalar value) (ini-value stack trail pending value)
+    case object-end (ini-close stack trail pending)
+    case array-end (ini-close-array stack trail pending)
+
+def ini-step [s event]
+  match s
+    case [stack trail pending]
+      match (ini-top stack)
+        case :root-done (fail "the events hold more after the root object, which a tree's never do")
+        case _ (ini-event stack trail pending event)
+
+def ini-finish [s]
+  match s
+    case [stack _ _]
+      match (ini-top stack)
+        case :root-done []
+        case :none (fail "the events hold no value, where a tree's hold one")
+        case _ (fail "the events ended inside a container")
+
+; The render: the tree's events in, the document's text out.
+def ini-render [input]
+  join ""
+    scan-emit [[] [] :none] ini-step ini-finish (events input)
