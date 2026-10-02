@@ -103,6 +103,11 @@ var (
 	defaultParser *jsonic.Jsonic
 )
 
+// declaredSectionsKey names the duplicate-section set on Context.U. Context
+// is fresh for every parse, so a reusable Jsonic instance never shares this
+// mutable state between callers.
+const declaredSectionsKey = "ini$declaredSections"
+
 // Parse parses an INI string and returns a map.
 func Parse(src string, opts ...IniOptions) (map[string]any, error) {
 	var j *jsonic.Jsonic
@@ -597,15 +602,13 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 	// The val rule is defined in Go code (needs custom open alts and
 	// complex AC handler not expressible in the grammar file).
 
-	var declaredSections map[string]bool
-
 	// Function refs (matching @ names in the grammar file).
 	// State actions (@ini-bo, @table-bo, @table-bc) are auto-wired by Grammar().
 	refs := map[jsonic.FuncRef]any{
 		// State actions.
 		"@ini-bo": jsonic.StateAction(func(r *jsonic.Rule, ctx *jsonic.Context) {
 			r.Node = make(map[string]any)
-			declaredSections = make(map[string]bool)
+			ctx.U[declaredSectionsKey] = make(map[string]bool)
 		}),
 
 		"@table-bo": jsonic.StateAction(func(r *jsonic.Rule, ctx *jsonic.Context) {
@@ -613,6 +616,11 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 
 			if r.Prev != nil && r.Prev != jsonic.NoRule {
 				if dive, ok := r.Prev.U["dive"].([]string); ok && len(dive) > 0 {
+					declaredSections, _ := ctx.U[declaredSectionsKey].(map[string]bool)
+					if declaredSections == nil {
+						declaredSections = make(map[string]bool)
+						ctx.U[declaredSectionsKey] = declaredSections
+					}
 					sectionKey := strings.Join(dive, "\x00")
 					isDuplicate := declaredSections[sectionKey]
 

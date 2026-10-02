@@ -8,6 +8,7 @@ import (
 	"math"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
 
 	jsonic "github.com/tabnas/jsonic/go"
@@ -41,6 +42,43 @@ func TestHappy(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert(t, "empty-values", r, map[string]any{"a": "", "b": ""})
+}
+
+// The default Parse path reuses one Jsonic instance. Mutable plugin state is
+// per parse, so concurrent documents cannot race or see one another's section
+// declarations.
+func TestDefaultParseIsSafeForConcurrentUse(t *testing.T) {
+	const workers = 8
+	const rounds = 50
+	const src = "[a]\nx=1\n[b]\ny=2\n"
+
+	var wg sync.WaitGroup
+	errs := make(chan error, workers)
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for range rounds {
+				got, err := Parse(src)
+				if err != nil {
+					errs <- err
+					return
+				}
+				if !reflect.DeepEqual(got, map[string]any{
+					"a": map[string]any{"x": "1"},
+					"b": map[string]any{"y": "2"},
+				}) {
+					errs <- fmt.Errorf("unexpected parse: %#v", got)
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Error(err)
+	}
 }
 
 func TestInlineCommentsOff(t *testing.T) {
