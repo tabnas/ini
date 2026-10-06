@@ -31,7 +31,7 @@ _ = r1
 _ = r2
 ```
 
-`MakeJsonic` returns a `*tabnasjsonic.Jsonic`; its `Parse` returns
+`MakeJsonic` returns a `*tabnas.Tabnas`; its `Parse` returns
 `(any, error)`, so type-assert the result to `map[string]any`. (The
 no-options `tabnasini.Parse` already reuses one cached default instance
 internally.)

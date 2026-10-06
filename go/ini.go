@@ -15,6 +15,7 @@ import (
 
 	hoover "github.com/tabnas/hoover/go"
 	jsonic "github.com/tabnas/jsonic/go"
+	tabnas "github.com/tabnas/parser/go"
 )
 
 // VERSION is this module's version. It MUST equal ts/package.json
@@ -100,7 +101,7 @@ type resolved struct {
 // since their configuration cannot be shared.
 var (
 	defaultOnce   sync.Once
-	defaultParser *jsonic.Jsonic
+	defaultParser *tabnas.Tabnas
 )
 
 // declaredSectionsKey names the duplicate-section set on Context.U. Context
@@ -110,7 +111,7 @@ const declaredSectionsKey = "ini$declaredSections"
 
 // Parse parses an INI string and returns a map.
 func Parse(src string, opts ...IniOptions) (map[string]any, error) {
-	var j *jsonic.Jsonic
+	var j *tabnas.Tabnas
 	if len(opts) > 0 {
 		j = MakeJsonic(opts[0])
 	} else {
@@ -131,7 +132,7 @@ func Parse(src string, opts ...IniOptions) (map[string]any, error) {
 }
 
 // MakeJsonic creates a jsonic instance configured for INI parsing.
-func MakeJsonic(opts ...IniOptions) *jsonic.Jsonic {
+func MakeJsonic(opts ...IniOptions) *tabnas.Tabnas {
 	var o IniOptions
 	if len(opts) > 0 {
 		o = opts[0]
@@ -142,19 +143,19 @@ func MakeJsonic(opts ...IniOptions) *jsonic.Jsonic {
 	bTrue := true
 	bFalse := false
 
-	jopts := jsonic.Options{
-		Rule: &jsonic.RuleOptions{
+	jopts := tabnas.Options{
+		Rule: &tabnas.RuleOptions{
 			Start: "ini",
 		},
-		Number: &jsonic.NumberOptions{
+		Number: &tabnas.NumberOptions{
 			Lex: &bFalse,
 		},
-		Value: &jsonic.ValueOptions{
+		Value: &tabnas.ValueOptions{
 			Lex: &bTrue,
 		},
-		Comment: &jsonic.CommentOptions{
+		Comment: &tabnas.CommentOptions{
 			Lex: &bTrue,
-			Def: map[string]*jsonic.CommentDef{
+			Def: map[string]*tabnas.CommentDef{
 				// Explicit Lex: post the comment.def merge alignment, a def for
 				// a NEW comment name (not a jsonic default) is inactive unless
 				// it sets Lex — so ini's `#` and `;` line comments turn it on.
@@ -164,14 +165,14 @@ func MakeJsonic(opts ...IniOptions) *jsonic.Jsonic {
 				"semi": {Line: &bTrue, Start: ";", Lex: &bTrue},
 			},
 		},
-		String: &jsonic.StringOptions{
+		String: &tabnas.StringOptions{
 			Lex:   &bTrue,
 			Chars: `'"`,
 		},
-		Text: &jsonic.TextOptions{
+		Text: &tabnas.TextOptions{
 			Lex: &bFalse,
 		},
-		Lex: &jsonic.LexOptions{
+		Lex: &tabnas.LexOptions{
 			EmptyResult: map[string]any{},
 		},
 	}
@@ -295,7 +296,7 @@ const grammarText = `
 // --- END EMBEDDED ini-grammar.jsonic ---
 
 // iniPlugin is the jsonic plugin that adds INI parsing support.
-func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
+func iniPlugin(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 	opts := mapToResolved(pluginOpts)
 
 	// Resolve inline comment options for Hoover block config.
@@ -346,8 +347,8 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 	// registered one, and Derive re-runs it, so a registered hoover would
 	// run twice on every derived child and grow the plugin list by one each
 	// generation. The merge is the one UseDefaults does.
-	hooverOpts := jsonic.Deep(map[string]any{}, hoover.Defaults).(map[string]any)
-	hooverOpts = jsonic.Deep(hooverOpts, map[string]any{
+	hooverOpts := tabnas.Deep(map[string]any{}, hoover.Defaults).(map[string]any)
+	hooverOpts = tabnas.Deep(hooverOpts, map[string]any{
 		"lex": map[string]any{
 			"order": 8500000,
 		},
@@ -448,8 +449,8 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 	needCustomMatcher := opts.multiline || (opts.inlineActive && opts.escWhitespace)
 
 	if needCustomMatcher {
-		makeMultilineMatcher := func(cfg *jsonic.LexConfig, _opts *jsonic.Options) jsonic.LexMatcher {
-			return func(lex *jsonic.Lex, rule *jsonic.Rule) *jsonic.Token {
+		makeMultilineMatcher := func(cfg *tabnas.LexConfig, _opts *tabnas.Options) tabnas.LexMatcher {
+			return func(lex *tabnas.Lex, rule *tabnas.Rule) *tabnas.Token {
 				// Only match in value context (same as Hoover endofline block).
 				if rule == nil || rule.Parent == nil ||
 					(rule.Parent.Name != "pair" && rule.Parent.Name != "elem") {
@@ -583,9 +584,9 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 			}
 		}
 
-		j.SetOptions(jsonic.Options{
-			Lex: &jsonic.LexOptions{
-				Match: map[string]*jsonic.MatchSpec{
+		j.SetOptions(tabnas.Options{
+			Lex: &tabnas.LexOptions{
+				Match: map[string]*tabnas.MatchSpec{
 					"multiline": {
 						Order: 8400000, // Lower than Hoover (8.5e6), runs first.
 						Make:  makeMultilineMatcher,
@@ -604,17 +605,17 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 
 	// Function refs (matching @ names in the grammar file).
 	// State actions (@ini-bo, @table-bo, @table-bc) are auto-wired by Grammar().
-	refs := map[jsonic.FuncRef]any{
+	refs := map[tabnas.FuncRef]any{
 		// State actions.
-		"@ini-bo": jsonic.StateAction(func(r *jsonic.Rule, ctx *jsonic.Context) {
+		"@ini-bo": tabnas.StateAction(func(r *tabnas.Rule, ctx *tabnas.Context) {
 			r.Node = make(map[string]any)
 			ctx.U[declaredSectionsKey] = make(map[string]bool)
 		}),
 
-		"@table-bo": jsonic.StateAction(func(r *jsonic.Rule, ctx *jsonic.Context) {
+		"@table-bo": tabnas.StateAction(func(r *tabnas.Rule, ctx *tabnas.Context) {
 			r.Node = r.Parent.Node
 
-			if r.Prev != nil && r.Prev != jsonic.NoRule {
+			if r.Prev != nil && r.Prev != tabnas.NoRule {
 				if dive, ok := r.Prev.U["dive"].([]string); ok && len(dive) > 0 {
 					declaredSections, _ := ctx.U[declaredSectionsKey].(map[string]bool)
 					if declaredSections == nil {
@@ -659,8 +660,8 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 			}
 		}),
 
-		"@table-bc": jsonic.StateAction(func(r *jsonic.Rule, ctx *jsonic.Context) {
-			// The child `map` rule now builds its node as a *jsonic.OrderedMap
+		"@table-bc": tabnas.StateAction(func(r *tabnas.Rule, ctx *tabnas.Context) {
+			// The child `map` rule now builds its node as a *tabnas.OrderedMap
 			// (jsonic's default object node), so unwrap both sides to their
 			// underlying maps before merging the section's pairs up.
 			if childMap, ok := nodeMap(r.Child.Node); ok {
@@ -673,20 +674,20 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		}),
 
 		// Alt actions.
-		"@table-close-dive": jsonic.AltAction(func(r *jsonic.Rule, ctx *jsonic.Context) {
-			if r.Child != nil && r.Child != jsonic.NoRule {
+		"@table-close-dive": tabnas.AltAction(func(r *tabnas.Rule, ctx *tabnas.Context) {
+			if r.Child != nil && r.Child != tabnas.NoRule {
 				if dive, ok := r.Child.U["dive"].([]string); ok {
 					r.EnsureU()["dive"] = dive
 				}
 			}
 		}),
 
-		"@dive-push": jsonic.AltAction(func(r *jsonic.Rule, ctx *jsonic.Context) {
+		"@dive-push": tabnas.AltAction(func(r *tabnas.Rule, ctx *tabnas.Context) {
 			dive := getDive(r.Parent)
 			val, _ := r.O0.Val.(string)
 			dive = append(dive, val)
 			r.EnsureU()["dive"] = dive
-			if r.Parent != nil && r.Parent != jsonic.NoRule {
+			if r.Parent != nil && r.Parent != tabnas.NoRule {
 				r.Parent.EnsureU()["dive"] = dive
 			}
 		}),
@@ -694,20 +695,20 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		// Propagate child dive array up when dive rule closes.
 		// In TS, push() mutates the shared array in place, but Go's append
 		// may create a new backing array, leaving parent references stale.
-		"@dive-bc": jsonic.StateAction(func(r *jsonic.Rule, ctx *jsonic.Context) {
-			if r.Child != nil && r.Child != jsonic.NoRule {
+		"@dive-bc": tabnas.StateAction(func(r *tabnas.Rule, ctx *tabnas.Context) {
+			if r.Child != nil && r.Child != tabnas.NoRule {
 				if dive, ok := r.Child.U["dive"].([]string); ok {
 					r.EnsureU()["dive"] = dive
-					if r.Parent != nil && r.Parent != jsonic.NoRule {
+					if r.Parent != nil && r.Parent != tabnas.NoRule {
 						r.Parent.EnsureU()["dive"] = dive
 					}
 				}
 			}
 		}),
 
-		"@pair-key-eq": jsonic.AltAction(func(r *jsonic.Rule, ctx *jsonic.Context) {
+		"@pair-key-eq": tabnas.AltAction(func(r *tabnas.Rule, ctx *tabnas.Context) {
 			key := tokenString(r.O0)
-			// The map rule's node is a *jsonic.OrderedMap; unwrap it (reads
+			// The map rule's node is a *tabnas.OrderedMap; unwrap it (reads
 			// and existing-key updates go through the underlying map, new
 			// keys via nodeSet to keep order).
 			nm, _ := nodeMap(r.Node)
@@ -737,7 +738,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 			}
 		}),
 
-		"@pair-key-bool": jsonic.AltAction(func(r *jsonic.Rule, ctx *jsonic.Context) {
+		"@pair-key-bool": tabnas.AltAction(func(r *tabnas.Rule, ctx *tabnas.Context) {
 			// boolKey, not tokenString: the canonical reads `r.o0.val`
 			// and declares a key only when it is a STRING, so a line
 			// holding `true`, `false` or `null` and nothing else declares
@@ -750,13 +751,13 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 			}
 		}),
 
-		"@pair-close-err": jsonic.AltError(func(r *jsonic.Rule, ctx *jsonic.Context) *jsonic.Token {
+		"@pair-close-err": tabnas.AltError(func(r *tabnas.Rule, ctx *tabnas.Context) *tabnas.Token {
 			// Not used in Go (CL token is disabled).
 			return nil
 		}),
 
 		// Did this table's before-open handler flag a duplicate section?
-		"@is-duplicate-section": jsonic.AltCond(func(r *jsonic.Rule, ctx *jsonic.Context) bool {
+		"@is-duplicate-section": tabnas.AltCond(func(r *tabnas.Rule, ctx *tabnas.Context) bool {
 			if r.U == nil {
 				return false
 			}
@@ -767,7 +768,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		// The duplicate itself. The dotted path is not any single token's
 		// src, so it rides along as the {section} detail the message
 		// template reads.
-		"@duplicate-section": jsonic.AltError(func(r *jsonic.Rule, ctx *jsonic.Context) *jsonic.Token {
+		"@duplicate-section": tabnas.AltError(func(r *tabnas.Rule, ctx *tabnas.Context) *tabnas.Token {
 			tkn := altErrToken(r, ctx)
 			if tkn == nil {
 				return nil
@@ -782,7 +783,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		// newline, or at end of input. The dive rule opened on the #DK
 		// segment token, so that token carries both the text for the
 		// message and the position to point at.
-		"@dive-unterminated": jsonic.AltError(func(r *jsonic.Rule, ctx *jsonic.Context) *jsonic.Token {
+		"@dive-unterminated": tabnas.AltError(func(r *tabnas.Rule, ctx *tabnas.Context) *tabnas.Token {
 			tkn := altErrToken(r, ctx)
 			if tkn == nil {
 				return nil
@@ -790,16 +791,16 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 			return tkn.Bad("unterminated_section")
 		}),
 
-		"@val-empty": jsonic.AltAction(func(r *jsonic.Rule, ctx *jsonic.Context) {
+		"@val-empty": tabnas.AltAction(func(r *tabnas.Rule, ctx *tabnas.Context) {
 			r.Node = ""
 		}),
 
 		// Conditions.
-		"@is-table-parent": jsonic.AltCond(func(r *jsonic.Rule, ctx *jsonic.Context) bool {
+		"@is-table-parent": tabnas.AltCond(func(r *tabnas.Rule, ctx *tabnas.Context) bool {
 			return r.Parent != nil && r.Parent.Name == "table"
 		}),
 
-		"@is-table-grandparent": jsonic.AltCond(func(r *jsonic.Rule, ctx *jsonic.Context) bool {
+		"@is-table-grandparent": tabnas.AltCond(func(r *tabnas.Rule, ctx *tabnas.Context) bool {
 			return r.Parent != nil && r.Parent.Parent != nil &&
 				r.Parent.Parent.Name == "table"
 		}),
@@ -810,9 +811,9 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		// own `line: { check: '@line-check' }` names it, as it does for the
 		// TS and Rust ports, so it arrives through options and a later
 		// SetOptions keeps it.
-		"@line-check": jsonic.LexCheck(func(lex *jsonic.Lex) *jsonic.LexCheckResult {
+		"@line-check": tabnas.LexCheck(func(lex *tabnas.Lex) *tabnas.LexCheckResult {
 			if lex.Ctx != nil && lex.Ctx.Rule != nil && lex.Ctx.Rule.Name == "val" {
-				return &jsonic.LexCheckResult{Done: true, Token: nil}
+				return &tabnas.LexCheckResult{Done: true, Token: nil}
 			}
 			return nil
 		}),
@@ -825,7 +826,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		return fmt.Errorf("failed to parse ini grammar: %w", err)
 	}
 	// The grammar text is parsed by a stock jsonic instance, which now
-	// returns objects as insertion-ordered *jsonic.OrderedMap rather than a
+	// returns objects as insertion-ordered *tabnas.OrderedMap rather than a
 	// bare map[string]any. The grammar-conversion helpers below (and the
 	// parser's own MapToOptions/ResolveFuncRefs, which only recurse into
 	// map[string]any) expect plain maps, and grammar key order is
@@ -833,7 +834,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 	parsedMap, _ := deepPlain(parsed).(map[string]any)
 
 	// Build GrammarSpec with both options and rules from the grammar text.
-	grammarDef := &jsonic.GrammarSpec{
+	grammarDef := &tabnas.GrammarSpec{
 		Ref: refs,
 	}
 	if optionsMap, ok := parsedMap["options"].(map[string]any); ok {
@@ -872,7 +873,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 
 	// Is the lexer inside the value of a `key = value` pair? The three
 	// checks below only apply there. Mirrors the TS inValue() helper.
-	inValue := func(lex *jsonic.Lex) bool {
+	inValue := func(lex *tabnas.Lex) bool {
 		if lex.Ctx == nil || lex.Ctx.Rule == nil {
 			return false
 		}
@@ -890,9 +891,9 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 	// the value at the marker and the comment is lexed normally once the
 	// value rule has closed. Mirrors the TS 'ini-comment-check' config
 	// modifier.
-	commentCheck := func(lex *jsonic.Lex) *jsonic.LexCheckResult {
+	commentCheck := func(lex *tabnas.Lex) *tabnas.LexCheckResult {
 		if inValue(lex) {
-			return &jsonic.LexCheckResult{Done: true, Token: nil}
+			return &tabnas.LexCheckResult{Done: true, Token: nil}
 		}
 		return nil
 	}
@@ -905,9 +906,9 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 	// key. Declining in value position hands the whole line to Hoover,
 	// which does the same keyword lookup on the complete, trimmed value.
 	// Mirrors the TS 'ini-text-check' config modifier.
-	textCheck := func(lex *jsonic.Lex) *jsonic.LexCheckResult {
+	textCheck := func(lex *tabnas.Lex) *tabnas.LexCheckResult {
 		if inValue(lex) {
-			return &jsonic.LexCheckResult{Done: true, Token: nil}
+			return &tabnas.LexCheckResult{Done: true, Token: nil}
 		}
 		return nil
 	}
@@ -920,7 +921,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 	// unterminated quote is left to the string matcher, which abandons it
 	// and lets Hoover take the raw line. Mirrors the TS 'ini-string-check'
 	// config modifier.
-	stringCheck := func(lex *jsonic.Lex) *jsonic.LexCheckResult {
+	stringCheck := func(lex *tabnas.Lex) *tabnas.LexCheckResult {
 		if !inValue(lex) {
 			return nil
 		}
@@ -970,7 +971,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 			return nil
 		}
 		// Trailing text after the closing quote: not a quoted value.
-		return &jsonic.LexCheckResult{Done: true, Token: nil}
+		return &tabnas.LexCheckResult{Done: true, Token: nil}
 	}
 
 	// The depth budget. A section header nests one level per dotted
@@ -985,28 +986,25 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 	// re-runs on every rebuild and would override a caller's own budget,
 	// where the canonical runtime lets the caller's replace it
 	// (DIVERGENCE.md, "The depth limit under a caller's parse budget").
-	// jsonic does not re-export BudgetOptions, so it is built from a map,
-	// and MapToOptions reads the checker only as a plain
-	// func(*jsonic.Context) bool.
-	hooks := jsonic.MapToOptions(map[string]any{
-		"parse": map[string]any{"budget": map[string]any{
-			"checkEveryN": 1,
-			"onCheck": func(ctx *jsonic.Context) bool {
+	hooks := tabnas.Options{
+		Parse: &tabnas.ParseOptions{Budget: &tabnas.BudgetOptions{
+			CheckEveryN: 1,
+			OnCheck: func(ctx *tabnas.Context) bool {
 				return depth(ctx) <= DepthLimit
 			},
 		}},
-	})
+	}
 	// Each modifier writes the config being built, which SetOptions then
 	// copies over the live one: a write to j.Config() here would be lost.
-	hooks.Property = &jsonic.PropertyOptions{
-		ConfigModify: map[string]jsonic.ConfigModifier{
-			"ini-comment-check": func(built *jsonic.LexConfig, _ *jsonic.Options) {
+	hooks.Property = &tabnas.PropertyOptions{
+		ConfigModify: map[string]tabnas.ConfigModifier{
+			"ini-comment-check": func(built *tabnas.LexConfig, _ *tabnas.Options) {
 				built.CommentCheck = commentCheck
 			},
-			"ini-text-check": func(built *jsonic.LexConfig, _ *jsonic.Options) {
+			"ini-text-check": func(built *tabnas.LexConfig, _ *tabnas.Options) {
 				built.TextCheck = textCheck
 			},
-			"ini-string-check": func(built *jsonic.LexConfig, _ *jsonic.Options) {
+			"ini-string-check": func(built *tabnas.LexConfig, _ *tabnas.Options) {
 				built.StringCheck = stringCheck
 			},
 		},
@@ -1015,7 +1013,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 	// is a key. The grammar says so with `slash: null` and `multi: null`,
 	// which TS and Rust honour, but the map form drops a null definition
 	// (see above), so the two go here as typed nils, which do delete.
-	hooks.Comment = &jsonic.CommentOptions{Def: map[string]*jsonic.CommentDef{
+	hooks.Comment = &tabnas.CommentOptions{Def: map[string]*tabnas.CommentDef{
 		"slash": nil,
 		"multi": nil,
 	}}
@@ -1025,9 +1023,9 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 	// Mirrors TS: rs.fnref(refs).open([...], { custom: filter })
 	// Prepends INI-specific alts, filters out json/list group alts,
 	// and preserves hoover's prepended #HV alt.
-	j.Rule("val", func(rs *jsonic.RuleSpec, _ *jsonic.Parser) {
-		rs.AddBO(func(r *jsonic.Rule, ctx *jsonic.Context) {
-			r.Node = jsonic.Undefined
+	j.Rule("val", func(rs *tabnas.RuleSpec, _ *tabnas.Parser) {
+		rs.AddBO(func(r *tabnas.Rule, ctx *tabnas.Context) {
+			r.Node = tabnas.Undefined
 		})
 
 		HK := j.Token("#HK")
@@ -1035,7 +1033,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 
 		// Filter out json,list group alts (matching TS custom filter)
 		// and hoover-prepended #HK/#DK alts that don't belong in val.
-		filtered := make([]*jsonic.AltSpec, 0, len(rs.OpenAlts()))
+		filtered := make([]*tabnas.AltSpec, 0, len(rs.OpenAlts()))
 		for _, alt := range rs.OpenAlts() {
 			if alt.G == "json,list" {
 				continue
@@ -1049,26 +1047,26 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 		}
 
 		// Prepend INI-specific alts before existing (hoover) alts.
-		iniAlts := []*jsonic.AltSpec{
+		iniAlts := []*tabnas.AltSpec{
 			// Since OS,CS,EQ,DOT are fixed tokens, they are lexed before
 			// Hoover gets to run, so a value that *starts* with one of them
 			// never reaches the endofline block. Concat the fixed token
 			// source with the rest of the value instead. All four are
 			// alternatives for the same slot (matching TS ['#OS #CS #EQ #DOT']).
-			{S: [][]jsonic.Tin{{OS, CS, EQ, DOT}}, R: "val",
+			{S: [][]tabnas.Tin{{OS, CS, EQ, DOT}}, R: "val",
 				U: map[string]any{"ini_prev": true}},
 			// End of input: empty value.
-			{S: [][]jsonic.Tin{{ZZ}},
-				A: func(r *jsonic.Rule, ctx *jsonic.Context) {
+			{S: [][]tabnas.Tin{{ZZ}},
+				A: func(r *tabnas.Rule, ctx *tabnas.Context) {
 					r.Node = ""
 				}},
 		}
 		rs.ClearOpen()
 		rs.AddOpen(append(iniAlts, filtered...)...)
 
-		rs.AddAC(func(r *jsonic.Rule, ctx *jsonic.Context) {
+		rs.AddAC(func(r *tabnas.Rule, ctx *tabnas.Context) {
 			// Resolve value.
-			if jsonic.IsUndefined(r.Node) || r.Node == nil {
+			if tabnas.IsUndefined(r.Node) || r.Node == nil {
 				if r.O0 != nil && !r.O0.IsNoToken() {
 					r.Node = resolveTokenVal(r.O0)
 				} else {
@@ -1102,7 +1100,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 			// its token source, and every link's node is updated —
 			// including the first, which is the node the pair rule reads.
 			// Stopping at the first link left that node unset.
-			for p := r.Prev; p != nil && p != jsonic.NoRule; p = p.Prev {
+			for p := r.Prev; p != nil && p != tabnas.NoRule; p = p.Prev {
 				if _, ok := p.U["ini_prev"]; !ok {
 					break
 				}
@@ -1114,7 +1112,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 			// above: an array entry whose value starts with a fixed token
 			// (`k[] = [x`) needs both the concatenation and the push, or
 			// the entry is silently dropped.
-			if r.Parent != nil && r.Parent != jsonic.NoRule {
+			if r.Parent != nil && r.Parent != tabnas.NoRule {
 				if arr, ok := r.Parent.EnsureU()["ini_array"].([]any); ok {
 					arr = append(arr, r.Node)
 					r.Parent.EnsureU()["ini_array"] = arr
@@ -1126,7 +1124,7 @@ func iniPlugin(j *jsonic.Jsonic, pluginOpts map[string]any) error {
 			}
 
 			// Normal pair assignment.
-			if r.Parent != nil && r.Parent != jsonic.NoRule {
+			if r.Parent != nil && r.Parent != tabnas.NoRule {
 				if key, ok := r.Parent.EnsureU()["key"].(string); ok {
 					if _, isPair := r.Parent.EnsureU()["pair"]; isPair {
 						nodeSet(r.Parent.Node, key, r.Node)
@@ -1167,7 +1165,7 @@ func isLevelRule(name string) bool {
 // length-based limit would encode that ratio. RSI is the live top of the
 // stack: entries above it are spent rules the engine has not overwritten
 // yet.
-func depth(ctx *jsonic.Context) int {
+func depth(ctx *tabnas.Context) int {
 	levels := 0
 	if ctx.Rule != nil && isLevelRule(ctx.Rule.Name) {
 		levels++
@@ -1285,8 +1283,8 @@ func mapToResolved(m map[string]any) *resolved {
 	return resolve(&IniOptions{})
 }
 
-func getDive(r *jsonic.Rule) []string {
-	if r == nil || r == jsonic.NoRule {
+func getDive(r *tabnas.Rule) []string {
+	if r == nil || r == tabnas.NoRule {
 		return nil
 	}
 	if dive, ok := r.EnsureU()["dive"].([]string); ok {
@@ -1297,7 +1295,7 @@ func getDive(r *jsonic.Rule) []string {
 
 // boolKey is the key a BARE line declares: the token's value when it
 // carries a string, and nothing otherwise.
-func boolKey(t *jsonic.Token) string {
+func boolKey(t *tabnas.Token) string {
 	if t == nil || t.IsNoToken() {
 		return ""
 	}
@@ -1307,7 +1305,7 @@ func boolKey(t *jsonic.Token) string {
 	return ""
 }
 
-func tokenString(t *jsonic.Token) string {
+func tokenString(t *tabnas.Token) string {
 	if t == nil || t.IsNoToken() {
 		return ""
 	}
@@ -1317,8 +1315,8 @@ func tokenString(t *jsonic.Token) string {
 	return t.Src
 }
 
-func resolveTokenVal(t *jsonic.Token) any {
-	if !jsonic.IsUndefined(t.Val) {
+func resolveTokenVal(t *tabnas.Token) any {
+	if !tabnas.IsUndefined(t.Val) {
 		return t.Val
 	}
 	return t.Src
@@ -1330,7 +1328,7 @@ func resolveTokenVal(t *jsonic.Token) any {
 // token is then the one that actually stopped the parse, and the only one
 // carrying a usable position. Returns nil when neither is available, which
 // tells the caller to raise nothing.
-func altErrToken(r *jsonic.Rule, ctx *jsonic.Context) *jsonic.Token {
+func altErrToken(r *tabnas.Rule, ctx *tabnas.Context) *tabnas.Token {
 	if r.ON > 0 && r.O0 != nil && !r.O0.IsNoToken() {
 		return r.O0
 	}
@@ -1344,14 +1342,14 @@ func altErrToken(r *jsonic.Rule, ctx *jsonic.Context) *jsonic.Token {
 }
 
 // nodeMap returns the underlying string-keyed map for a parse node,
-// unwrapping a *jsonic.OrderedMap (its Vals) or accepting a plain
+// unwrapping a *tabnas.OrderedMap (its Vals) or accepting a plain
 // map[string]any. Reads via the returned map, and value updates to keys
 // that already exist, are safe on either shape; use nodeSet to add new
 // keys so a *OrderedMap keeps its key order. The bool reports whether node
 // was one of those object shapes.
 func nodeMap(node any) (map[string]any, bool) {
 	switch m := node.(type) {
-	case *jsonic.OrderedMap:
+	case *tabnas.OrderedMap:
 		if m.Vals == nil {
 			m.Vals = map[string]any{}
 		}
@@ -1363,11 +1361,11 @@ func nodeMap(node any) (map[string]any, bool) {
 }
 
 // nodeSet assigns key=val on a parse node, whether it is a
-// *jsonic.OrderedMap (via Set, so a new key is appended to Keys and order
+// *tabnas.OrderedMap (via Set, so a new key is appended to Keys and order
 // is preserved) or a plain map[string]any.
 func nodeSet(node any, key string, val any) {
 	switch m := node.(type) {
-	case *jsonic.OrderedMap:
+	case *tabnas.OrderedMap:
 		m.Set(key, val)
 	case map[string]any:
 		m[key] = val
@@ -1375,13 +1373,13 @@ func nodeSet(node any, key string, val any) {
 }
 
 // deepPlain converts a parsed value tree into plain Go containers,
-// unwrapping every *jsonic.OrderedMap into a map[string]any (dropping the
+// unwrapping every *tabnas.OrderedMap into a map[string]any (dropping the
 // remembered key order) and recursing through nested objects and slices.
 // The grammar-conversion code and the parser's own MapToOptions expect
 // bare map[string]any, and grammar key order carries no meaning, so this
 // normalization is safe here.
 func deepPlain(v any) any {
-	if om, ok := v.(*jsonic.OrderedMap); ok {
+	if om, ok := v.(*tabnas.OrderedMap); ok {
 		out := make(map[string]any, len(om.Keys))
 		for _, k := range om.Keys {
 			out[k] = deepPlain(om.Vals[k])
@@ -1528,7 +1526,7 @@ func jsString(v any) string {
 		// `String()` is this constant.
 		return "[object Object]"
 	}
-	if jsonic.IsUndefined(v) {
+	if tabnas.IsUndefined(v) {
 		return "undefined"
 	}
 	return fmt.Sprintf("%v", v)
@@ -1548,7 +1546,7 @@ func jsArrayString(items []any) string {
 		if 0 < i {
 			joined.WriteByte(',')
 		}
-		if item == nil || jsonic.IsUndefined(item) {
+		if item == nil || tabnas.IsUndefined(item) {
 			continue
 		}
 		joined.WriteString(jsString(item))
@@ -1650,14 +1648,14 @@ func stringPtr(s string) *string {
 }
 
 // convertRuleMap converts a parsed rule map into typed GrammarRuleSpec map.
-func convertRuleMap(ruleMap map[string]any) map[string]*jsonic.GrammarRuleSpec {
-	rules := make(map[string]*jsonic.GrammarRuleSpec, len(ruleMap))
+func convertRuleMap(ruleMap map[string]any) map[string]*tabnas.GrammarRuleSpec {
+	rules := make(map[string]*tabnas.GrammarRuleSpec, len(ruleMap))
 	for name, rDef := range ruleMap {
 		rd, ok := rDef.(map[string]any)
 		if !ok {
 			continue
 		}
-		grs := &jsonic.GrammarRuleSpec{}
+		grs := &tabnas.GrammarRuleSpec{}
 		if openDef, ok := rd["open"]; ok {
 			grs.Open = convertAlts(openDef)
 		}
@@ -1674,12 +1672,12 @@ func convertAlts(def any) any {
 	case []any:
 		return convertAltList(v)
 	case map[string]any:
-		result := &jsonic.GrammarAltListSpec{}
+		result := &tabnas.GrammarAltListSpec{}
 		if alts, ok := v["alts"].([]any); ok {
 			result.Alts = convertAltList(alts)
 		}
 		if inj, ok := v["inject"].(map[string]any); ok {
-			result.Inject = &jsonic.GrammarInjectSpec{}
+			result.Inject = &tabnas.GrammarInjectSpec{}
 			if app, ok := inj["append"].(bool); ok {
 				result.Inject.Append = app
 			}
@@ -1689,8 +1687,8 @@ func convertAlts(def any) any {
 	return nil
 }
 
-func convertAltList(alts []any) []*jsonic.GrammarAltSpec {
-	result := make([]*jsonic.GrammarAltSpec, 0, len(alts))
+func convertAltList(alts []any) []*tabnas.GrammarAltSpec {
+	result := make([]*tabnas.GrammarAltSpec, 0, len(alts))
 	for _, a := range alts {
 		if am, ok := a.(map[string]any); ok {
 			result = append(result, convertAlt(am))
@@ -1699,8 +1697,8 @@ func convertAltList(alts []any) []*jsonic.GrammarAltSpec {
 	return result
 }
 
-func convertAlt(m map[string]any) *jsonic.GrammarAltSpec {
-	ga := &jsonic.GrammarAltSpec{}
+func convertAlt(m map[string]any) *tabnas.GrammarAltSpec {
+	ga := &tabnas.GrammarAltSpec{}
 
 	if s, ok := m["s"]; ok {
 		switch sv := s.(type) {
