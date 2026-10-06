@@ -19,6 +19,7 @@ const TRANSLATION: TranslationParts = Object.freeze({
   "$schema": "https://tabnas.dev/schema/plugin.schema.json",
   "name": "@tabnas/ini",
   "go": "github.com/tabnas/ini/go",
+  "rust": "tabnas-ini",
   "description": "INI configuration-file parsing for the tabnas engine.",
   "base": "@tabnas/jsonic",
   "engine": "@tabnas/parser",
