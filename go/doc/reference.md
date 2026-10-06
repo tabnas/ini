@@ -35,13 +35,14 @@ an empty map. On a malformed parse it returns a non-`nil` `error`.
 ### `MakeJsonic`
 
 ```go
-func MakeJsonic(opts ...IniOptions) *tabnasjsonic.Jsonic
+func MakeJsonic(opts ...IniOptions) *tabnas.Tabnas
 ```
 
-Returns a reusable `*tabnasjsonic.Jsonic` instance configured for INI
-parsing. Use it to parse many strings with the same options, or to
-apply further jsonic configuration with `SetOptions` (for example enabling
-number lexing). Its `Parse` method returns `(any, error)`; type-assert
+Returns a reusable `*tabnas.Tabnas` instance configured for INI
+parsing. jsonic's `Jsonic` type is an alias of `tabnas.Tabnas`. Use it
+to parse many strings with the same options, or to apply further
+jsonic configuration with `SetOptions` (for example enabling number
+lexing). Its `Parse` method returns `(any, error)`; type-assert
 the result to `map[string]any`.
 
 `MakeJsonic` registers the plugin on the instance, so `Derive` re-runs it

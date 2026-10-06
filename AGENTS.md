@@ -81,7 +81,7 @@ There are three implementations that must behave identically — TypeScript
 | Path | What it is |
 |---|---|
 | [`ts/`](ts/) | **Canonical** TypeScript implementation — the `@tabnas/ini` package. Plugin in [`src/ini.ts`](ts/src/ini.ts) (the only source file). Imports `@tabnas/parser`, `@tabnas/jsonic`, and `@tabnas/hoover`. |
-| [`go/`](go/) | Go port — `github.com/tabnas/ini/go`. Plugin in [`go/ini.go`](go/ini.go). Imports `jsonic` (re-exports the engine API) and `hoover`. |
+| [`go/`](go/) | Go port — `github.com/tabnas/ini/go`. Plugin in [`go/ini.go`](go/ini.go). Imports the engine as `tabnas` (`github.com/tabnas/parser/go`) for the engine's types, `jsonic` for jsonic's own `jsonic.Make`, and `hoover`. |
 | [`rs/`](rs/) | Rust port — crate `tabnas-ini`, library `tabnas_ini`. Plugin in [`rs/src/lib.rs`](rs/src/lib.rs). Path dependencies on the `tabnas`, `tabnas-jsonic` and `tabnas-hoover` sibling checkouts. See [`rs/AGENTS.md`](rs/AGENTS.md). |
 | [`alchemy/render.alc`](alchemy/render.alc) | **INI's render**, an [alchemy](https://github.com/tabnas/alchemy) library whose entry point `ini-render` writes a tree's events as one INI document, in the dialect the reader builds its values from; its header comment states the reader facts the profile rests on (every key and string value double-quoted, a nested object as a `[dotted.header]`, an array as `"key[]" = item` lines, a member after a section inside a section after that section's header again, a root member after a section refused). The `translate` object in [`tabnas.plugin.json`](tabnas.plugin.json) names it, with the shapes (`tree` read, `tree` written) and the `loss` sentences a host prints. The Rust crate embeds copies of both under [`rs/translate/`](rs/translate/) as `render_text()` and `manifest_text()`, since a packaged crate holds nothing outside `rs/`: change the file at the root, then copy it there; `rs/tests/translate_test.rs` holds the copies to the files. Running the render takes alchemy, which this repository does not depend on, so the round trip (every fixture read, written through the render, read back) runs in the host's suite. |
 | [`ini-grammar.jsonic`](ini-grammar.jsonic) | The grammar, **source of truth for every runtime**, at the REPO ROOT (not in `ts/`). Embedded verbatim into `ts/src/ini.ts`, `go/ini.go` AND `rs/src/lib.rs`. |
@@ -113,19 +113,24 @@ publish tagged releases):
   devDependencies for local builds. `@tabnas/debug` and `@tabnas/railroad`
   are dev-only `file:` devDependencies (debug for the `debug.model()`
   test, railroad to regenerate `ts/doc/grammar.{svg,txt}`).
-- Go: `go/go.mod` requires `github.com/tabnas/hoover/go` and
-  `github.com/tabnas/jsonic/go` directly, with `parser`, `json`, and
-  `debug` as indirect requires. All five are wired with `replace
-  github.com/tabnas/<dep>/go => ../../<dep>/go`. `ini.go` imports
-  `jsonic` (not `parser`) and `hoover` — jsonic re-exports the engine
-  types in Go.
+- Go: `go/go.mod` requires `github.com/tabnas/hoover/go`,
+  `github.com/tabnas/jsonic/go` and `github.com/tabnas/parser/go`
+  directly (and `github.com/tabnas/support/go` for the tests), with
+  `github.com/tabnas/json/go` as the indirect module jsonic pulls in.
+  There is no `replace` directive: every requirement names a published
+  version, and the `go.work` that admin's `make link` generates points Go
+  at the sibling checkouts. `ini.go` imports the engine as `tabnas` for
+  the engine's types (`tabnas.Tabnas`, `tabnas.Rule`, `tabnas.Options`,
+  …), `jsonic` for jsonic's own `jsonic.Make`, which builds the base
+  engine in `MakeJsonic` and reads the grammar text, and `hoover`.
 - Rust: [`rs/Cargo.toml`](rs/Cargo.toml) takes `tabnas`,
   `tabnas-jsonic` and `tabnas-hoover` as `path` dependencies on
   `../../<dep>/rs`, with `tabnas-support` the same way as a
   dev-dependency. jsonic takes the JSON core (`tabnas-json`) that way in
-  turn, so that checkout is needed too. Unlike Go, Rust imports `tabnas`
-  directly: a crate's dependencies are not passed on to its dependents,
-  so `tabnas-jsonic` alone does not put the engine in scope.
+  turn, so that checkout is needed too. Rust imports `tabnas` directly,
+  as Go does, and has to: a crate's dependencies are not passed on to
+  its dependents, so `tabnas-jsonic` alone does not put the engine in
+  scope.
   `ci/rust/run.sh` checks for all five checkouts before it runs anything.
 
 Clone the siblings (`parser`, `json`, `jsonic`, `hoover`, `support`, plus
