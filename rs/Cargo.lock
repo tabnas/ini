@@ -151,14 +151,14 @@ dependencies = [
 
 [[package]]
 name = "tabnas-hoover"
-version = "0.3.11"
+version = "0.3.12"
 dependencies = [
  "tabnas-parser",
 ]
 
 [[package]]
 name = "tabnas-ini"
-version = "0.5.14"
+version = "0.5.15"
 dependencies = [
  "indexmap",
  "serde_json",
@@ -170,7 +170,7 @@ dependencies = [
 
 [[package]]
 name = "tabnas-json"
-version = "0.5.13"
+version = "0.5.14"
 dependencies = [
  "regex",
  "serde_json",
@@ -179,7 +179,7 @@ dependencies = [
 
 [[package]]
 name = "tabnas-jsonic"
-version = "0.7.4"
+version = "0.7.5"
 dependencies = [
  "indexmap",
  "regex",
@@ -190,7 +190,7 @@ dependencies = [
 
 [[package]]
 name = "tabnas-parser"
-version = "0.12.9"
+version = "0.12.10"
 dependencies = [
  "indexmap",
  "regex",
@@ -200,7 +200,7 @@ dependencies = [
 
 [[package]]
 name = "tabnas-support"
-version = "0.3.6"
+version = "0.3.7"
 dependencies = [
  "serde_json",
 ]
