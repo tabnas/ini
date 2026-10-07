@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /* Build test/corpus/ini-corpus.json from the fetched third-party upstreams.
  *
- * Run by scripts/fetch-ini-corpus.sh. Both runtimes read the generated
+ * Run by scripts/fetch-ini-corpus.sh. Every runtime reads the generated
  * manifest, so the valid/invalid labelling and the expected values are
- * decided ONCE, here, and cannot drift between TypeScript and Go.
+ * decided ONCE, here, and cannot drift between TypeScript, Go and Rust.
  *
  * The manifest this writes is COMMITTED (the upstream checkouts it reads
  * are not — test/corpus/upstream/ is gitignored). That is why the suites

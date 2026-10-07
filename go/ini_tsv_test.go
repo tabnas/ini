@@ -4,11 +4,11 @@ package tabnasini
 // `test/spec/*.tsv` fixtures at the repo root (see ../test/AGENTS.md).
 //
 // The fixture loader, the escape codec, the ERROR: contract and the row
-// loop all come from github.com/tabnas/support/go, whose TypeScript half
-// ts/test/ini-tsv.test.ts uses to run the SAME files — so the two
-// implementations cannot drift without one of them going red, and neither
-// can the two loaders. (They had: this repo's loader decoded escapes in
-// EVERY column, including the JSON `expected` one.)
+// loop all come from github.com/tabnas/support/go, whose TypeScript and
+// Rust halves ts/test/ini-tsv.test.ts and rs/tests/parity_test.rs use to
+// run the SAME files — so the implementations cannot drift without one of
+// them going red, and neither can the loaders. (They had: this repo's
+// loader decoded escapes in EVERY column, including the JSON `expected` one.)
 //
 // What is left here is only what is specific to ini: which options each
 // fixture is parsed with, and the messages a rejection must carry.
@@ -24,7 +24,7 @@ import (
 
 // ini's fixtures carry no `opts` column: a whole file is parsed with one
 // option set, named here. A fixture with no entry gets the defaults, so
-// adding one runs it in both runtimes without editing a list.
+// adding one runs it in every runtime without editing a list.
 //
 // Keep in sync with OPTIONS in ts/test/ini-tsv.test.ts.
 func tsvOptions() map[string]IniOptions {
@@ -153,7 +153,7 @@ func TestSpec(t *testing.T) {
 		// error's Code by the shared runner's default, which is the contract
 		// this package wants. Both codes the fixtures pin —
 		// duplicate_section and unterminated_section — are declared in
-		// ini-grammar.jsonic and raised by both runtimes, so nothing has to
+		// ini-grammar.jsonic and raised by every runtime, so nothing has to
 		// be resolved through message wording (which is deliberately not a
 		// cross-runtime contract).
 		support.Runner{

@@ -197,8 +197,8 @@ _, err := tabnasini.Parse("[a]\nx=1\n[a]\ny=2", tabnasini.IniOptions{
 // err != nil, code "duplicate_section", naming the path [a]
 ```
 
-Match on the code rather than the message: the code is the contract both
-runtimes hold to, and the wording is not.
+Match on the code rather than the message: the code is the contract every
+runtime holds to, and the wording is not.
 
 ## Keep spaces and bracket keys with quotes
 

@@ -26,17 +26,9 @@ npm install @tabnas/ini @tabnas/parser @tabnas/jsonic @tabnas/hoover
 
 # Go
 go get github.com/tabnas/ini/go@latest
-```
 
-Rust takes a path dependency on sibling checkouts, because no registry
-carries the engine or its plugins. Clone `tabnas/parser`, `tabnas/json`,
-`tabnas/jsonic`, and `tabnas/hoover` next to this repository and point at
-them:
-
-```toml
-[dependencies]
-tabnas-ini = { path = "../ini/rs" }
-tabnas = { package = "tabnas-parser", path = "../parser/rs" }
+# Rust
+cargo add tabnas-ini
 ```
 
 ## Example

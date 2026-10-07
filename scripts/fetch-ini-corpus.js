@@ -11,7 +11,7 @@
  * THE UPSTREAM CHECKOUTS ARE NEVER COMMITTED: test/corpus/upstream/ is
  * gitignored. The assembled manifest test/corpus/ini-corpus.json IS
  * committed, on purpose — it is self-contained (sources, per-document
- * SHA-256, oracle values, pinned upstream SHAs), so both test suites run
+ * SHA-256, oracle values, pinned upstream SHAs), so all three suites run
  * with no network and cannot silently skip. This script is therefore a
  * REGENERATION and AUDIT tool, not a test prerequisite: nothing in the
  * test path runs it.
