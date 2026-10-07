@@ -4,9 +4,10 @@
 // at the repo root (see ../../test/AGENTS.md).
 //
 // The fixture loader, the escape codec, the `ERROR:<code>` contract and the
-// row loop all come from @tabnas/support, whose Go half `go/ini_tsv_test.go`
-// uses to run the SAME files — so the two implementations cannot drift
-// without one of them going red, and neither can the two loaders.
+// row loop all come from @tabnas/support, whose Go and Rust halves
+// `go/ini_tsv_test.go` and `rs/tests/parity_test.rs` use to run the SAME
+// files — so the implementations cannot drift without one of them going
+// red, and neither can the loaders.
 //
 // What is left here is only what is specific to ini: which options each
 // fixture is parsed with, and the messages a rejection must carry.
@@ -22,7 +23,7 @@ import { Ini, IniOptions } from '../dist/ini'
 
 // ini's fixtures carry no `opts` column: a whole file is parsed with one
 // option set, named here. A fixture with no entry gets the defaults, so
-// adding one runs it in both runtimes without editing a list.
+// adding one runs it in every runtime without editing a list.
 //
 // Keep in sync with tsvOptions in go/ini_tsv_test.go.
 const OPTIONS: Record<string, IniOptions> = {
@@ -97,7 +98,7 @@ for (const spec of loadSpecDir(findSpecDir(__dirname), { minCols: 2 })) {
   // error's `code` by the shared runner's default, which is the contract
   // this package wants. Both codes the fixtures pin — duplicate_section and
   // unterminated_section — are declared in ini-grammar.jsonic and raised by
-  // both runtimes, so nothing has to be resolved through message wording
+  // every runtime, so nothing has to be resolved through message wording
   // (which is deliberately not a cross-runtime contract).
   makeRunner({
     parse: (input) =>

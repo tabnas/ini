@@ -24,8 +24,9 @@ Crate `tabnas-ini`, library `tabnas_ini`. The engine (`tabnas`), the
 relaxed-JSON base (`tabnas-jsonic`), the block lexer (`tabnas-hoover`)
 and the fixture runner (`tabnas-support`, dev only) are **path
 dependencies on sibling checkouts**. jsonic takes the JSON core
-(`tabnas-json`) the same way, so that checkout is needed too. None is
-published, so there is no registry version to fall back on.
+(`tabnas-json`) the same way, so that checkout is needed too. All of
+them are on crates.io, but the committed manifest names them by path
+alone, so there is no registry version to fall back on.
 
 ```bash
 cargo build --all-targets

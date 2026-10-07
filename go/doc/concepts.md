@@ -52,9 +52,9 @@ result to `map[string]any`.
    (`j.Rule(name, nil)`), keeping the live grammar (and the railroad
    diagram generated from it) limited to what INI uses.
 
-The grammar is **data** shared between the two ports: the same
-`ini-grammar.jsonic` is embedded into both `ts/src/ini.ts` and
-`go/ini.go` by the embed step, so the rule structure cannot drift.
+The grammar is **data** shared by all three ports: the same
+`ini-grammar.jsonic` is embedded into `ts/src/ini.ts`, `go/ini.go` and
+`rs/src/lib.rs` by the embed step, so the rule structure cannot drift.
 
 ## The grammar model
 

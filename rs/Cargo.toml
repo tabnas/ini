@@ -25,8 +25,10 @@ path = "src/lib.rs"
 # block hoovering plugin it lexes values with are all consumed as
 # SIBLING CHECKOUTS, the standard tabnas development model: clone
 # https://github.com/tabnas/parser, https://github.com/tabnas/jsonic and
-# https://github.com/tabnas/hoover next to this repo. None is published,
-# so there is no registry version to fall back on.
+# https://github.com/tabnas/hoover next to this repo. All three are on
+# crates.io, but this committed manifest names them by path alone, so there
+# is no registry version to fall back on; crates-release.yml rewrites the
+# paths into crates.io requirements when it publishes this crate.
 #
 # Clone https://github.com/tabnas/json as well. It gets no entry here,
 # because it is tabnas-jsonic that depends on it, but cargo reads the

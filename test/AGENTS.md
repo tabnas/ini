@@ -28,8 +28,8 @@ Tab-separated, one case per line, with a header row naming the columns
   that now, write `\\\n`: the 14 cells that relied on the old reading
   were re-encoded, by decoding them the old way and re-encoding them with
   the shared codec, so every one still means exactly what it meant.
-- **`ERROR:<code>` pins the error's `code`, exactly.** Both runners read
-  the text after the colon and compare it against the code the parser
+- **`ERROR:<code>` pins the error's `code`, exactly.** Every runner reads
+  the text after the colon and compares it against the code the parser
   answers with — the shared runner's default behaviour, with no
   per-runtime hook in between. The two codes the fixtures use,
   `duplicate_section` and `unterminated_section`, are declared in

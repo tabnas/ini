@@ -57,7 +57,7 @@ as `float64`.
 The grammar is the shared top-level
 [`ini-grammar.jsonic`](../ini-grammar.jsonic), embedded into
 [`ini.go`](ini.go). The railroad/syntax diagram (the grammar is the
-same for both ports) is in [`../ts/doc/grammar.svg`](../ts/doc/grammar.svg).
+same for every port) is in [`../ts/doc/grammar.svg`](../ts/doc/grammar.svg).
 
 ## License
 

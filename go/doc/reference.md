@@ -163,7 +163,7 @@ lexing on a `MakeJsonic` instance with
 
 The accepted grammar. The railroad diagram of the installed rules is in
 the [TS doc `grammar.svg`](../../ts/doc/grammar.svg) (the grammar is the
-same for both ports); the source grammar is
+same for every port); the source grammar is
 [`ini-grammar.jsonic`](../../ini-grammar.jsonic).
 
 ### Pairs

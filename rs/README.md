@@ -147,17 +147,12 @@ not.
 
 ## Install
 
-None of these crates is published to a registry, so they are consumed as
-**sibling checkouts**, the standard tabnas development model. Clone
-`https://github.com/tabnas/parser`, `https://github.com/tabnas/jsonic`,
-`https://github.com/tabnas/hoover` and `https://github.com/tabnas/json`
-next to this repository, then point at the ones you name directly:
+The engine is not part of this crate. All three crates the examples
+name are on crates.io, the engine as `tabnas-parser`, whose library is
+named `tabnas` in code:
 
-```toml
-[dependencies]
-tabnas-ini = { path = "../ini/rs" }
-tabnas-jsonic = { path = "../jsonic/rs" }
-tabnas = { package = "tabnas-parser", path = "../parser/rs" }
+```bash
+cargo add tabnas-ini tabnas-jsonic tabnas-parser
 ```
 
 All three entries are needed for the examples above. A crate's
@@ -165,11 +160,16 @@ dependencies are not passed on to its dependents, so `tabnas-ini` alone
 does not put `tabnas` or `tabnas_jsonic` in your extern prelude. Only
 `IniError` is re-exported.
 
-`json` is the one checkout with no entry in that table, and it is not
-optional: `tabnas-jsonic` reaches the strict-JSON core through its own
-path dependency on `../../json/rs`. Cargo reads every manifest in the
-graph before it compiles anything, so without that checkout the build
-stops while resolving, and no example is ever reached.
+In this repository the engine, jsonic and hoover are taken by path from
+sibling checkouts instead, so clone `https://github.com/tabnas/parser`,
+`https://github.com/tabnas/jsonic`, `https://github.com/tabnas/hoover`
+and `https://github.com/tabnas/json` next to it. `json` gets no entry in
+`Cargo.toml`, and it is not optional: `tabnas-jsonic` reaches the
+strict-JSON core through its own path dependency on `../../json/rs`.
+Cargo reads every manifest in the graph before it compiles anything, so
+without that checkout the build stops while resolving. The release
+workflow swaps those paths for crates.io versions when it publishes this
+crate.
 
 Running this crate's own test suite needs a fifth checkout,
 `https://github.com/tabnas/support`, which holds the shared fixture

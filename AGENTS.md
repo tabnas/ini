@@ -233,8 +233,8 @@ no "N/N examples" number to claim, and this repo does not claim one.
 What it claims instead, and what the suite verifies:
 
 1. **The documented dialect in `ts/doc/reference.md` is what the code
-   does.** That is the real contract; `test/spec/*.tsv` pins it in both
-   runtimes.
+   does.** That is the real contract; `test/spec/*.tsv` pins it in every
+   runtime.
 2. **Real-world INI does not crash it.** `test/corpus/ini-corpus.json`
    holds 36 `.ini` files taken verbatim, at pinned commit SHAs, from
    [inih](https://github.com/benhoyt/inih),
@@ -455,10 +455,16 @@ The steps, in order:
    `make version-rs V=x.y.z` does the two Rust sites and refreshes the
    crate's own entry in `rs/Cargo.lock`, which `ci/rust/run.sh` diffs — so
    the lockfile moves with them, and a stale one fails the Rust gate rather
-   than the version test. The crate is not published: it takes its siblings
-   as path dependencies and there is no registry release, so the version
-   sites and the lockfile are all a release moves on the Rust side. Nothing
-   in steps 2 to 6 has a Rust half.
+   than the version test. Those are all a release moves on the Rust side
+   by hand: the crate itself ships with the step-5 dispatch. Once the Go
+   tag is on the remote, `release.yml`'s `crates` job hands it to
+   `crates-release.yml`, which publishes `rs/` from that tag to crates.io
+   over OIDC trusted publishing. It first rewrites the path dependencies
+   on the engine, jsonic and hoover into requirements on their newest
+   crates.io versions and drops the path-only `tabnas-support`
+   dev-dependency, so `cargo publish` verify-builds against what a
+   consumer gets. It skips a version crates.io already has, and a failed
+   crates job blocks and unpublishes nothing: re-run that job to repair it.
 2. Verify against the **published** dependencies rather than your checkout.
    The release runner installs fresh from the registry; a working tree
    usually does not, so reproduce that before believing anything:
@@ -479,12 +485,14 @@ The steps, in order:
    suite then passes against unreleased code while appearing to verify the
    published one. Reinstalling is the part that matters.
 
-   One thing a clean install does **not** isolate:
-   `ts/test/doc-examples.test.*` resolves `@tabnas/*` by filesystem path
-   (`const TABNAS = path.join(REPO, '..')`), not through `node_modules`. If
-   unbuilt sibling checkouts sit beside this repo, those blocks fail with
-   `MODULE_NOT_FOUND` no matter what you installed — build the siblings, or
-   verify somewhere they are absent.
+   A clean install covers the doc examples too.
+   `ts/test/doc-examples.test.*` resolves a doc example's `require` through
+   `node_modules` first, and every `@tabnas` package the tested blocks name
+   here, `@tabnas/parser` and `@tabnas/jsonic`, is a devDependency, so the
+   installed copy is what runs; `@tabnas/ini` itself resolves to this
+   repository's `ts/`. Only a `@tabnas/*` package that is not installed
+   falls back to the sibling checkout `../<x>/ts`
+   (`const TABNAS = path.join(REPO, '..')`), and no example here needs one.
 
    `npm test` already compiles here: `ts/package.json` sets `pretest` to
    `npm run build`, which npm runs automatically. No separate build step is
@@ -498,13 +506,17 @@ The steps, in order:
    ```bash
    (
      cd go
-     go mod edit -json | grep -q '"Replace": null' || { echo 'go.mod has a replace'; exit 1; }
+     go mod edit -json | jq -e '.Replace == null' >/dev/null || { echo 'go.mod has a replace'; exit 1; }
      GOWORK=off go test -count=1 ./...
    )
    ```
 
    `-count=1` because shared fixtures live outside the Go module, so a
-   changed corpus does not invalidate the test cache.
+   changed corpus does not invalidate the test cache. The check asks `jq`,
+   not `grep`: current Go leaves the `Replace` key out when there is no
+   replace, where older Go printed `"Replace": null`, and `jq` reads a
+   missing key as null, so the check passes on a clean `go.mod` and fails
+   on a replace either way.
 3. **Merge the bump through a reviewed PR.** That is the house convention —
    `CONTRIBUTING.md` squash-merges PRs and takes the title as the commit
    message — and what `release.yml`'s own header describes. A direct push to

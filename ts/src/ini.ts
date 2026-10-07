@@ -212,8 +212,8 @@ const depth = (ctx: any) => {
 
 // Whether a value already at a section path is a section, and so may be
 // continued rather than replaced. An array is not: `k[] =` builds one,
-// and a later header naming that key means a section, as both ports
-// read it.
+// and a later header naming that key means a section, as every port
+// reads it.
 const isSection = (value: any) =>
   null != value && 'object' === typeof value && !Array.isArray(value)
 

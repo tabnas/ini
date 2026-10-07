@@ -21,9 +21,8 @@ syntax, see the [reference](reference.md). For how it works, see the
 go get github.com/tabnas/ini/go@latest
 ```
 
-The engine and jsonic come in as transitive dependencies. (When
-building from a source checkout before the tabnas packages are
-published, see the sibling-checkout note in the [README](../README.md).)
+The engine and jsonic come in as transitive dependencies. (Both are
+published modules, so `go get` fetches them from the module proxy too.)
 
 ## 2. Parse a string
 
