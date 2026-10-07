@@ -102,17 +102,22 @@ There is **no CLI** in this repo — `ts/package.json` has no `bin`, and
 
 ## The tabnas engine dependency
 
-Every runtime depends on the unpublished `@tabnas` siblings via a
-**sibling checkout** (the standard tabnas dev model until the packages
-publish tagged releases):
+TypeScript and Go resolve published `@tabnas` packages, from the npm
+registry and the Go module proxy, so a sibling checkout is optional local
+wiring there. Only Rust needs one:
 
 - TypeScript: `@tabnas/parser`, `@tabnas/jsonic`, and `@tabnas/hoover` are
-  declared as `peerDependencies` (`parser`/`jsonic` `">=2"`, `hoover`
-  `">=0"`) in [`ts/package.json`](ts/package.json) and mirrored as
-  `file:../../parser/ts` / `file:../../jsonic/ts` / `file:../../hoover/ts`
-  devDependencies for local builds. `@tabnas/debug` and `@tabnas/railroad`
-  are dev-only `file:` devDependencies (debug for the `debug.model()`
-  test, railroad to regenerate `ts/doc/grammar.{svg,txt}`).
+  declared as `peerDependencies` (`">=0"`) in
+  [`ts/package.json`](ts/package.json) and mirrored as `"*"`
+  devDependencies for local builds (npm >=7 / Node >=24 auto-installs
+  peers; `engines.node` is `">=24"`). `@tabnas/debug`, `@tabnas/railroad`
+  and `@tabnas/support` are dev-only `"*"` devDependencies (debug for the
+  `debug.model()` test, railroad to regenerate
+  `ts/doc/grammar.{svg,txt}`, support for the shared fixture runner
+  `ini-tsv.test.ts` uses). None is a `file:` path: each resolves to
+  whatever the install leaves in `ts/node_modules/@tabnas/`, a symlink to
+  the sibling checkout where admin's `scripts/link.sh` wired one, the
+  registry copy otherwise.
 - Go: `go/go.mod` requires `github.com/tabnas/hoover/go`,
   `github.com/tabnas/jsonic/go` and `github.com/tabnas/parser/go`
   directly (and `github.com/tabnas/support/go` for the tests), with
@@ -133,9 +138,10 @@ publish tagged releases):
   scope.
   `ci/rust/run.sh` checks for all five checkouts before it runs anything.
 
-Clone the siblings (`parser`, `json`, `jsonic`, `hoover`, `support`, plus
-`debug`/`railroad` for the optional tests) next to this repo and build
-their TS first. CI does this for you (see below).
+Only the Rust side needs sibling checkouts: clone `parser`, `json`,
+`jsonic`, `hoover` and `support` next to this repo. CI clones the
+siblings it builds against and links them over the registry copies (see
+below).
 
 ## Authority and alignment rules
 
@@ -323,14 +329,15 @@ Two gaps used to live here, both rooted in
 TypeScript (from `ts/`):
 
 ```bash
-npm install            # auto-installs peers; resolves file: siblings
-npm run build          # embeds grammar, builds the hoover sibling's tsconfig, then tsc --build src test
+npm install            # auto-installs peers; resolves the @tabnas devDependencies from the registry
+npm run build          # embeds grammar, builds the installed hoover's tsconfig, then tsc --build src test
 npm test               # node --test over dist-test/*.test.js
 ```
 
 Note `npm run build` runs `tsc -p node_modules/@tabnas/hoover/src/tsconfig.json`
-before `tsc --build src test`, so the linked Hoover sibling is compiled as
-part of this build.
+before `tsc --build src test`, so whichever `@tabnas/hoover` is installed
+there, the linked sibling or the registry copy (which ships `src/`), is
+compiled as part of this build.
 
 Go (from `go/`):
 
@@ -358,8 +365,9 @@ the `const VERSION` in `go/ini.go` and tags `go/vX.Y.Z`, and
 `make version-rs V=x.y.z` sets the Rust crate version in both of its
 sites.
 The TS package version is tracked in [`ts/package.json`](ts/package.json).
-Local builds resolve the unpublished siblings via the repo-set `go.work` +
-`node_modules` symlinks created by `admin/scripts/link.sh` (there is no
+Local builds resolve the published siblings unless
+`admin/scripts/link.sh` has wired in the checkouts, through the repo-set
+`go.work` and the `ts/node_modules/@tabnas/*` symlinks (there is no
 checked-in `go.work` here).
 
 ## Verify your work
@@ -756,7 +764,7 @@ structured grammar model: the rule set (`['dive', 'ini', 'map', 'pair',
 `m.start`), that `Ini` is in `m.plugins`, and the push edges (`ini` →
 `table`; `table` → `dive` and `map`; `pair` → `val`). It resolves debug
 dynamically and **skips** unless `@tabnas/debug` is installed (it is a
-`file:` devDependency, so `npm test` runs it) or `TABNAS_DEBUG_PATH`
+`"*"` devDependency, so `npm test` runs it) or `TABNAS_DEBUG_PATH`
 points at a built sibling.
 
 [`ts/test/doc-examples.test.ts`](ts/test/doc-examples.test.ts) extracts
