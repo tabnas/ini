@@ -238,6 +238,25 @@ try {
 }
 ```
 
+## Return to the root after a section
+
+A key belongs to the last header before it, so a top-level key that
+comes after a section needs a header of its own: the root header `[]`. The
+keys after it sit at the root again, as those before any header do:
+
+```js
+import { Tabnas } from '@tabnas/parser'
+import { jsonic } from '@tabnas/jsonic'
+import { Ini } from '@tabnas/ini'
+
+const j = new Tabnas().use(jsonic).use(Ini)
+
+j.parse('name = app\n[db]\nhost = a\n[]\nport = 5')   // => { name: 'app', db: { host: 'a' }, port: '5' }
+```
+
+The root header names no section, so it may appear any number of times,
+and `section.duplicate` never applies to it.
+
 ## Keep spaces and bracket keys with quotes
 
 Wrap a key or value in quotes to protect leading/trailing spaces or

@@ -83,6 +83,11 @@ root map, creating intermediate maps as needed, and points the
 section's `map` at the deepest one. A literal dot is escaped (`\.`) so
 it stays in one segment: `[x\.y\.z]` is the single key `x.y.z`.
 
+The root header `[]` is a `dive` that reads no segment, so it records
+no path: the `table` after it walks nothing and points its `map` at the
+root map again, which is how a document returns to the root after a
+section.
+
 ### Keys and values: the Hoover matchers
 
 INI values are "whatever is left on the line," so this package uses

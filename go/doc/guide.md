@@ -200,6 +200,20 @@ _, err := tabnasini.Parse("[a]\nx=1\n[a]\ny=2", tabnasini.IniOptions{
 Match on the code rather than the message: the code is the contract every
 runtime holds to, and the wording is not.
 
+## Return to the root after a section
+
+A key belongs to the last header before it, so a top-level key that
+comes after a section needs a header of its own: the root header `[]`. The
+keys after it sit at the root again, as those before any header do:
+
+```go
+result, _ := tabnasini.Parse("name = app\n[db]\nhost = a\n[]\nport = 5")
+// map[string]any{"name": "app", "db": map[string]any{"host": "a"}, "port": "5"}
+```
+
+The root header names no section, so it may appear any number of times,
+and `Section.Duplicate` never applies to it.
+
 ## Keep spaces and bracket keys with quotes
 
 Wrap a key or value in quotes to protect leading/trailing spaces or

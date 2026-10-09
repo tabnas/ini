@@ -121,6 +121,12 @@ const grammarText = `
   rule: dive: open: [
     { s: ['#DK' '#DOT'] a: '@dive-push' p: dive }
     { s: '#DK' a: '@dive-push' }
+    # The root header, []: the closing bracket where the first segment is
+    # due. It names no section, so the dive records no path, and the table
+    # that follows writes into the root again, wherever the document is.
+    # Only the first segment's place takes it (the dive the table pushed):
+    # after a dot, as in [a.], the bracket is still unexpected.
+    { s: '#CS' c: '@is-table-parent' b: 1 }
   ]
   rule: dive: close: [
     { s: '#CS' b: 1 g: close }

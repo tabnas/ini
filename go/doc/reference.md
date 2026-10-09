@@ -187,6 +187,7 @@ key = value
 ```ini
 [name]
 [a.b.c]
+[]
 ```
 
 - A header opens a section; following keys nest under it.
@@ -199,6 +200,13 @@ key = value
   value with the section: last writer wins, the same rule a repeated
   key follows. An array built by `key[] =` is replaced in the same way.
 - Top-level pairs before any header sit at the root.
+- The root header `[]` returns to the root: the keys after it sit at
+  the root again, as those before any header do
+  (`[s]\nx = 1\n[]\ny = 2` ⇒ `{"s": {"x": "1"}, "y": "2"}`).
+  It names no section, so it may appear anywhere and any number of
+  times, and [`Section.Duplicate`](#sectionduplicate) never applies to it.
+  The reader trims the whitespace inside it, as in any header, so
+  `[ ]` is the root header too.
 - Repeated headers are governed by [`Section.Duplicate`](#sectionduplicate).
 
 ### Arrays
@@ -271,6 +279,6 @@ records.
 | `cancel` | The document nests past `DepthLimit`, or a caller's own parse budget cancelled the parse. |
 
 The code is the contract; the message wording is not. A malformed header
-that is not merely unterminated (`[]`, `[a.]`, `[.a]`) surfaces through
+that is not merely unterminated (`[a.]`, `[.a]`) surfaces through
 the engine's own `unexpected` code. Read the code off the error with
 `errors.As` and a `*jsonic.JsonicError`.

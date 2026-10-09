@@ -41,15 +41,18 @@
   "translate": {
     "reads": "tree",
     "writes": "tree",
+    "root": "object",
     "render": "alchemy/render.alc",
     "loss": [
       "Comments are not kept.",
       "Every key and every string value is written double-quoted; a section name, a boolean and null are written as they are.",
-      "A number is written by its lexeme, or as Infinity, -Infinity or NaN, and reads back as a string, since the reader builds every unquoted value but true, false and null as a string.",
+      "A number is written by its lexeme, or as Infinity, -Infinity or NaN, in a JSON text too, and reads back as a string, since the reader builds every unquoted value but true, false and null as a string.",
       "A key that ends in a pair of square brackets reads back as an array under the name before them, since that is the reader's array mark inside quotes too.",
-      "A section name is written with its dots, closing brackets and backslashes escaped, so one that starts with a quote, holds a line break or is padded with whitespace does not read back as written.",
+      "A section name is written with its dots, closing brackets and backslashes escaped, and one padded with blanks reads back without them.",
       "A member that follows a section inside a section is written after that section's header again, which reads back as written only while section.duplicate is merge, the default.",
-      "A root member that follows a section, an array holding an array or an object, an empty array, and an empty key naming a section or an array have no INI form and are refused."
+      "A root member that follows a section is written after the root header [], and reads back as written.",
+      "An array or an object INI has no place for is written as its compact JSON text, double-quoted, as the value of its key or of its array's item, and reads back as that text, a string: an array or an object inside an array, an empty array, an array under the empty key, an object nested more than 127 sections deep, and an object under a key the render writes no header for.",
+      "The render writes no header for a key that is blank, holds a control character or any of \" ' # ; , = [, or is true, false or null or spelt with blanks and only their letters."
     ]
   }
 }
