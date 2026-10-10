@@ -71,7 +71,8 @@ const TRANSLATION: TranslationParts = Object.freeze({
       "A root member that follows a section is written after the root header [], and reads back as written.",
       "An array or an object INI has no place for is written as its compact JSON text, double-quoted, as the value of its key or of its array's item, and reads back as that text, a string: an array or an object inside an array, an empty array, an array under the empty key, an object nested more than 127 sections deep, and an object under a key the render writes no header for.",
       "The render writes no header for a key that is blank, holds a control character or any of \\" ' # ; , = [, or is true, false or null or spelt with blanks and only their letters."
-    ]
+    ],
+    "whole": "A section may be named again later in the document, its keys joining the section's first appearance, so a document's tree is complete only at its end: it is read whole before anything is written."
   }
 }
 `,
