@@ -129,6 +129,12 @@ const GRAMMAR_TEXT: &str = r#"
   rule: dive: open: [
     { s: ['#DK' '#DOT'] a: '@dive-push' p: dive }
     { s: '#DK' a: '@dive-push' }
+    # The root header, []: the closing bracket where the first segment is
+    # due. It names no section, so the dive records no path, and the table
+    # that follows writes into the root again, wherever the document is.
+    # Only the first segment's place takes it (the dive the table pushed):
+    # after a dot, as in [a.], the bracket is still unexpected.
+    { s: '#CS' c: '@is-table-parent' b: 1 }
   ]
   rule: dive: close: [
     { s: '#CS' b: 1 g: close }
@@ -1064,6 +1070,8 @@ pub struct TranslationParts {
     pub manifest: &'static str,
     /// An optional lift from the grammar's events to its first read shape.
     pub lift: Option<TranslationPart>,
+    /// An optional embedding of a plain tree in the format's schema, with its reverse.
+    pub embed: Option<TranslationPart>,
     /// An optional render from the write shape to text.
     pub render: Option<TranslationPart>,
 }
@@ -1071,6 +1079,7 @@ pub struct TranslationParts {
 const TRANSLATION: TranslationParts = TranslationParts {
     manifest: include_str!("../translate/manifest.json"),
     lift: None,
+    embed: None,
     render: Some(TranslationPart {
         entry: "ini-render",
         source: Some(include_str!("../translate/render.alc")),
@@ -1085,8 +1094,9 @@ pub const fn translate() -> Option<TranslationParts> {
 
 /// The plugin's manifest, `tabnas.plugin.json`, as the repository carries
 /// it. Its `translate` object is what a host that translates reads: the
-/// shape INI is read as and written from (`tree`), the file that holds
-/// the render, and the sentences that say what the render does not keep.
+/// shape INI is read as and written from (`tree`), the root its render
+/// needs (`object`), the file that holds the render, and the sentences
+/// that say what the render does not keep.
 /// The crate embeds its own copy, `translate/manifest.json`, since a
 /// packaged crate holds nothing outside `rs/`; `tests/translate_test.rs`
 /// holds the copy to the file.

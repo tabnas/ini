@@ -4,3 +4,5 @@ input	expected
 [a.b]\nx=1\n[a]\ny=2	{"a":{"b":{"x":"1"},"y":"2"}}
 [a]\nx=1\n[a]\ny=2	ERROR:duplicate_section
 [a.b]\nx=1\n[a.b]\ny=2	ERROR:duplicate_section
+a=1\n[]\nb=2\n[]\nc=3	{"a":"1","b":"2","c":"3"}
+[a]\nx=1\n[]\nb=2\n[]\nc=3	{"a":{"x":"1"},"b":"2","c":"3"}

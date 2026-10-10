@@ -7,8 +7,10 @@
 // `manifest_text()` and `render_text()`. The copies are the only texts a
 // host sees, so they must be the files: this holds the embedded manifest
 // to the repository's, and the render the manifest names, read from the
-// repository, to the embedded one. Change the file at the root and copy
-// it into `rs/translate/`; this fails until both are the same.
+// repository, to the embedded one, as it would an embed the manifest
+// named. Change the file at the root and run `npm run embed` in `ts/`,
+// which copies it into `rs/translate/`; this fails until both are the
+// same.
 //
 // The render is not run here: that takes alchemy, which this crate does
 // not depend on. The round trip, every fixture read, written through the
@@ -45,7 +47,7 @@ fn the_manifest_the_crate_embeds_is_the_repositorys() {
     assert_eq!(
         on_disk,
         tabnas_ini::manifest_text(),
-        "rs/translate/manifest.json is not tabnas.plugin.json: copy the manifest into rs/translate"
+        "rs/translate/manifest.json is not tabnas.plugin.json: run npm run embed in ts"
     );
 }
 
@@ -61,7 +63,35 @@ fn the_render_the_manifest_names_is_the_one_the_crate_embeds() {
         on_disk,
         tabnas_ini::render_text(),
         "translate.render names {path}, and rs/translate/render.alc, which render_text() \
-         embeds, is another text: copy the render into rs/translate"
+         embeds, is another text: run npm run embed in ts"
+    );
+}
+
+/// An embed takes a plain tree into a format's own schema. INI's events
+/// carry a plain tree, so its manifest names none and the crate carries
+/// none; a manifest that named one would be held to its file here, as the
+/// render is above.
+#[test]
+fn the_embed_the_manifest_names_is_the_one_the_crate_embeds() {
+    let translate = translate();
+    let parts = tabnas_ini::translate().expect("INI carries translation parts");
+    let Some(path) = translate.get("embed").and_then(Value::as_str) else {
+        assert_eq!(
+            parts.embed, None,
+            "the manifest names no embed, and the crate carries one"
+        );
+        return;
+    };
+    let on_disk = fs::read_to_string(repo_root().join(path))
+        .unwrap_or_else(|e| panic!("translate.embed names {path}, which cannot be read: {e}"));
+    let embed = parts
+        .embed
+        .unwrap_or_else(|| panic!("translate.embed names {path}, and the crate carries no embed"));
+    assert_eq!(embed.entry, "ini-embed");
+    assert_eq!(
+        embed.source,
+        Some(on_disk.as_str()),
+        "translate.embed names {path}, and the crate embeds another text: run npm run embed in ts"
     );
 }
 
@@ -83,6 +113,13 @@ fn ini_reads_and_writes_a_tree_with_no_lift() {
     assert_eq!(translate["reads"], "tree");
     assert_eq!(translate["writes"], "tree");
     assert_eq!(translate.get("lift"), None);
+}
+
+/// An INI document is a map of sections and keys, so the render needs an
+/// object at the root; a host puts any other root under a key first.
+#[test]
+fn the_render_needs_an_object_at_the_root() {
+    assert_eq!(translate()["root"], "object");
 }
 
 /// A host keys its registry of parts by the manifest's `languageId`.

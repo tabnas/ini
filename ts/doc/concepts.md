@@ -88,6 +88,12 @@ intermediate objects as needed, and points the section's `map` at the
 deepest one. A literal dot is escaped (`\.`) so it stays inside a single
 segment: `[x\.y\.z]` is the single key `x.y.z`, not a three-level path.
 
+The root header `[]` is a `dive` that reads no segment: its closing
+bracket stands where the first segment is due, so it records no path,
+and the `table` after it walks nothing and points its `map` at the
+root object again. A document returns to the root after a section
+this way, as a writer must whenever a top-level key comes after one.
+
 ### Keys and values: the Hoover matchers
 
 Most parsers tokenize values by character classes. INI values are

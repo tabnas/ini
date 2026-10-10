@@ -50,6 +50,7 @@ pub const FIXTURES: &[&str] = &[
     "sections-duplicate-override.tsv",
     "sections-escaped-dots.tsv",
     "sections-over-value.tsv",
+    "sections-root.tsv",
     "sections-unterminated.tsv",
     "sections.tsv",
     "slash-comments-are-text.tsv",
