@@ -86,6 +86,12 @@
 ; host holds a stream to. Events no tree has fail with
 ; PROTOCOL_ORDER_ERROR, saying so.
 ;
+; Each line is a record of the text: the step that writes a header, a
+; pair, an array item or the end of a JSON text's line answers alchemy's
+; `:record-end` after its line feed, and so does the step that opens the
+; root, so a host's writer holds a line until its end, and a run that
+; fails part way leaves whole lines behind.
+;
 ; The state is a vector of three: the stack of open containers, one
 ; marker each, so it grows with a document's nesting and never with its
 ; width; the trail of the open sections' names, which the next header is
@@ -211,7 +217,9 @@ def ini-root-scalar [value]
 ; What a scalar member begins with, to be read in its object: nothing
 ; while the object's own header is the last one written, and that
 ; header again once a section was written after it, the root's being
-; `[]`.
+; `[]`. A step writes `:record-end` after it, so a header written again
+; is a record of its own, whole before the member that follows it
+; (where nothing is written, the mark falls where a record ended).
 def ini-member-lead [stack trail]
   match (ini-top stack)
     case :scalars (text "")
@@ -227,7 +235,7 @@ def ini-member-stack [stack]
 ; JSON text; or a section under the key that is due.
 def ini-open [stack trail pending]
   match (ini-top stack)
-    case :none (transition [[:scalars] trail :none] [])
+    case :none (transition [[:scalars] trail :none] [:record-end])
     case :array-open (ini-json-item stack trail pending "{" :json-object-open)
     case :array (ini-json-item stack trail pending "{" :json-object-open)
     case _
@@ -243,7 +251,7 @@ def ini-open [stack trail pending]
 ; is no longer the last one written.
 def ini-section [stack trail name]
   let [next (push name trail)]
-    transition [(push :scalars (push [:sections name] (pop stack))) next :none] [(ini-header next)]
+    transition [(push :scalars (push [:sections name] (pop stack))) next :none] [(ini-header next) :record-end]
 
 ; An array opens under the key that is due. Its items are `"key[]" =
 ; item` lines, so for the order's sake it is a scalar member. An array
@@ -258,13 +266,13 @@ def ini-open-array [stack trail pending]
       match pending
         case :none (fail :protocol-order ini-key-due)
         case "" (ini-json-pair stack trail pending "[" :json-array-open)
-        case _ (transition [(push :array-open (ini-member-stack stack)) trail pending] [(ini-member-lead stack trail)])
+        case _ (transition [(push :array-open (ini-member-stack stack)) trail pending] [(ini-member-lead stack trail) :record-end])
 
 ; A container as the value of the key that is due, as the JSON text in
 ; that key's double-quoted value. For the order's sake it is a scalar
 ; member.
 def ini-json-pair [stack trail pending opener marker]
-  transition [(push marker (ini-member-stack stack)) trail pending] [(ini-member-lead stack trail) (quoted pending) " = \"" opener]
+  transition [(push marker (ini-member-stack stack)) trail pending] [(ini-member-lead stack trail) :record-end (quoted pending) " = \"" opener]
 
 ; A container as an item of the open array, as the JSON text in the
 ; double-quoted value of the item's `"key[]" =` line.
@@ -288,12 +296,12 @@ def ini-member [stack trail pending name]
 def ini-value [stack trail pending value]
   match (ini-top stack)
     case :none (ini-root-scalar value)
-    case :array-open (transition [(push :array (pop stack)) trail pending] [(ini-array-key pending) " = " (ini-scalar value) "\n"])
-    case :array (transition [stack trail pending] [(ini-array-key pending) " = " (ini-scalar value) "\n"])
+    case :array-open (transition [(push :array (pop stack)) trail pending] [(ini-array-key pending) " = " (ini-scalar value) "\n" :record-end])
+    case :array (transition [stack trail pending] [(ini-array-key pending) " = " (ini-scalar value) "\n" :record-end])
     case _
       match pending
         case :none (fail :protocol-order ini-key-due)
-        case _ (transition [(ini-member-stack stack) trail :none] [(ini-member-lead stack trail) (quoted pending) " = " (ini-scalar value) "\n"])
+        case _ (transition [(ini-member-stack stack) trail :none] [(ini-member-lead stack trail) :record-end (quoted pending) " = " (ini-scalar value) "\n" :record-end])
 
 ; An object closes: the root, and the document is done, or a section,
 ; and its name leaves the trail. Nothing is written: the next header
@@ -315,7 +323,7 @@ def ini-close [stack trail pending]
 ; is written as its JSON text, `[]`, under its key.
 def ini-close-array [stack trail pending]
   match (ini-top stack)
-    case :array-open (transition [(pop stack) trail :none] [(quoted pending) " = \"[]\"\n"])
+    case :array-open (transition [(pop stack) trail :none] [(quoted pending) " = \"[]\"\n" :record-end])
     case :array (transition [(pop stack) trail :none] [])
     case _ (fail :protocol-order ini-end-unopened)
 
@@ -372,8 +380,8 @@ def ini-json-done [stack]
 def ini-json-close [stack trail pending closer]
   let [rest (pop stack)]
     match (ini-top rest)
-      case :array (transition [rest trail pending] [closer "\"\n"])
-      case :scalars (transition [rest trail :none] [closer "\"\n"])
+      case :array (transition [rest trail pending] [closer "\"\n" :record-end])
+      case :scalars (transition [rest trail :none] [closer "\"\n" :record-end])
       case _ (transition [(ini-json-done rest) trail pending] [closer])
 
 def ini-json-event [stack trail pending event]
