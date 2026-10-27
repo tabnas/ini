@@ -13,6 +13,7 @@ type TranslationParts = Readonly<{
   lift?: TranslationPart
   embed?: TranslationPart
   render?: TranslationPart
+  transduce?: TranslationPart
 }>
 
 const TRANSLATION: TranslationParts = Object.freeze({
@@ -61,6 +62,7 @@ const TRANSLATION: TranslationParts = Object.freeze({
     "writes": "tree",
     "root": "object",
     "render": "alchemy/render.alc",
+    "transduce": "alchemy/transduce.alc",
     "loss": [
       "Comments are not kept.",
       "Every key and every string value is written double-quoted; a section name, a boolean and null are written as they are.",
@@ -71,8 +73,7 @@ const TRANSLATION: TranslationParts = Object.freeze({
       "A root member that follows a section is written after the root header [], and reads back as written.",
       "An array or an object INI has no place for is written as its compact JSON text, double-quoted, as the value of its key or of its array's item, and reads back as that text, a string: an array or an object inside an array, an empty array, an array under the empty key, an object nested more than 127 sections deep, and an object under a key the render writes no header for.",
       "The render writes no header for a key that is blank, holds a control character or any of \\" ' # ; , = [, or is true, false or null or spelt with blanks and only their letters."
-    ],
-    "whole": "A section may be named again later in the document, its keys joining the section's first appearance, so a document's tree is complete only at its end: it is read whole before anything is written."
+    ]
   }
 }
 `,
@@ -509,6 +510,239 @@ def ini-finish [s]
 def ini-render [input]
   join ""
     scan-emit [[] [] :none] ini-step ini-finish (events input)
+` }),
+  transduce: Object.freeze({ entry: "ini-transduce", source: `; INI's transducer part: the document's JSON events from the ini grammar's
+; rule passes, for a host that reads parser events (dmog's \`translate\` and
+; \`run --grammar ini\`). It is hand-written, since the grammar builds its
+; sections and its \`k[]\` arrays in its actions, which the passes do not
+; show; every event is the one the walk of the grammar's value under its
+; default options gives, a member at a time.
+;
+; The passes: \`ini\` opens and closes the root object. A \`table\` opened on
+; \`[\` begins a section header, whose segments the \`dive\` opens carry one
+; \`#DK\` token each, and the \`table\` close that consumes \`]\` applies the
+; header: the open sections the new path does not continue end, innermost
+; first, and the segments past the ones it shares with them open, each a
+; member and an object. A header that names the open path again, or a
+; path above it, continues it where the grammar merges a repeated section
+; (\`section.duplicate\` is merge, the default); one that re-enters a section
+; already closed writes its member again, which the tree contract after
+; the part refuses, and a host that reads a part then reads the document
+; whole, as it does for a key the document repeats, which the grammar keeps
+; the last of. A \`pair\` opens with its key token and \`=\`, or with the key
+; alone: a bare key is a member holding true, as the grammar sets it, and
+; an empty one, the rest of a line after a quoted value, is nothing. The
+; lexer marks an array key, \`k[]\`, quoted or not, by carrying the name
+; before the brackets in a one-element array as the token's value: the
+; first such key begins the array, a key naming it again, with or without
+; its brackets, adds to it, and any other member ends it; a bare \`k[]\` line
+; is the member \`k[]\`, as the grammar spells it. An array key spelt with
+; two pairs of brackets, \`k[][]\`, makes the array \`k[]\`, which a \`k[] =\`
+; line adds to from anywhere in its section, so the part refuses it in its
+; own words (\`fail :unstreamable\`) and the host reads the document whole.
+; A \`val\` yields its scalar
+; at its close, from the value the close carries. A single-quoted value
+; that is a JSON text is a container in the grammar's value, which no pass
+; carries, so the part refuses it in its own words (\`fail :unstreamable\`,
+; STREAMABILITY_UNKNOWN) and the host reads the document whole.
+;
+; Two scans, since a step's outputs are one vector: the first yields each
+; event, and a section the header opens as a [:section name] pair, and the
+; second writes the pair as its member and object. The first's state is
+; [started sections pending array]: whether any pass came (a source that makes
+; none, the empty document, is the empty object at finish), the open
+; sections' names, the segments of the header being read or missing, and
+; the name of the open array or missing. Nothing grows with the document's
+; length, only with its sections' nesting, under max_metadata_bytes.
+
+; The text a key token names a member with: a string as it is; the word
+; of a boolean or null, which a line holding a value keyword before \`=\`
+; lexes as, as the grammar spells it.
+def ini-transduce-text [v]
+  match (kind v)
+    case :string v
+    case :null "null"
+    case :boolean (match v (case true "true") (case _ "false"))
+    case _ (scalar-text (record) v)
+
+; The open array ended, where one is.
+def ini-transduce-end-array [array]
+  match array
+    case missing []
+    case _ [array-end]
+
+; Whether \`array\` is the name \`name\`.
+def ini-transduce-is [array name]
+  match array
+    case missing false
+    case open (equal open name)
+
+; Whether \`a\` and \`b\` differ at index \`j\`, \`b\` ending before it included.
+def ini-transduce-differ [a b j]
+  match (get-path (path j) b)
+    case missing true
+    case segment (if (equal segment (get-path (path j) a)) false true)
+
+; How many segments two paths share at their head: the first index they
+; differ at, or every one of \`a\`, found in one pass over \`a\`.
+def ini-transduce-common [a b]
+  let [differing (filter (fn [i] (ini-transduce-differ a b i)) (indices a))]
+    match (count differing)
+      case 0 (count a)
+      case _ (get-path (path 0) differing)
+
+; The indices of \`items\` from \`from\` on.
+def ini-transduce-from [items from]
+  filter (fn [i] (match (compare i from) (case :less false) (case _ true))) (indices items)
+
+; The ends of the open sections from index \`kept\` on, innermost first.
+def ini-transduce-ends [open kept]
+  map (fn [i] object-end) (ini-transduce-from open kept)
+
+; The sections of \`next\` from index \`kept\` on, each a [:section name] item.
+def ini-transduce-opens [next kept]
+  map (fn [i] [:section (get-path (path i) next)]) (ini-transduce-from next kept)
+
+def ini-transduce-start [state]
+  match state
+    case [started sections pending array] (transition [true sections pending array] [object-start])
+
+; A table opened on \`[\` begins a header.
+def ini-transduce-table-open [state rule]
+  match (transduce-token 0 rule)
+    case missing (transition state [])
+    case token
+      match (get :name token)
+        case "#OS"
+          match state
+            case [started sections pending array] (transition [started sections [] array] [])
+        case _ (transition state [])
+
+; A dive's segment joins the header being read.
+def ini-transduce-dive [state rule]
+  match (transduce-token 0 rule)
+    case missing (transition state [])
+    case token
+      match [(get :name token) state]
+        case ["#DK" [started sections pending array]]
+          match pending
+            case missing (transition state [])
+            case segments (transition [started sections (push (get :val token) segments) array] [])
+        case _ (transition state [])
+
+; The header applies: the sections it does not continue end, and the
+; segments past the shared ones open.
+def ini-transduce-header [state]
+  match state
+    case [started sections pending array]
+      match pending
+        case missing (transition state [])
+        case next
+          let [kept (ini-transduce-common sections next)]
+            transition [started next missing missing] (push-all (ini-transduce-opens next kept) (push-all (ini-transduce-ends sections kept) (ini-transduce-end-array array)))
+
+; A pair with \`=\`: an array key begins its array, or adds to the open one;
+; a plain key names a member, or adds to the open array it names. An array
+; key whose name ends in brackets itself, \`k[][]\`, the part refuses: its
+; array, \`k[]\`, a \`k[] =\` line adds to from anywhere in its section, which
+; only the whole section tells.
+def ini-transduce-pair-eq [state keyval]
+  match state
+    case [started sections pending array]
+      match (kind keyval)
+        case :vector
+          let [name (get-path (path 0) keyval)]
+            match (top (split "[]" name))
+              case "" (fail :unstreamable "an array key spelt with two pairs of brackets, k[][], whose array a k[] line adds to from anywhere in its section")
+              case _
+                match (ini-transduce-is array name)
+                  case true (transition state [])
+                  case _ (transition [started sections pending name] (push-all [(key name) array-start] (ini-transduce-end-array array)))
+        case _
+          let [name (ini-transduce-text keyval)]
+            match (ini-transduce-is array name)
+              case true (transition state [])
+              case _ (transition [started sections pending missing] (push-all [(key name)] (ini-transduce-end-array array)))
+
+; A bare key: a member holding true; an empty key nothing; a bare array
+; key the member spelt with its brackets.
+def ini-transduce-pair-bare [state keyval]
+  match state
+    case [started sections pending array]
+      match (kind keyval)
+        case :vector (transition [started sections pending missing] (push-all [(key (string-join "" [(get-path (path 0) keyval) "[]"])) (scalar true)] (ini-transduce-end-array array)))
+        case :string
+          match keyval
+            case "" (transition state [])
+            case _ (transition [started sections pending missing] (push-all [(key keyval) (scalar true)] (ini-transduce-end-array array)))
+        case _ (transition state [])
+
+def ini-transduce-pair [state rule]
+  match (transduce-token 0 rule)
+    case missing (transition state [])
+    case token
+      match (transduce-token 1 rule)
+        case missing (ini-transduce-pair-bare state (get :val token))
+        case _ (ini-transduce-pair-eq state (get :val token))
+
+; A value: the scalar its close carries; a container, which no pass does,
+; the part refuses.
+def ini-transduce-value [state rule]
+  match (get :value rule)
+    case missing (fail :unstreamable "a single-quoted value the grammar reads as a JSON container, whose members the passes do not show")
+    case value (transition state [(scalar value)])
+
+; The root closes: the open array, the open sections and the root object end.
+def ini-transduce-root-end [state]
+  match state
+    case [started sections pending array] (transition [started [] missing missing] (push-all [object-end] (push-all (ini-transduce-ends sections 0) (ini-transduce-end-array array))))
+
+def ini-transduce-open [state rule]
+  match (get :name rule)
+    case "ini" (ini-transduce-start state)
+    case "table" (ini-transduce-table-open state rule)
+    case "dive" (ini-transduce-dive state rule)
+    case "pair" (ini-transduce-pair state rule)
+    case _ (transition state [])
+
+def ini-transduce-close [state rule]
+  match (get :name rule)
+    case "val" (ini-transduce-value state rule)
+    case "table"
+      match (transduce-token 0 rule)
+        case missing (transition state [])
+        case token
+          match (get :name token)
+            case "#CS" (ini-transduce-header state)
+            case _ (transition state [])
+    case "ini" (ini-transduce-root-end state)
+    case _ (transition state [])
+
+def ini-transduce-step [state pass]
+  match pass
+    case (open rule) (ini-transduce-open state rule)
+    case (close rule) (ini-transduce-close state rule)
+
+; A source that made no pass is the empty object.
+def ini-transduce-finish [state]
+  match state
+    case [false sections pending array] [object-start object-end]
+    case _ []
+
+; Each item of the first scan as its events: a [:section name] pair as the
+; member and its object, begun; an event as it is.
+def ini-transduce-expand [state item]
+  match (kind item)
+    case :vector
+      match item
+        case [:section name] (transition state [(key name) object-start])
+    case _ (transition state [item])
+
+def ini-transduce-flush [state]
+  []
+
+def ini-transduce [input]
+  as-events (scan-emit [] ini-transduce-expand ini-transduce-flush (scan-emit [false [] missing missing] ini-transduce-step ini-transduce-finish (parser-events input)))
 ` })
 })
 

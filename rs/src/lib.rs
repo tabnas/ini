@@ -709,7 +709,12 @@ fn token_string(token: &Token) -> String {
 /// when `'string' === typeof key`, so a line holding a value keyword and
 /// nothing else declares nothing: both value lexers resolve a keyword
 /// that is the whole span, and the token then carries a boolean or null.
+/// A bare `k[]` line, whose token the lexer marked as an array key
+/// ([`mark_array_key`]), declares the key `k[]`, brackets and all.
 fn bool_key(token: &Token) -> Option<String> {
+    if let Some(name) = array_key_name(token) {
+        return Some(format!("{name}[]"));
+    }
     match &token.val {
         Value::String(text) if !text.is_empty() => Some(text.clone()),
         Value::Text(text) if !text.string.is_empty() => Some(text.string.clone()),
@@ -1074,6 +1079,9 @@ pub struct TranslationParts {
     pub embed: Option<TranslationPart>,
     /// An optional render from the write shape to text.
     pub render: Option<TranslationPart>,
+    /// An optional transducer: the format's JSON events from its parser's
+    /// rule passes, for a host that reads parser events.
+    pub transduce: Option<TranslationPart>,
 }
 
 const TRANSLATION: TranslationParts = TranslationParts {
@@ -1083,6 +1091,10 @@ const TRANSLATION: TranslationParts = TranslationParts {
     render: Some(TranslationPart {
         entry: "ini-render",
         source: Some(include_str!("../translate/render.alc")),
+    }),
+    transduce: Some(TranslationPart {
+        entry: "ini-transduce",
+        source: Some(include_str!("../translate/transduce.alc")),
     }),
 };
 
@@ -1095,11 +1107,14 @@ pub const fn translate() -> Option<TranslationParts> {
 /// The plugin's manifest, `tabnas.plugin.json`, as the repository carries
 /// it. Its `translate` object is what a host that translates reads: the
 /// shape INI is read as and written from (`tree`), the root its render
-/// needs (`object`), the file that holds the render, and the sentences
-/// that say what the render does not keep.
-/// The crate embeds its own copy, `translate/manifest.json`, since a
-/// packaged crate holds nothing outside `rs/`; `tests/translate_test.rs`
-/// holds the copy to the file.
+/// needs (`object`), the file that holds the render, the sentences that
+/// say what the render does not keep, and the file that holds the
+/// transducer part (`transduce`), the document's JSON events from the
+/// grammar's rule passes under its default options, through which a host
+/// that reads parser events reads a document.
+/// The crate embeds its own copies, `translate/manifest.json` and
+/// `translate/transduce.alc`, since a packaged crate holds nothing outside
+/// `rs/`; `tests/translate_test.rs` holds each copy to its file.
 ///
 /// ```
 /// assert!(tabnas_ini::manifest_text().contains("\"translate\""));
@@ -1619,6 +1634,7 @@ fn register_refs(parser: &mut Tabnas, resolved: &Resolved) {
     });
 
     parser.action_with_context("@pair-key-eq", pair_key_eq);
+    parser.subscribe_lex(mark_array_key);
 
     parser.action_with_context("@pair-key-bool", |rule, _context| {
         // The canonical `'string' === typeof key`, which is NOT the same
@@ -1797,8 +1813,72 @@ fn table_before_close(rule: &mut Rule, _context: &mut Context) -> Result<(), Act
     Ok(())
 }
 
+/// The lexer's mark on an array key, `k[]`, quoted or not: a transducer
+/// part reading the rule passes (`alchemy/transduce.alc`) sees a token's
+/// value but cannot strip a suffix, so in key position (anywhere but
+/// inside a value) a key token whose string ends in `[]` past the
+/// brackets carries the name before them in a one-element array. The
+/// pair actions read it back, and a bare `k[]` line keeps declaring the
+/// key `k[]`. The canonical TypeScript tests `2 < key.length` in UTF-16
+/// code units, which any string ending in `[]` with a byte before them
+/// meets alike.
+fn mark_array_key(token: &mut Token, rule: &mut Rule, _context: &mut Context) {
+    if rule.name.as_str() == "val" && rule.state == RuleState::Open {
+        return;
+    }
+    let name = token.name.as_str();
+    if name != "#HK" && name != "#ST" {
+        return;
+    }
+    let text = match &token.val {
+        Value::String(text) => text.as_str(),
+        Value::Text(text) => text.string.as_str(),
+        _ => return,
+    };
+    if text.len() > 2 && text.ends_with("[]") {
+        let stripped = text[..text.len() - 2].to_string();
+        token.val = Value::array(vec![Value::String(stripped)]);
+    }
+}
+
+/// The name the lexer marked an array key with ([`mark_array_key`]), when
+/// the token carries one.
+fn array_key_name(token: &Token) -> Option<String> {
+    match &token.val {
+        Value::Array(items) if items.len() == 1 => match &items[0] {
+            Value::String(name) => Some(name.clone()),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+/// A key token's name, and whether the lexer marked it as an array key.
+fn key_of(token: &Token) -> (String, bool) {
+    match array_key_name(token) {
+        Some(name) => (name, true),
+        None => (token_string(token), false),
+    }
+}
+
 fn pair_key_eq(rule: &mut Rule, _context: &mut Context) -> Result<(), ActionError> {
-    let key = rule.o0().map(token_string).unwrap_or_default();
+    // An array key, `k[]`, arrives from the lexer as its name in a
+    // one-element array (`mark_array_key`).
+    let (key, array_key) = rule.o0().map(key_of).unwrap_or_default();
+
+    // An array key adds to the array under its own spelling first, `k[]`,
+    // which a `k[][] =` line made, then to the one under its name.
+    if array_key {
+        let spelt = format!("{key}[]");
+        if matches!(
+            object_get(&rule.node.borrow(), &spelt),
+            Some(Value::Array(_))
+        ) {
+            rule.u_mut().insert("key".into(), Value::String(spelt));
+            rule.u_mut().insert("ini_array".into(), Value::Bool(true));
+            return Ok(());
+        }
+    }
     let existing = object_get(&rule.node.borrow(), &key);
 
     if matches!(existing, Some(Value::Array(_))) {
@@ -1807,19 +1887,13 @@ fn pair_key_eq(rule: &mut Rule, _context: &mut Context) -> Result<(), ActionErro
         return Ok(());
     }
 
-    // `2 < key.length` in the canonical TypeScript, where a string's
-    // length is its UTF-16 code units. Counting scalar values instead
-    // would disagree for a key holding an astral character.
-    if key.encode_utf16().count() > 2 && key.ends_with("[]") {
-        let array_key = key[..key.len() - 2].to_string();
-        let current = object_get(&rule.node.borrow(), &array_key);
-        let array = match current {
-            Some(Value::Array(items)) => Value::Array(items),
+    if array_key {
+        let array = match existing {
             Some(value) if !value.is_undefined() => Value::array(vec![value]),
             _ => Value::array(Vec::new()),
         };
-        object_insert(&mut rule.node.borrow_mut(), array_key.clone(), array);
-        rule.u_mut().insert("key".into(), Value::String(array_key));
+        object_insert(&mut rule.node.borrow_mut(), key.clone(), array);
+        rule.u_mut().insert("key".into(), Value::String(key));
         rule.u_mut().insert("ini_array".into(), Value::Bool(true));
         return Ok(());
     }
