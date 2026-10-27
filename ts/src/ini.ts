@@ -592,11 +592,15 @@ function Ini(tn: Tabnas, _options: IniOptions) {
 
     '@pair-key-eq': (r: any) => {
       // An array key, `k[]`, arrives from the lexer as its name in a
-      // one-element array (the lex subscriber above).
+      // one-element array (the lex subscriber above). It adds to the array
+      // under its own spelling first, `k[]`, which a `k[][] =` line made,
+      // then to the one under its name.
       const raw = r.o0.val
       const arrayKey = Array.isArray(raw)
       const key = arrayKey ? '' + raw[0] : '' + raw
-      if (Array.isArray(r.node[key])) {
+      if (arrayKey && Array.isArray(r.node[key + '[]'])) {
+        r.u.ini_array = r.node[key + '[]']
+      } else if (Array.isArray(r.node[key])) {
         r.u.ini_array = r.node[key]
       } else {
         r.u.key = key

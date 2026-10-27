@@ -1865,6 +1865,20 @@ fn pair_key_eq(rule: &mut Rule, _context: &mut Context) -> Result<(), ActionErro
     // An array key, `k[]`, arrives from the lexer as its name in a
     // one-element array (`mark_array_key`).
     let (key, array_key) = rule.o0().map(key_of).unwrap_or_default();
+
+    // An array key adds to the array under its own spelling first, `k[]`,
+    // which a `k[][] =` line made, then to the one under its name.
+    if array_key {
+        let spelt = format!("{key}[]");
+        if matches!(
+            object_get(&rule.node.borrow(), &spelt),
+            Some(Value::Array(_))
+        ) {
+            rule.u_mut().insert("key".into(), Value::String(spelt));
+            rule.u_mut().insert("ini_array".into(), Value::Bool(true));
+            return Ok(());
+        }
+    }
     let existing = object_get(&rule.node.borrow(), &key);
 
     if matches!(existing, Some(Value::Array(_))) {

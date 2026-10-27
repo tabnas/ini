@@ -743,7 +743,13 @@ func iniPlugin(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 				return
 			}
 
-			if _, isArr := nm[key].([]any); isArr {
+			// An array key adds to the array under its own spelling first,
+			// `k[]`, which a `k[][] =` line made, then to the one under its
+			// name.
+			if arr, isArr := nm[key+"[]"].([]any); arrayKey && isArr {
+				r.EnsureU()["key"] = key + "[]"
+				r.EnsureU()["ini_array"] = arr
+			} else if _, isArr := nm[key].([]any); isArr {
 				r.EnsureU()["key"] = key
 				r.EnsureU()["ini_array"] = nm[key]
 			} else if arrayKey {

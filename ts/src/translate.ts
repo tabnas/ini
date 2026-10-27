@@ -536,7 +536,11 @@ def ini-render [input]
 ; before the brackets in a one-element array as the token's value: the
 ; first such key begins the array, a key naming it again, with or without
 ; its brackets, adds to it, and any other member ends it; a bare \`k[]\` line
-; is the member \`k[]\`, as the grammar spells it. A \`val\` yields its scalar
+; is the member \`k[]\`, as the grammar spells it. An array key spelt with
+; two pairs of brackets, \`k[][]\`, makes the array \`k[]\`, which a \`k[] =\`
+; line adds to from anywhere in its section, so the part refuses it in its
+; own words (\`fail :unstreamable\`) and the host reads the document whole.
+; A \`val\` yields its scalar
 ; at its close, from the value the close carries. A single-quoted value
 ; that is a JSON text is a container in the grammar's value, which no pass
 ; carries, so the part refuses it in its own words (\`fail :unstreamable\`,
@@ -579,15 +583,13 @@ def ini-transduce-differ [a b j]
     case missing true
     case segment (if (equal segment (get-path (path j) a)) false true)
 
-; Whether \`a\` and \`b\` agree at every index up to \`i\`.
-def ini-transduce-agree [a b i]
-  match (count (filter (fn [j] (match (compare j i) (case :greater false) (case _ (ini-transduce-differ a b j)))) (indices a)))
-    case 0 true
-    case _ false
-
-; How many segments two paths share at their head.
+; How many segments two paths share at their head: the first index they
+; differ at, or every one of \`a\`, found in one pass over \`a\`.
 def ini-transduce-common [a b]
-  count (filter (fn [i] (ini-transduce-agree a b i)) (indices a))
+  let [differing (filter (fn [i] (ini-transduce-differ a b i)) (indices a))]
+    match (count differing)
+      case 0 (count a)
+      case _ (get-path (path 0) differing)
 
 ; The indices of \`items\` from \`from\` on.
 def ini-transduce-from [items from]
@@ -640,16 +642,22 @@ def ini-transduce-header [state]
             transition [started next missing missing] (push-all (ini-transduce-opens next kept) (push-all (ini-transduce-ends sections kept) (ini-transduce-end-array array)))
 
 ; A pair with \`=\`: an array key begins its array, or adds to the open one;
-; a plain key names a member, or adds to the open array it names.
+; a plain key names a member, or adds to the open array it names. An array
+; key whose name ends in brackets itself, \`k[][]\`, the part refuses: its
+; array, \`k[]\`, a \`k[] =\` line adds to from anywhere in its section, which
+; only the whole section tells.
 def ini-transduce-pair-eq [state keyval]
   match state
     case [started sections pending array]
       match (kind keyval)
         case :vector
           let [name (get-path (path 0) keyval)]
-            match (ini-transduce-is array name)
-              case true (transition state [])
-              case _ (transition [started sections pending name] (push-all [(key name) array-start] (ini-transduce-end-array array)))
+            match (top (split "[]" name))
+              case "" (fail :unstreamable "an array key spelt with two pairs of brackets, k[][], whose array a k[] line adds to from anywhere in its section")
+              case _
+                match (ini-transduce-is array name)
+                  case true (transition state [])
+                  case _ (transition [started sections pending name] (push-all [(key name) array-start] (ini-transduce-end-array array)))
         case _
           let [name (ini-transduce-text keyval)]
             match (ini-transduce-is array name)
