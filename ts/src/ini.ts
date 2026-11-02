@@ -6,6 +6,7 @@
 // @tabnas/parser.
 import {
   Tabnas,
+  Rule,
   RuleSpec,
   AltSpec,
   Lex,
@@ -477,6 +478,24 @@ function Ini(tn: Tabnas, _options: IniOptions) {
   const declaredSections = new Set<string>()
 
   const ST = tn.token.ST as number
+  const HK = tn.token('#HK') as number
+
+  // An array key, `k[]`, quoted or not: the lexer marks it, since a
+  // transducer part reading the rule passes (alchemy/transduce.alc) sees a
+  // token's value but cannot strip a suffix. In key position (anywhere but
+  // inside a value) a key token whose string ends in `[]` past the brackets
+  // carries the name before them in a one-element array; the pair actions
+  // read it back, and a bare `k[]` line keeps declaring the key `k[]`.
+  tn.sub({
+    lex: (tkn: Token, rule: Rule) => {
+      if (null != rule && 'val' === rule.name && 'o' === rule.state) return
+      if (HK !== tkn.tin && ST !== tkn.tin) return
+      const val = tkn.val
+      if ('string' === typeof val && 2 < val.length && val.endsWith('[]')) {
+        tkn.val = [val.slice(0, -2)]
+      }
+    },
+  })
 
   // Named function references for declarative grammar definition.
   const refs: Record<string, Function> = {
@@ -572,18 +591,21 @@ function Ini(tn: Tabnas, _options: IniOptions) {
     '@dive-push': (r: any) => (r.u.dive = r.parent.u.dive || []).push(r.o0.val),
 
     '@pair-key-eq': (r: any) => {
-      let key = '' + r.o0.val
-      if (Array.isArray(r.node[key])) {
+      // An array key, `k[]`, arrives from the lexer as its name in a
+      // one-element array (the lex subscriber above). It adds to the array
+      // under its own spelling first, `k[]`, which a `k[][] =` line made,
+      // then to the one under its name.
+      const raw = r.o0.val
+      const arrayKey = Array.isArray(raw)
+      const key = arrayKey ? '' + raw[0] : '' + raw
+      if (arrayKey && Array.isArray(r.node[key + '[]'])) {
+        r.u.ini_array = r.node[key + '[]']
+      } else if (Array.isArray(r.node[key])) {
         r.u.ini_array = r.node[key]
       } else {
         r.u.key = key
-        if (2 < key.length && key.endsWith('[]')) {
-          key = r.u.key = key.slice(0, -2)
-          r.node[key] = r.u.ini_array = Array.isArray(r.node[key])
-            ? r.node[key]
-            : undefined === r.node[key]
-              ? []
-              : [r.node[key]]
+        if (arrayKey) {
+          r.node[key] = r.u.ini_array = undefined === r.node[key] ? [] : [r.node[key]]
         } else {
           r.u.pair = true
         }
@@ -591,7 +613,9 @@ function Ini(tn: Tabnas, _options: IniOptions) {
     },
 
     '@pair-key-bool': (r: any) => {
-      let key = r.o0.val
+      // A bare `k[]` line declares the key `k[]`, brackets and all.
+      const raw = r.o0.val
+      const key = Array.isArray(raw) ? raw[0] + '[]' : raw
       if ('string' === typeof key && 0 < key.length) {
         r.parent.node[key] = true
       }

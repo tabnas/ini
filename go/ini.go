@@ -346,6 +346,25 @@ func iniPlugin(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 	j.Token("#DOT", ".")
 	cfg.SortFixedTokens()
 
+	// An array key, `k[]`, quoted or not: the lexer marks it, since a
+	// transducer part reading the rule passes (alchemy/transduce.alc) sees
+	// a token's value but cannot strip a suffix. In key position (anywhere
+	// but inside a value) a key token whose string ends in `[]` past the
+	// brackets carries the name before them in a one-element slice; the
+	// pair actions read it back, and a bare `k[]` line keeps declaring the
+	// key `k[]`.
+	j.Sub(func(tkn *tabnas.Token, rule *tabnas.Rule, _ *tabnas.Context) {
+		if rule != nil && rule.Name == "val" && rule.State == tabnas.OPEN {
+			return
+		}
+		if tkn.Name != "#HK" && tkn.Name != "#ST" {
+			return
+		}
+		if s, ok := tkn.Val.(string); ok && len(s) > 2 && strings.HasSuffix(s, "[]") {
+			tkn.Val = []any{s[:len(s)-2]}
+		}
+	}, nil)
+
 	// Use Hoover plugin for key, value, and dive key matching.
 	// Mirrors the TS: jsonic.use(Hoover, { ... })
 	//
@@ -713,7 +732,9 @@ func iniPlugin(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 		}),
 
 		"@pair-key-eq": tabnas.AltAction(func(r *tabnas.Rule, ctx *tabnas.Context) {
-			key := tokenString(r.O0)
+			// An array key, `k[]`, arrives from the lexer as its name in
+			// a one-element slice (the lex subscriber in iniPlugin).
+			key, arrayKey := keyOf(r.O0)
 			// The map rule's node is a *tabnas.OrderedMap; unwrap it (reads
 			// and existing-key updates go through the underlying map, new
 			// keys via nodeSet to keep order).
@@ -722,20 +743,23 @@ func iniPlugin(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 				return
 			}
 
-			if _, isArr := nm[key].([]any); isArr {
+			// An array key adds to the array under its own spelling first,
+			// `k[]`, which a `k[][] =` line made, then to the one under its
+			// name.
+			if arr, isArr := nm[key+"[]"].([]any); arrayKey && isArr {
+				r.EnsureU()["key"] = key + "[]"
+				r.EnsureU()["ini_array"] = arr
+			} else if _, isArr := nm[key].([]any); isArr {
 				r.EnsureU()["key"] = key
 				r.EnsureU()["ini_array"] = nm[key]
-			} else if len(key) > 2 && strings.HasSuffix(key, "[]") {
-				arrayKey := key[:len(key)-2]
-				r.EnsureU()["key"] = arrayKey
-				if existing, ok := nm[arrayKey].([]any); ok {
-					r.EnsureU()["ini_array"] = existing
-				} else if _, exists := nm[arrayKey]; exists {
-					r.EnsureU()["ini_array"] = []any{nm[arrayKey]}
-					nm[arrayKey] = r.EnsureU()["ini_array"]
+			} else if arrayKey {
+				r.EnsureU()["key"] = key
+				if _, exists := nm[key]; exists {
+					r.EnsureU()["ini_array"] = []any{nm[key]}
+					nm[key] = r.EnsureU()["ini_array"]
 				} else {
 					arr := make([]any, 0)
-					nodeSet(r.Node, arrayKey, arr)
+					nodeSet(r.Node, key, arr)
 					r.EnsureU()["ini_array"] = arr
 				}
 			} else {
@@ -1300,15 +1324,42 @@ func getDive(r *tabnas.Rule) []string {
 }
 
 // boolKey is the key a BARE line declares: the token's value when it
-// carries a string, and nothing otherwise.
+// carries a string, the name and its brackets when the lexer marked an
+// array key (a bare `k[]` line declares the key `k[]`), and nothing
+// otherwise.
 func boolKey(t *tabnas.Token) string {
 	if t == nil || t.IsNoToken() {
 		return ""
+	}
+	if name, ok := arrayKeyName(t); ok {
+		return name + "[]"
 	}
 	if s, ok := t.Val.(string); ok {
 		return s
 	}
 	return ""
+}
+
+// arrayKeyName is the name the lexer marked an array key with: its value,
+// a one-element slice holding the name before the brackets.
+func arrayKeyName(t *tabnas.Token) (string, bool) {
+	parts, ok := t.Val.([]any)
+	if !ok || len(parts) != 1 {
+		return "", false
+	}
+	name, ok := parts[0].(string)
+	return name, ok
+}
+
+// keyOf is a key token's name, and whether the lexer marked it as an
+// array key.
+func keyOf(t *tabnas.Token) (string, bool) {
+	if t != nil && !t.IsNoToken() {
+		if name, ok := arrayKeyName(t); ok {
+			return name, true
+		}
+	}
+	return tokenString(t), false
 }
 
 func tokenString(t *tabnas.Token) string {
