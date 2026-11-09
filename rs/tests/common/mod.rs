@@ -62,7 +62,7 @@ pub const FIXTURES: &[&str] = &[
 
 /// The fixtures that are parsed with something other than the defaults.
 /// Keep in step with `tsvOptions` in `go/ini_tsv_test.go` and `OPTIONS`
-/// in `ts/test/ini-tsv.test.ts`.
+/// in `ts/test/fixture-options.ts`.
 pub const OPTION_NAMES: &[&str] = &[
     "inline-comments-active",
     "inline-comments-backslash",

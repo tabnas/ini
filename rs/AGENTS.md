@@ -15,6 +15,7 @@ and this file only covers what is specific to this crate.
 | `tests/conformance_test.rs` | the third-party corpus in `../test/corpus/ini-corpus.json`, with the same divergence lists the other two runtimes carry |
 | `tests/grammar_test.rs` | the embedded grammar against `../ini-grammar.jsonic`, and against the TypeScript and Go embeds |
 | `tests/perf_test.rs` | `parse` reuses its instance, building one really is dear, and many sections stay near linear |
+| `tests/reader_test.rs` | a parse from a reader (`parse_reader`) against a parse of the same text: `make` and `make_with` declare `lex.window` and the plugin does not; every fixture row and corpus document from a reader in pieces of 1, 3 and 64 bytes, under the engine's window and windows of a few characters; values, keys and lines longer than the window; a long document under a window that moves on many times (`../AGENTS.md`, "A parse from a reader") |
 | `tests/translate_test.rs` | the translation parts: the render the embedded manifest names is the one `render_text()` embeds, the embed it names is the one `translate()` carries (none, for INI), the manifest's shapes, root, language and loss lines, and every render definition named `ini-...` |
 | `tests/version_test.rs` | Cargo.toml == `VERSION` == ts/package.json == the Go `const VERSION` |
 | `tests/common/mod.rs` | the per-fixture option table and the two conversions the runner needs |

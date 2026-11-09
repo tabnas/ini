@@ -67,6 +67,14 @@ The Rust crate lives in [`rs/`](rs/). Its front page is
 INI values are strings by default; the keywords `true`/`false`/`null`
 resolve to their host types.
 
+## Reading from a reader
+
+`make` in TypeScript and Rust and `MakeJsonic` in Go build the parser
+whole and declare the engine's `lex.window`, so that the engine's reader
+entry point, `parseReader`, `ParseReader` or `parse_reader`, reads INI a
+window at a time rather than whole. It gives the value and the errors
+that a parse of the same text gives.
+
 ## Documentation
 
 Four-quadrant docs per language:

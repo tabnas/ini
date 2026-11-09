@@ -71,6 +71,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+`make` and `make_with` declare the engine's `lex.window`, so that
+`parse_reader` reads INI from a `std::io::Read` a window at a time rather
+than whole, and gives the value and the errors that a parse of the same
+text gives. The plugin declares no window of its own, since a host may
+install it beneath matchers of its own:
+
+```rust
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let parser = tabnas_ini::make();
+    let value = parser.parse_reader("[server]\nhost = localhost".as_bytes())?;
+    assert_eq!(value.to_string(), r#"{"server":{"host":"localhost"}}"#);
+    Ok(())
+}
+```
+
 Options are a typed struct with a default per field, so a parser with one
 setting changed names that setting and nothing else:
 

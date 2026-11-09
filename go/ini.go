@@ -131,7 +131,20 @@ func Parse(src string, opts ...IniOptions) (map[string]any, error) {
 	return map[string]any{}, nil
 }
 
-// MakeJsonic creates a jsonic instance configured for INI parsing.
+// MakeJsonic creates a jsonic instance configured for INI parsing: jsonic's
+// base (jsonic.Make) with the ini plugin installed, and with lex.window
+// declared, so that Tabnas.ParseReader reads a reader a window at a time
+// rather than whole (admin ADR-30). The string check reads the source
+// only through the window, filling it where a scan reaches its end, and
+// holds a quoted key's text before the string matcher reads it
+// (tabnas/parser#326); hoover's blocks fill as it does (hoover v0.3.15);
+// the multiline value matcher reads only the window and ends a value there,
+// a token the engine cuts again; jsonic's base and the comment, line and
+// string matchers are the engine's own; and the actions read only the
+// tokens. The window is declared here, on the parser this package makes
+// whole, and not in the plugin, which a host may install beneath matchers
+// of its own. It is the counterpart of TypeScript's make and Rust's
+// make_with.
 func MakeJsonic(opts ...IniOptions) *tabnas.Tabnas {
 	var o IniOptions
 	if len(opts) > 0 {
@@ -187,6 +200,7 @@ func MakeJsonic(opts ...IniOptions) *tabnas.Tabnas {
 		panic("ini plugin: " + err.Error())
 	}
 
+	j.SetOptions(tabnas.Options{Lex: &tabnas.LexOptions{Window: &bTrue}})
 	return j
 }
 
@@ -493,6 +507,15 @@ func iniPlugin(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 				startI := sI
 				var chars []byte
 
+				// The value is read from lex.Src, which in a parse from a
+				// reader (lex.window, admin ADR-30) is the window. Every
+				// scan below that reaches the window's end ends the value
+				// there: a continuation, a CRLF or an escape whose second
+				// character the window does not hold is taken as text, and a
+				// line end the window ends after is consumed. The token then
+				// ends at the window's end, which the engine cuts again over a
+				// window twice as far ahead while the source has more, so the
+				// value ends where the whole text ends it.
 				for sI < len(src) {
 					c := src[sI]
 					// The canonical scanner walks UTF-16 code units and
@@ -912,6 +935,55 @@ func iniPlugin(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 			(rule.Parent.Name == "pair" || rule.Parent.Name == "elem")
 	}
 
+	// A quoted key is the engine's string matcher's to read. In a parse
+	// from a reader that matcher declines a string the window ends inside
+	// and asks for the token to be cut again over a wider window, but the
+	// engine lets the cut stand when a later matcher's fill has meanwhile
+	// read the source to its end (tabnas/parser#326): Hoover's key block
+	// then takes the line, quotes and all, where the whole text gives the
+	// quoted key. Holding the string through its closing quote or the end
+	// of its line (or of the source) before the matcher reads it leaves the
+	// matcher nothing to decline on: an escape takes the character after
+	// it, and a string cannot run past its line. Where the scan reaches the
+	// window's end, held asks it to fill to twice what the scan has read
+	// past the cursor. The window holds whole characters, so a quote or an
+	// escape whose first byte is held is held whole. Once the engine cuts
+	// such a token again, this is no longer needed. Nothing in a whole
+	// text.
+	holdQuotedKey := func(lex *tabnas.Lex) {
+		if !lex.Windowed() {
+			return
+		}
+		src := lex.Src
+		sI := lex.Cursor().SI
+		held := func(i int) bool {
+			if i < len(src) {
+				return true
+			}
+			read := i - sI
+			lex.Fill(max(read+1, 2*read))
+			src = lex.Src
+			return i < len(src)
+		}
+		if !held(sI) {
+			return
+		}
+		quote := rune(src[sI])
+		if !lex.Config.StringChars[quote] {
+			return
+		}
+		esc := byte(lex.Config.EscapeChar)
+		for i := sI + 1; held(i); i++ {
+			c := src[i]
+			if c == byte(quote) || c == '\n' || c == '\r' {
+				return
+			}
+			if c == esc {
+				i++
+			}
+		}
+	}
+
 	// Comment check: a comment marker is only a comment when it starts a
 	// LINE. Inside a value (`k = ;x`) the comment matcher would otherwise
 	// beat Hoover's endofline block and eat the rest of the line, after
@@ -953,6 +1025,7 @@ func iniPlugin(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 	// config modifier.
 	stringCheck := func(lex *tabnas.Lex) *tabnas.LexCheckResult {
 		if !inValue(lex) {
+			holdQuotedKey(lex)
 			return nil
 		}
 		// The quote and escape characters are options too, so read them
@@ -960,7 +1033,25 @@ func iniPlugin(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 		live := lex.Config
 		src := lex.Src
 		sI := lex.Cursor().SI
-		if sI >= len(src) {
+		// The line is read through the lexer's window, so that a parse
+		// from a reader may hold a window of the source (lex.window, admin
+		// ADR-30): there lex.Src is the window, which may end inside the
+		// line. Where the scan reaches the window's end, held asks it to
+		// fill to twice what the scan has read past the cursor and the scan
+		// carries on over the grown lex.Src, whose positions do not move
+		// while a token is cut, so the end of the window is the end of the
+		// line only where it is the end of the source. In a whole text
+		// Lex.Fill only answers.
+		held := func(i int) bool {
+			if i < len(src) {
+				return true
+			}
+			read := i - sI
+			lex.Fill(max(read+1, 2*read))
+			src = lex.Src
+			return i < len(src)
+		}
+		if !held(sI) {
 			return nil
 		}
 		quote := rune(src[sI])
@@ -971,7 +1062,7 @@ func iniPlugin(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 		// Find the closing quote on this line.
 		esc := byte(live.EscapeChar)
 		eI := sI + 1
-		for ; eI < len(src); eI++ {
+		for ; held(eI); eI++ {
 			if src[eI] == esc {
 				eI++
 				continue
@@ -980,18 +1071,18 @@ func iniPlugin(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 				break
 			}
 		}
-		if eI >= len(src) || src[eI] != byte(quote) {
+		if !held(eI) || src[eI] != byte(quote) {
 			return nil
 		}
 
 		// Only whitespace (and, when enabled, an inline comment) may
 		// follow the closing quote.
 		tI := eI + 1
-		for tI < len(src) && (src[tI] == ' ' || src[tI] == '\t') {
+		for held(tI) && (src[tI] == ' ' || src[tI] == '\t') {
 			tI++
 		}
-		atLineEnd := tI >= len(src) || src[tI] == '\n' ||
-			(src[tI] == '\r' && tI+1 < len(src) && src[tI+1] == '\n')
+		atLineEnd := !held(tI) || src[tI] == '\n' ||
+			(src[tI] == '\r' && held(tI+1) && src[tI+1] == '\n')
 		afterQuote, _ := utf8.DecodeRuneInString(src[tI:])
 		atInlineComment := opts.inlineActive &&
 			tI < len(src) && opts.inlineChars[afterQuote] &&

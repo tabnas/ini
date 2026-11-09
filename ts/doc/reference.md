@@ -20,6 +20,7 @@ Peer dependencies: `@tabnas/parser` (>=2), `@tabnas/jsonic` (>=2),
 | Export | Kind | Description |
 |---|---|---|
 | `Ini` | value | The syntax plugin function. |
+| `make` | value | Builds the parser whole and declares `lex.window`. See [`make`](#make-the-whole-parser). |
 | `VERSION` | value | The package version, as a string. |
 | `DEPTH_LIMIT` | value | How deep a document may nest. See [Limits](#limits). |
 | `IniOptions` | type | The plugin's options object. |
@@ -53,6 +54,30 @@ const result = j.parse(src)   // => a plain object (map)
 
 The plugin is idempotent and is re-run when you derive a child engine
 with `make`/options, matching jsonic's plugin model.
+
+## `make`: the whole parser
+
+```ts
+make(options?: IniOptions): Tabnas
+```
+
+Builds the parser whole, `new Tabnas().use(jsonic).use(Ini, options)`,
+and declares `lex.window` on it, so that `parseReader` reads INI from a
+reader a window at a time rather than whole. It parses a string
+as that composition does.
+
+```js
+import { make } from '@tabnas/ini'
+
+const j = make()
+j.parse('[server]\nhost = localhost') // => { server: { host: 'localhost' } }
+```
+
+`j.parseReader(reader)` takes a synchronous reader, an object whose
+`read(buf)` fills a `Uint8Array` and returns how many bytes it wrote, and
+gives the value and the errors that a parse of the same text gives. The
+`Ini` plugin declares no window of its own, since a host may install it
+beneath matchers of its own.
 
 ## Options
 
