@@ -81,12 +81,19 @@ and do not prove.
 
 ## Who runs what
 
-- TypeScript: `ts/test/ini-tsv.test.ts` — a `makeRunner(...)` per fixture.
+- TypeScript: `ts/test/ini-tsv.test.ts` — a `makeRunner(...)` per fixture,
+  with the option table in `ts/test/fixture-options.ts`.
 - Go: `go/ini_tsv_test.go` — a `support.Runner{...}` per fixture.
 - Rust: `rs/tests/parity_test.rs` — a `tabnas_support::Runner` per
   fixture, with the option table in `rs/tests/common/mod.rs`. It also
   names every fixture, so a renamed or deleted `.tsv` is a failure
   rather than quietly reduced coverage.
+
+Each runtime also parses every row again from a reader, under the same
+option table, and holds the result to the parse of the text:
+`ts/test/window.test.ts`, `go/window_test.go` and
+`rs/tests/reader_test.rs` (the root `AGENTS.md`, "A parse from a
+reader").
 
 All three hold only what is specific to ini: the per-file option table and
 the message table above. Everything else — finding `test/spec`, reading the

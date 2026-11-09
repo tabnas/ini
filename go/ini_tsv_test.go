@@ -26,7 +26,7 @@ import (
 // option set, named here. A fixture with no entry gets the defaults, so
 // adding one runs it in every runtime without editing a list.
 //
-// Keep in sync with OPTIONS in ts/test/ini-tsv.test.ts.
+// Keep in sync with OPTIONS in ts/test/fixture-options.ts.
 func tsvOptions() map[string]IniOptions {
 	inlineActive := func() *CommentOptions {
 		return &CommentOptions{

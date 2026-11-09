@@ -7,12 +7,12 @@ import { Tabnas } from '@tabnas/parser'
 import { jsonic } from '@tabnas/jsonic'
 import { Ini } from '../dist/ini'
 
-// @tabnas/ini exports only the Ini plugin — there is no package-level
-// convenience parse(src); users build their own instance with
-// `new Tabnas().use(jsonic).use(Ini)`. Building that instance (parsing the
-// embedded grammar text, wiring the Hoover blocks, applying the rule spec)
-// dominates a parse, so reusing one instance across many parses is many times
-// faster than rebuilding per parse.
+// @tabnas/ini has no package-level convenience parse(src): users build
+// their own instance, with `make()` or `new Tabnas().use(jsonic).use(Ini)`.
+// Building that instance (parsing the embedded grammar text, wiring the
+// Hoover blocks, applying the rule spec) dominates a parse, so reusing one
+// instance across many parses is many times faster than rebuilding per
+// parse.
 //
 // This guards the representative usage: it must NOT rebuild the grammar on
 // every parse. It compares N parses on ONE reused instance against N

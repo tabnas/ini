@@ -49,6 +49,12 @@ the result to `map[string]any`.
 on the child: a derived instance parses INI with the same options, value
 checks and depth limit, matching jsonic's plugin model.
 
+It declares `lex.window` on the engine, so that `j.ParseReader(r)` reads
+INI from an `io.Reader` a window at a time rather than whole,
+and gives the value and the errors that a parse of the same text gives.
+The plugin declares no window of its own, since a host may install it
+beneath matchers of its own.
+
 ## Options
 
 ```go

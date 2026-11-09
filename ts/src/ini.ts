@@ -249,6 +249,46 @@ function Ini(tn: Tabnas, _options: IniOptions) {
     )
   }
 
+  // A quoted key is the engine's string matcher's to read. In a parse from
+  // a reader that matcher declines a string the window ends inside and
+  // asks for the token to be cut again over a wider window, but the engine
+  // lets the cut stand when a later matcher's fill has meanwhile read the
+  // source to its end (tabnas/parser#326): Hoover's key block then takes
+  // the line, quotes and all, where the whole text gives the quoted key.
+  // Holding the string through its closing quote or the end of its line
+  // (or of the source) before the matcher reads it leaves the matcher
+  // nothing to decline on: an escape takes the character after it, and a
+  // string cannot run past its line. Once the engine cuts such a token
+  // again, this is no longer needed.
+  const holdQuotedKey = (lex: Lex, cfg: any) => {
+    if (!lex.windowed) {
+      return
+    }
+    let src = lex.src
+    const sI = lex.pnt.sI
+    const quote = src[sI]
+    if (!cfg.string.quoteMap[quote]) {
+      return
+    }
+    const esc = cfg.string.escChar ?? '\\'
+    const held = (i: number): boolean => {
+      if (i < src.length) return true
+      const read = i - sI
+      lex.fill(Math.max(read + 1, 2 * read))
+      src = lex.src
+      return i < src.length
+    }
+    for (let i = sI + 1; held(i); i++) {
+      const c = src[i]
+      if (quote === c || '\n' === c || '\r' === c) {
+        return
+      }
+      if (esc === c) {
+        i++
+      }
+    }
+  }
+
   tn.options({
     config: {
       modify: {
@@ -302,11 +342,28 @@ function Ini(tn: Tabnas, _options: IniOptions) {
         'ini-string-check': (cfg: any) => {
           cfg.string.check = (lex: Lex) => {
             if (!inValue(lex)) {
+              holdQuotedKey(lex, cfg)
               return undefined
             }
 
-            const src = lex.src
+            // The line is read through the lexer's window, so that a parse
+            // from a reader may hold a window of the source (`lex.window`,
+            // admin ADR-30): there `lex.src` is the window, which may end
+            // inside the line. Where the scan reaches the window's end,
+            // `held` asks it to fill to twice what the scan has read past
+            // the cursor and the scan carries on over the grown `lex.src`,
+            // whose positions do not move while a token is cut, so the end
+            // of the window is the end of the line only where it is the end
+            // of the source. In a whole text `lex.fill` only answers.
+            let src = lex.src
             const sI = lex.pnt.sI
+            const held = (i: number): boolean => {
+              if (i < src.length) return true
+              const read = i - sI
+              lex.fill(Math.max(read + 1, 2 * read))
+              src = lex.src
+              return i < src.length
+            }
             const quote = src[sI]
             if (!cfg.string.quoteMap[quote]) {
               return undefined
@@ -315,7 +372,7 @@ function Ini(tn: Tabnas, _options: IniOptions) {
             // Find the closing quote on this line.
             const esc = cfg.string.escChar ?? '\\'
             let eI = sI + 1
-            for (; eI < src.length; eI++) {
+            for (; held(eI); eI++) {
               if (esc === src[eI]) {
                 eI++
                 continue
@@ -324,20 +381,20 @@ function Ini(tn: Tabnas, _options: IniOptions) {
                 break
               }
             }
-            if (eI >= src.length || quote !== src[eI]) {
+            if (!held(eI) || quote !== src[eI]) {
               return undefined
             }
 
             // Only whitespace (and, when enabled, an inline comment) may
             // follow the closing quote.
             let tI = eI + 1
-            while (' ' === src[tI] || '\t' === src[tI]) {
+            while (held(tI) && (' ' === src[tI] || '\t' === src[tI])) {
               tI++
             }
             const atLineEnd =
-              tI >= src.length ||
+              !held(tI) ||
               '\n' === src[tI] ||
-              ('\r' === src[tI] && '\n' === src[tI + 1])
+              ('\r' === src[tI] && held(tI + 1) && '\n' === src[tI + 1])
             const atInlineComment =
               inlineComment.active &&
               inlineComment.chars.includes(src[tI]) &&
@@ -717,6 +774,15 @@ function Ini(tn: Tabnas, _options: IniOptions) {
                 let startI = sI
                 let chars: string[] = []
 
+                // The value is read from `lex.src`, which in a parse from a
+                // reader (`lex.window`, admin ADR-30) is the window. Every
+                // scan below that reaches the window's end ends the value
+                // there: a continuation, a CRLF or an escape whose second
+                // character the window does not hold is taken as text, and
+                // a line end the window ends after is consumed. The token
+                // then ends at the window's end, which the engine cuts again
+                // over a window twice as far ahead while the source has
+                // more, so the value ends where the whole text ends it.
                 while (sI < src.length) {
                   let c = src[sI]
 
@@ -892,12 +958,32 @@ function Ini(tn: Tabnas, _options: IniOptions) {
   })
 }
 
+// Build an INI parser whole: jsonic's base with the plugin installed, as
+// `new Tabnas().use(jsonic).use(Ini, options)` builds it, and with
+// `lex.window` declared, so that `tn.parseReader` reads a reader a window at
+// a time rather than whole (admin ADR-30). The string check reads the
+// source only through the window, filling it where a scan reaches its end,
+// and holds a quoted key's text before the string matcher reads it
+// (tabnas/parser#326); hoover's blocks fill as it does (hoover 0.3.15);
+// the multiline value matcher reads only the window and ends a value there,
+// a token the engine cuts again; jsonic's base and the comment, line and
+// string matchers are the engine's own; and the actions read only the
+// tokens. The window is declared here, on the parser this package makes
+// whole, and not in `Ini`, which a host may install beneath matchers of
+// its own. It is the counterpart of Go's `MakeJsonic` and Rust's
+// `make_with`.
+function make(options: IniOptions = {}): Tabnas {
+  const tn = new Tabnas().use(jsonic).use(Ini, options)
+  tn.options({ lex: { window: true } })
+  return tn
+}
+
 // VERSION is this package's version. It MUST equal package.json "version":
 // the release orchestrator rewrites both, and the version test fails the
 // build if they drift. Mirrors `const VERSION` in go/ini.go.
 const VERSION = '0.5.21'
 
-export { VERSION, DEPTH_LIMIT, Ini }
+export { VERSION, DEPTH_LIMIT, Ini, make }
 
 export type { IniOptions, InlineCommentOptions }
 

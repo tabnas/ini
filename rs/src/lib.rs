@@ -998,12 +998,25 @@ pub fn make() -> Tabnas {
     make_with(&IniOptions::default())
 }
 
-/// Build an INI parser with caller options.
+/// Build an INI parser with caller options: the counterpart of the
+/// canonical `make(options)` and Go's `MakeJsonic`.
 ///
 /// Infallible by design: the grammar document is a fixed literal and the
 /// jsonic base is installed one line earlier, so a failure here is a bug
 /// in this crate rather than anything a caller did. The Go `MakeJsonic`
 /// panics for the same reason.
+///
+/// It also declares `lex.window`, so that [`Tabnas::parse_reader`] reads a
+/// reader a window at a time rather than whole (admin ADR-30). The string
+/// check reads the source only through the lexer's window and `fill`, and
+/// holds a quoted key's text before the string matcher reads it
+/// (tabnas/parser#326); hoover's blocks fill as it does (hoover 0.3.15);
+/// the multiline value matcher reads only the window and ends a value
+/// there, a token the engine cuts again; jsonic's base and the comment,
+/// line and string matchers are the engine's own; and the actions read
+/// only the tokens. The window is declared here, on the parser this crate
+/// makes whole, and not in [`plugin`] or [`ini`], which a host may install
+/// beneath matchers of its own.
 ///
 /// ```
 /// let options = tabnas_ini::IniOptions::default().with_inline_comments();
@@ -1016,6 +1029,9 @@ pub fn make_with(options: &IniOptions) -> Tabnas {
     parser
         .use_plugin(plugin(options.clone()), None)
         .expect("the INI grammar document is fixed, and the jsonic base is installed");
+    parser
+        .set_options(|options| options.lex.window = true)
+        .expect("lex.window sets");
     parser
 }
 
@@ -1211,12 +1227,13 @@ fn register_lex_hooks(
     let for_check = Arc::clone(&config);
     let inline = Arc::new(resolved.clone());
     parser.imperative_lex_check_ref(STRING_CHECK_REF, move |lexer: &mut Lexer<'_>| {
-        if !IN_VALUE.with(Cell::get) {
-            return LexCheckResult::Continue;
-        }
         let Some(string_config) = for_check.get() else {
             return LexCheckResult::Continue;
         };
+        if !IN_VALUE.with(Cell::get) {
+            hold_quoted_key(lexer, string_config);
+            return LexCheckResult::Continue;
+        }
         if string_quote_wraps_value(lexer, string_config, &inline) {
             LexCheckResult::Continue
         } else {
@@ -1232,30 +1249,117 @@ fn register_lex_hooks(
 ///
 /// `true` also when there is no quote at all, so the string matcher runs
 /// as usual; the caller only declines on a genuine trailing-text case.
+///
+/// The line is read from the text the lexer holds: the whole source, or
+/// in a parse from a reader a window of it (`lex.window`, admin ADR-30),
+/// which [`Lexer::window`] gives from the cursor on. A line the window
+/// ends inside is read again over a window asked for twice what it holds
+/// ([`Lexer::fill`]); where the window does not grow, the source ends
+/// there, and the end of the window is the end of the line. In a whole
+/// text `fill` only answers.
 fn string_quote_wraps_value(
-    lexer: &Lexer<'_>,
+    lexer: &mut Lexer<'_>,
     config: &StringCheckConfig,
     resolved: &Resolved,
 ) -> bool {
+    let mut exhausted = !lexer.windowed();
+    loop {
+        let rest = lexer.window();
+        if let Some(answer) = quote_wraps_value(rest, config, resolved, exhausted) {
+            return answer;
+        }
+        let ahead = rest.len();
+        let read = rest.chars().count();
+        lexer.fill(read.saturating_mul(2).max(read + 1));
+        if lexer.window().len() <= ahead {
+            exhausted = true;
+        }
+    }
+}
+
+/// Hold a quoted key's text in the window before the engine's string
+/// matcher reads it.
+///
+/// A quoted key is the string matcher's to read. In a parse from a reader
+/// that matcher declines a string the window ends inside and asks for the
+/// token to be cut again over a wider window, but the engine lets the cut
+/// stand when a later matcher's fill has meanwhile read the source to its
+/// end (tabnas/parser#326): hoover's key block then takes the line, quotes
+/// and all, where the whole text gives the quoted key. Holding the string
+/// through its closing quote or the end of its line (or of the source)
+/// leaves the matcher nothing to decline on: an escape takes the character
+/// after it, and a string cannot run past its line. Where the scan reaches
+/// the window's end, the window is asked for twice what it holds
+/// ([`Lexer::fill`]) and read again; where it does not grow, the source
+/// ends there. Once the engine cuts such a token again, this is no longer
+/// needed. Nothing in a whole text.
+fn hold_quoted_key(lexer: &mut Lexer<'_>, config: &StringCheckConfig) {
+    if !lexer.windowed() {
+        return;
+    }
+    loop {
+        let rest = lexer.window();
+        if quoted_string_held(rest, config) {
+            return;
+        }
+        let ahead = rest.len();
+        let read = rest.chars().count();
+        lexer.fill(read.saturating_mul(2).max(read + 1));
+        if lexer.window().len() <= ahead {
+            return;
+        }
+    }
+}
+
+/// Whether `remaining`, the text the lexer holds from the cursor on, holds
+/// the quoted string at the cursor through its closing quote or its line's
+/// end: `true` also where there is no quote at the cursor.
+fn quoted_string_held(remaining: &str, config: &StringCheckConfig) -> bool {
+    let mut characters = remaining.chars();
+    let Some(quote) = characters.next() else {
+        return false;
+    };
+    if !config.quotes.contains(&quote) {
+        return true;
+    }
+    while let Some(character) = characters.next() {
+        if character == quote || character == '\n' || character == '\r' {
+            return true;
+        }
+        if character == config.escape_char && characters.next().is_none() {
+            return false;
+        }
+    }
+    false
+}
+
+/// [`string_quote_wraps_value`] over `remaining`, the text the lexer holds
+/// from the cursor on. Unless `exhausted`, `None` where the answer needs
+/// more of the line than `remaining` holds.
+fn quote_wraps_value(
+    remaining: &str,
+    config: &StringCheckConfig,
+    resolved: &Resolved,
+    exhausted: bool,
+) -> Option<bool> {
     // Read forward lazily, never into a buffer. This hook runs at every
     // value, and the rest of the document is what it can see: collecting
     // that made a document of n pairs cost n^2, with 16,000 pairs taking
     // three seconds where the same count of bare keys took a fifth of a
     // second. Nothing here looks past the end of the line.
-    let remaining = lexer.remaining();
     let mut characters = remaining.chars();
     let Some(quote) = characters.next() else {
-        return true;
+        return if exhausted { Some(true) } else { None };
     };
     if !config.quotes.contains(&quote) {
-        return true;
+        return Some(true);
     }
 
     // Find the closing quote on this line. An escape takes the character
     // after it with it, so `"a\"b"` closes at the LAST quote.
     let after_quote = loop {
         let Some(character) = characters.next() else {
-            return true;
+            return if exhausted { Some(true) } else { None };
         };
         if character == config.escape_char {
             characters.next();
@@ -1265,7 +1369,7 @@ fn string_quote_wraps_value(
             break characters.as_str();
         }
         if character == '\n' {
-            return true;
+            return Some(true);
         }
     };
 
@@ -1273,6 +1377,9 @@ fn string_quote_wraps_value(
     let tail = after_quote.trim_start_matches([' ', '\t']);
     let spaced = tail.len() < after_quote.len();
     let next = tail.chars().next();
+    if !exhausted && (tail.is_empty() || "\r" == tail) {
+        return None;
+    }
     let at_line_end = match next {
         None | Some('\n') => true,
         Some('\r') => tail.starts_with("\r\n"),
@@ -1282,7 +1389,7 @@ fn string_quote_wraps_value(
         && next.is_some_and(|character| resolved.is_inline_char(character))
         && (!resolved.esc_whitespace || spaced);
 
-    at_line_end || at_inline_comment
+    Some(at_line_end || at_inline_comment)
 }
 
 // ---------------------------------------------------------------------
@@ -2317,7 +2424,17 @@ fn multiline_match(
     // collecting that first would make a document of n values cost n
     // squared. `rest` is always a character boundary: every step below
     // advances by whole characters.
-    let source = lexer.remaining();
+    //
+    // The value is read from `Lexer::window`, the text the lexer holds from
+    // the cursor on: the whole source, or in a parse from a reader
+    // (`lex.window`, admin ADR-30) a window of it. Every scan below that
+    // reaches the window's end ends the value there: a continuation, a CRLF
+    // or an escape whose second character the window does not hold is
+    // taken as text, and a line end the window ends after is consumed. The
+    // token then ends at the window's end, which the engine cuts again over
+    // a window twice as far ahead while the source has more, so the value
+    // ends where the whole text ends it.
+    let source = lexer.window();
     let mut rest = source;
     let mut text = String::new();
 
