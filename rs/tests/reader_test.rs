@@ -4,23 +4,24 @@
 //!
 //! [`tabnas_ini::make`] and [`tabnas_ini::make_with`] build the parser
 //! whole, jsonic's base with the plugin installed, and declare `lex.window`
-//! on it, so that a reader is read a window at a time. The string check
-//! and hoover's blocks read the source only through the window, a scan
-//! that reaches the window's end filling it and reading on; the string
-//! check holds a quoted key's text before the string matcher reads it
-//! (tabnas/parser#326); and the multiline value matcher ends a value the
-//! window ends inside at the window's end, a token the engine cuts again.
-//! These tests hold it to that: the constructors declare the
-//! window and the plugin does not; every row of the shared fixtures, under
-//! its file's options, and every document of the conformance corpus, under
-//! the default options and the option sets that install the multiline
-//! matcher and the inline comments, parses the same from a reader, in
-//! pieces of 1, 3 and 64 bytes, under windows of a few characters as well
-//! as the engine's own, as from its text: the same value, or the same error
-//! code, position, row, column and token text; so does what each scan
-//! decides on, at every distance from the window's end; and values and
-//! lines longer than the window, and a long document read under a window
-//! of 256 characters that moves on many times, parse the same too.
+//! on it, so that a reader is read a window at a time. The string check and
+//! hoover's blocks read the source only through the window, a scan that
+//! reaches the window's end filling it and reading on; the engine cuts
+//! again a quoted key the string matcher declines at the window's end
+//! (tabnas/parser#326, from tabnas-parser 0.12.17); and the multiline value
+//! matcher ends a value the window ends inside at the window's end, a token
+//! the engine cuts again. These tests hold it to that: the constructors
+//! declare the window and the plugin does not; every row of the shared
+//! fixtures, under its file's options, and every document of the
+//! conformance corpus, under the default options and the option sets that
+//! install the multiline matcher and the inline comments, parses the same
+//! from a reader, in pieces of 1, 3 and 64 bytes, under windows of a few
+//! characters as well as the engine's own, as from its text: the same
+//! value, or the same error code, position, row, column and token text; so
+//! does what each scan decides on, at every distance from the window's end;
+//! and values and lines longer than the window, and a long document read
+//! under a window of 256 characters that moves on many times, parse the
+//! same too.
 
 mod common;
 

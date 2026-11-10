@@ -1008,9 +1008,8 @@ pub fn make() -> Tabnas {
 ///
 /// It also declares `lex.window`, so that [`Tabnas::parse_reader`] reads a
 /// reader a window at a time rather than whole (admin ADR-30). The string
-/// check reads the source only through the lexer's window and `fill`, and
-/// holds a quoted key's text before the string matcher reads it
-/// (tabnas/parser#326); hoover's blocks fill as it does (hoover 0.3.15);
+/// check reads the source only through the lexer's window and `fill`;
+/// hoover's blocks fill as it does (hoover 0.3.15);
 /// the multiline value matcher reads only the window and ends a value
 /// there, a token the engine cuts again; jsonic's base and the comment,
 /// line and string matchers are the engine's own; and the actions read
@@ -1230,8 +1229,13 @@ fn register_lex_hooks(
         let Some(string_config) = for_check.get() else {
             return LexCheckResult::Continue;
         };
+        // A quoted key is the engine's string matcher's to read. In a parse
+        // from a reader the matcher declines a string the window ends
+        // inside, and the engine cuts the token again over a wider window,
+        // even where a later matcher's fill has read the source to its end
+        // (tabnas/parser#326, from tabnas-parser 0.12.17), so hoover's key
+        // block never takes a quoted key's line whole.
         if !IN_VALUE.with(Cell::get) {
-            hold_quoted_key(lexer, string_config);
             return LexCheckResult::Continue;
         }
         if string_quote_wraps_value(lexer, string_config, &inline) {
@@ -1275,62 +1279,6 @@ fn string_quote_wraps_value(
             exhausted = true;
         }
     }
-}
-
-/// Hold a quoted key's text in the window before the engine's string
-/// matcher reads it.
-///
-/// A quoted key is the string matcher's to read. In a parse from a reader
-/// that matcher declines a string the window ends inside and asks for the
-/// token to be cut again over a wider window, but the engine lets the cut
-/// stand when a later matcher's fill has meanwhile read the source to its
-/// end (tabnas/parser#326): hoover's key block then takes the line, quotes
-/// and all, where the whole text gives the quoted key. Holding the string
-/// through its closing quote or the end of its line (or of the source)
-/// leaves the matcher nothing to decline on: an escape takes the character
-/// after it, and a string cannot run past its line. Where the scan reaches
-/// the window's end, the window is asked for twice what it holds
-/// ([`Lexer::fill`]) and read again; where it does not grow, the source
-/// ends there. Once the engine cuts such a token again, this is no longer
-/// needed. Nothing in a whole text.
-fn hold_quoted_key(lexer: &mut Lexer<'_>, config: &StringCheckConfig) {
-    if !lexer.windowed() {
-        return;
-    }
-    loop {
-        let rest = lexer.window();
-        if quoted_string_held(rest, config) {
-            return;
-        }
-        let ahead = rest.len();
-        let read = rest.chars().count();
-        lexer.fill(read.saturating_mul(2).max(read + 1));
-        if lexer.window().len() <= ahead {
-            return;
-        }
-    }
-}
-
-/// Whether `remaining`, the text the lexer holds from the cursor on, holds
-/// the quoted string at the cursor through its closing quote or its line's
-/// end: `true` also where there is no quote at the cursor.
-fn quoted_string_held(remaining: &str, config: &StringCheckConfig) -> bool {
-    let mut characters = remaining.chars();
-    let Some(quote) = characters.next() else {
-        return false;
-    };
-    if !config.quotes.contains(&quote) {
-        return true;
-    }
-    while let Some(character) = characters.next() {
-        if character == quote || character == '\n' || character == '\r' {
-            return true;
-        }
-        if character == config.escape_char && characters.next().is_none() {
-            return false;
-        }
-    }
-    false
 }
 
 /// [`string_quote_wraps_value`] over `remaining`, the text the lexer holds

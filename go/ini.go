@@ -135,9 +135,8 @@ func Parse(src string, opts ...IniOptions) (map[string]any, error) {
 // base (jsonic.Make) with the ini plugin installed, and with lex.window
 // declared, so that Tabnas.ParseReader reads a reader a window at a time
 // rather than whole (admin ADR-30). The string check reads the source
-// only through the window, filling it where a scan reaches its end, and
-// holds a quoted key's text before the string matcher reads it
-// (tabnas/parser#326); hoover's blocks fill as it does (hoover v0.3.15);
+// only through the window, filling it where a scan reaches its end;
+// hoover's blocks fill as it does (hoover v0.3.15);
 // the multiline value matcher reads only the window and ends a value there,
 // a token the engine cuts again; jsonic's base and the comment, line and
 // string matchers are the engine's own; and the actions read only the
@@ -935,55 +934,6 @@ func iniPlugin(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 			(rule.Parent.Name == "pair" || rule.Parent.Name == "elem")
 	}
 
-	// A quoted key is the engine's string matcher's to read. In a parse
-	// from a reader that matcher declines a string the window ends inside
-	// and asks for the token to be cut again over a wider window, but the
-	// engine lets the cut stand when a later matcher's fill has meanwhile
-	// read the source to its end (tabnas/parser#326): Hoover's key block
-	// then takes the line, quotes and all, where the whole text gives the
-	// quoted key. Holding the string through its closing quote or the end
-	// of its line (or of the source) before the matcher reads it leaves the
-	// matcher nothing to decline on: an escape takes the character after
-	// it, and a string cannot run past its line. Where the scan reaches the
-	// window's end, held asks it to fill to twice what the scan has read
-	// past the cursor. The window holds whole characters, so a quote or an
-	// escape whose first byte is held is held whole. Once the engine cuts
-	// such a token again, this is no longer needed. Nothing in a whole
-	// text.
-	holdQuotedKey := func(lex *tabnas.Lex) {
-		if !lex.Windowed() {
-			return
-		}
-		src := lex.Src
-		sI := lex.Cursor().SI
-		held := func(i int) bool {
-			if i < len(src) {
-				return true
-			}
-			read := i - sI
-			lex.Fill(max(read+1, 2*read))
-			src = lex.Src
-			return i < len(src)
-		}
-		if !held(sI) {
-			return
-		}
-		quote := rune(src[sI])
-		if !lex.Config.StringChars[quote] {
-			return
-		}
-		esc := byte(lex.Config.EscapeChar)
-		for i := sI + 1; held(i); i++ {
-			c := src[i]
-			if c == byte(quote) || c == '\n' || c == '\r' {
-				return
-			}
-			if c == esc {
-				i++
-			}
-		}
-	}
-
 	// Comment check: a comment marker is only a comment when it starts a
 	// LINE. Inside a value (`k = ;x`) the comment matcher would otherwise
 	// beat Hoover's endofline block and eat the rest of the line, after
@@ -1024,8 +974,13 @@ func iniPlugin(j *tabnas.Tabnas, pluginOpts map[string]any) error {
 	// and lets Hoover take the raw line. Mirrors the TS 'ini-string-check'
 	// config modifier.
 	stringCheck := func(lex *tabnas.Lex) *tabnas.LexCheckResult {
+		// A quoted key is the engine's string matcher's to read. In a
+		// parse from a reader the matcher declines a string the window ends
+		// inside, and the engine cuts the token again over a wider window,
+		// even where a later matcher's fill has read the source to its end
+		// (tabnas/parser#326, from parser v0.12.17), so Hoover's key block
+		// never takes a quoted key's line whole.
 		if !inValue(lex) {
-			holdQuotedKey(lex)
 			return nil
 		}
 		// The quote and escape characters are options too, so read them

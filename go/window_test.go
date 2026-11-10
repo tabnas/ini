@@ -9,16 +9,16 @@ package tabnasini
 // installed, and declares lex.window on it, so that a reader is read a
 // window at a time. The string check and hoover's blocks read the source
 // only through the window, a scan that reaches the window's end filling it
-// and reading on; the string check holds a quoted key's text before the
-// string matcher reads it (tabnas/parser#326); and the multiline value
-// matcher ends a value the window ends inside at the window's end, a token
-// the engine cuts again. These tests hold it to that: MakeJsonic declares
-// the window and the plugin does not; every row of the shared fixtures,
-// under its file's options, and every document of the conformance corpus,
-// under the default options and the option sets that install the
-// multiline matcher and the inline comments, parses the same from a
-// reader, in pieces of 1, 3, 64 and 4096 bytes, as from its text; and so
-// do long values and a long document.
+// and reading on; the engine cuts again a quoted key the string matcher
+// declines at the window's end (tabnas/parser#326, from parser v0.12.17);
+// and the multiline value matcher ends a value the window ends inside at
+// the window's end, a token the engine cuts again. These tests hold it to
+// that: MakeJsonic declares the window and the plugin does not; every row
+// of the shared fixtures, under its file's options, and every document of
+// the conformance corpus, under the default options and the option sets
+// that install the multiline matcher and the inline comments, parses the
+// same from a reader, in pieces of 1, 3, 64 and 4096 bytes, as from its
+// text; and so do long values and a long document.
 //
 // Go's window sizes are fixed at 64 KiB (the engine's small-window hook is
 // unexported), and before each token the window reaches 64 KiB past the
@@ -121,13 +121,14 @@ func sameFromReader(t *testing.T, j *tabnas.Tabnas, at, text string, sizes []int
 	return len(sizes)
 }
 
-// readerSizes are the pieces a document is handed over in: down to a byte
-// for a short one, and from 64 bytes for one over 8 KiB, whose every
-// one-byte read the Go window answers with a copy of itself
-// (tabnas/parser#321).
+// readerSizes are the pieces a document is handed over in: down to a byte,
+// and for one over 8 KiB also in pieces longer than the window's margin.
+// From parser v0.12.18 a read costs the Go window its own length however
+// long the window is (tabnas/parser#321), so a long document is read a
+// byte at a time too.
 func readerSizes(text string) []int {
 	if len(text) > 8<<10 {
-		return []int{64, 4096, readerMargin + 3}
+		return []int{1, 3, 64, 4096, readerMargin + 3}
 	}
 	return []int{1, 3, 64, 4096}
 }
