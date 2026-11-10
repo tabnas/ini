@@ -249,46 +249,6 @@ function Ini(tn: Tabnas, _options: IniOptions) {
     )
   }
 
-  // A quoted key is the engine's string matcher's to read. In a parse from
-  // a reader that matcher declines a string the window ends inside and
-  // asks for the token to be cut again over a wider window, but the engine
-  // lets the cut stand when a later matcher's fill has meanwhile read the
-  // source to its end (tabnas/parser#326): Hoover's key block then takes
-  // the line, quotes and all, where the whole text gives the quoted key.
-  // Holding the string through its closing quote or the end of its line
-  // (or of the source) before the matcher reads it leaves the matcher
-  // nothing to decline on: an escape takes the character after it, and a
-  // string cannot run past its line. Once the engine cuts such a token
-  // again, this is no longer needed.
-  const holdQuotedKey = (lex: Lex, cfg: any) => {
-    if (!lex.windowed) {
-      return
-    }
-    let src = lex.src
-    const sI = lex.pnt.sI
-    const quote = src[sI]
-    if (!cfg.string.quoteMap[quote]) {
-      return
-    }
-    const esc = cfg.string.escChar ?? '\\'
-    const held = (i: number): boolean => {
-      if (i < src.length) return true
-      const read = i - sI
-      lex.fill(Math.max(read + 1, 2 * read))
-      src = lex.src
-      return i < src.length
-    }
-    for (let i = sI + 1; held(i); i++) {
-      const c = src[i]
-      if (quote === c || '\n' === c || '\r' === c) {
-        return
-      }
-      if (esc === c) {
-        i++
-      }
-    }
-  }
-
   tn.options({
     config: {
       modify: {
@@ -341,8 +301,13 @@ function Ini(tn: Tabnas, _options: IniOptions) {
         // matcher, which abandons it and lets Hoover take the raw line.
         'ini-string-check': (cfg: any) => {
           cfg.string.check = (lex: Lex) => {
+            // A quoted key is the engine's string matcher's to read. In a
+            // parse from a reader the matcher declines a string the window
+            // ends inside, and the engine cuts the token again over a wider
+            // window, even where a later matcher's fill has read the source
+            // to its end (tabnas/parser#326, from parser 0.12.17), so
+            // Hoover's key block never takes a quoted key's line whole.
             if (!inValue(lex)) {
-              holdQuotedKey(lex, cfg)
               return undefined
             }
 
@@ -962,9 +927,8 @@ function Ini(tn: Tabnas, _options: IniOptions) {
 // `new Tabnas().use(jsonic).use(Ini, options)` builds it, and with
 // `lex.window` declared, so that `tn.parseReader` reads a reader a window at
 // a time rather than whole (admin ADR-30). The string check reads the
-// source only through the window, filling it where a scan reaches its end,
-// and holds a quoted key's text before the string matcher reads it
-// (tabnas/parser#326); hoover's blocks fill as it does (hoover 0.3.15);
+// source only through the window, filling it where a scan reaches its end;
+// hoover's blocks fill as it does (hoover 0.3.15);
 // the multiline value matcher reads only the window and ends a value there,
 // a token the engine cuts again; jsonic's base and the comment, line and
 // string matchers are the engine's own; and the actions read only the

@@ -363,15 +363,15 @@ character the window does not hold being taken as text and a line end the
 window ends after being consumed, so its token ends at the window's end,
 which the engine cuts again over a wider window.
 
-One more hold works around an engine defect, tabnas/parser#326: the
-engine lets a cut stand once a later matcher's fill has read the source
-to its end, though an earlier built-in matcher declined at the window's
-end. The string matcher declines a quoted key the window ends inside
-(`string.abandon`), and hoover's key block then fills to the line's end
-and takes the line, quotes and all. So in key position the string check
-holds the quoted string, through its closing quote or its line's end,
-before the string matcher reads it (`holdQuotedKey`,
-`hold_quoted_key`). It can go once the engine cuts such a token again.
+A quoted key needs no hold. The string matcher declines a quoted key the
+window ends inside (`string.abandon`), and hoover's key block then fills
+to the line's end; the engine cuts the token again over the window that
+fill left, even where it reached the end of the source, since a matcher
+read to the window's end (tabnas/parser#326, from parser 0.12.17), and
+the string matcher then reads the key. Until that release the engine let
+the cut stand and hoover's key block took the line, quotes and all, so in
+key position the string check held the quoted string, through its closing
+quote or its line's end, before the string matcher read it.
 
 `ts/test/window.test.ts`, `go/window_test.go` and
 `rs/tests/reader_test.rs` hold it, in each runtime: the constructors
@@ -389,7 +389,8 @@ unexported, so Go puts what each scan decides on (a closing quote and
 what follows it, a continuation, an indented line, a CRLF, an escape, an
 inline comment, a quoted key's closing quote) just past the 64 KiB
 margin, and moves the line along the source a byte at a time. With the
-string check's fill taken out, or the quoted key's hold, the tests fail.
+string check's fill taken out, the tests fail, and so do they on parser
+0.12.16 without the quoted key's hold.
 
 ## Build & test
 

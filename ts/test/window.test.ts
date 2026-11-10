@@ -6,19 +6,19 @@
 // options)` builds it, and declares `lex.window` on it, so that a reader is
 // read a window at a time. The string check and hoover's blocks read the
 // source only through the window, a scan that reaches the window's end
-// filling it and reading on; the string check holds a quoted key's text
-// before the string matcher reads it (tabnas/parser#326); and the
-// multiline value matcher ends a value the window ends inside at the
-// window's end, a token the engine cuts again. These tests hold it to
-// that: `make()` declares the window and parses as that composition does;
-// every row of the shared fixtures, under its file's options, and every
-// document of the conformance corpus, under the default options and the
-// option sets that install the multiline matcher and the inline comments,
-// parses the same from a reader, in pieces of 1, 3 and 64 bytes, under
-// windows of a few UTF-16 units and the engine's own, as from its text; so
-// does what each scan decides on, at every distance from the window's end;
-// and values and lines longer than the window, and a long document, parse
-// the same too.
+// filling it and reading on; the engine cuts again a quoted key the string
+// matcher declines at the window's end (tabnas/parser#326, from parser
+// 0.12.17); and the multiline value matcher ends a value the window ends
+// inside at the window's end, a token the engine cuts again. These tests
+// hold it to that: `make()` declares the window and parses as that
+// composition does; every row of the shared fixtures, under its file's
+// options, and every document of the conformance corpus, under the default
+// options and the option sets that install the multiline matcher and the
+// inline comments, parses the same from a reader, in pieces of 1, 3 and 64
+// bytes, under windows of a few UTF-16 units and the engine's own, as from
+// its text; so does what each scan decides on, at every distance from the
+// window's end; and values and lines longer than the window, and a long
+// document, parse the same too.
 
 import { test, describe } from 'node:test'
 import assert from 'node:assert'
