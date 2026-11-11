@@ -162,7 +162,10 @@ func TestMakeJsonicDeclaresTheWindow(t *testing.T) {
 		t.Error("MakeJsonic does not declare lex.window")
 	}
 	var o IniOptions
-	j := jsonic.Make()
+	// jsonic's base declares the window itself (tabnas/jsonic#121), so the
+	// plugin goes on that base with the window turned off.
+	no := false
+	j := jsonic.Make(tabnas.Options{Lex: &tabnas.LexOptions{Window: &no}})
 	if err := j.Use(iniPlugin, optionsToMap(&o, resolve(&o))); err != nil {
 		t.Fatal(err)
 	}
